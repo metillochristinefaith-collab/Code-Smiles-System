@@ -1,0 +1,116 @@
+﻿<div class="dentist-shell dp-shell">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="dp-main">
+    <header class="dp-header">
+      <div>
+        <h1 class="dp-title">My Patients</h1>
+        <p class="dp-subtitle">View your assigned patients and open their dental record details.</p>
+      </div>
+      <a class="dp-back-btn" routerLink="/dentist-dashboard">← Dashboard</a>
+    </header>
+
+    <section class="dp-card">
+      <div class="dp-toolbar">
+        <div class="dp-search-wrap">
+          <span>🔍</span>
+          <input class="dp-search" type="text" placeholder="Search by patient name or ID..." [(ngModel)]="searchQuery" />
+        </div>
+        <select class="dp-select" [(ngModel)]="filterStatus">
+          <option *ngFor="let s of statusOptions" [value]="s">{{ s === 'All' ? 'All Status' : s }}</option>
+        </select>
+      </div>
+
+      <div class="dp-card-head">
+        <div>
+          <p class="dp-kicker">PATIENT DIRECTORY</p>
+          <h2>{{ filtered.length }} Assigned Patients</h2>
+        </div>
+        <span class="dp-count-chip">{{ filterStatus }}</span>
+      </div>
+
+      <div class="dp-list-empty" *ngIf="!isLoading && filtered.length === 0">
+        No patients found.
+      </div>
+
+      <div class="dp-patient-grid" *ngIf="filtered.length > 0">
+        <button class="dp-patient-card"
+                type="button"
+                *ngFor="let p of filtered"
+                [class.active]="selectedPatient?.id === p.id"
+                (click)="selectPatient(p)">
+          <div class="dp-avatar">{{ p.initials }}</div>
+          <div class="dp-item-info">
+            <strong>{{ p.name }}</strong>
+            <span>{{ p.id }} · {{ p.age }} yrs · {{ p.gender }}</span>
+            <span class="dp-item-treatment">{{ p.currentTreatment }}</span>
+          </div>
+          <span class="dp-status-pill" [attr.data-status]="statusTone(p.status)">{{ p.status }}</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="dp-card dp-detail-card" *ngIf="selectedPatient; else selectPatientState">
+      <div class="dp-detail-head">
+        <div class="dp-banner-left">
+          <div class="dp-avatar dp-avatar-lg">{{ selectedPatient.initials }}</div>
+          <div class="dp-banner-info">
+            <h2>{{ selectedPatient.name }}</h2>
+            <span>{{ selectedPatient.id }} · {{ selectedPatient.age }} yrs · {{ selectedPatient.gender }}</span>
+          </div>
+        </div>
+        <span class="dp-status-pill" [attr.data-status]="statusTone(selectedPatient.status)">{{ selectedPatient.status }}</span>
+      </div>
+
+      <div class="dp-info-grid">
+        <div class="dp-info-card">
+          <span>Phone</span>
+          <strong>{{ selectedPatient.phone }}</strong>
+        </div>
+        <div class="dp-info-card">
+          <span>Email</span>
+          <strong>{{ selectedPatient.email }}</strong>
+        </div>
+        <div class="dp-info-card">
+          <span>Blood Type</span>
+          <strong>{{ selectedPatient.bloodType }}</strong>
+        </div>
+        <div class="dp-info-card">
+          <span>Next Appointment</span>
+          <strong>{{ selectedPatient.nextAppointment }}</strong>
+        </div>
+        <div class="dp-info-card wide">
+          <span>Current Treatment</span>
+          <strong>{{ selectedPatient.currentTreatment }}</strong>
+        </div>
+        <div class="dp-info-card wide">
+          <span>Address</span>
+          <strong>{{ selectedPatient.address }}</strong>
+        </div>
+      </div>
+
+      <div class="dp-section-title">Treatment History</div>
+      <div class="dp-history-empty" *ngIf="selectedPatient.treatmentHistory.length === 0">No treatment history recorded.</div>
+      <div class="dp-history-list" *ngIf="selectedPatient.treatmentHistory.length > 0">
+        <div class="dp-history-card" *ngFor="let h of selectedPatient.treatmentHistory">
+          <div class="dp-history-head">
+            <div>
+              <strong>{{ h.procedure }}</strong>
+              <span class="dp-history-tooth">{{ h.tooth }}</span>
+            </div>
+            <span class="dp-history-date">{{ h.date }}</span>
+          </div>
+          <p>{{ h.notes }}</p>
+        </div>
+      </div>
+    </section>
+
+    <ng-template #selectPatientState>
+      <section class="dp-card dp-simple-empty">
+        <div class="dp-empty-icon">👥</div>
+        <strong>Select a patient</strong>
+        <p>Choose a patient card above to view their contact details and treatment history.</p>
+      </section>
+    </ng-template>
+  </main>
+</div>

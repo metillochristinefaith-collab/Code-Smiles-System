@@ -1,0 +1,295 @@
+<div class="staff-notifications-page">
+  <app-staff-sidebar></app-staff-sidebar>
+
+  <main class="notifications-main">
+    <div class="notifications-shell">
+
+      <!-- ── PAGE HEADER ─────────────────────────────────────────────────── -->
+      <header class="page-header">
+        <div class="header-left">
+          <h1>Notifications</h1>
+          <p>Monitor approvals, patient updates, messages, and clinic announcements.</p>
+        </div>
+        <div class="header-actions">
+          <div class="search-wrap">
+            <button class="icon-btn" (click)="toggleSearch()" title="Search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+            <input *ngIf="showSearch" class="search-input" [(ngModel)]="searchQuery" placeholder="Search notifications..." autofocus />
+          </div>
+          <select class="sort-select" [(ngModel)]="sortBy">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="priority">By Priority</option>
+          </select>
+          <button class="btn-mark-read" (click)="markAllAsRead()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><polyline points="20 6 9 17 4 12"/></svg>
+            Mark All Read
+          </button>
+        </div>
+      </header>
+
+      <!-- ── CONTENT LAYOUT ─────────────────────────────────────────────── -->
+      <section class="content-layout">
+
+        <!-- Stats 1x4 -->
+        <div class="stats-grid">
+          <article class="stat-card">
+            <div class="stat-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Total</span>
+              <strong class="stat-value">{{ notifications.length }}</strong>
+            </div>
+          </article>
+
+          <article class="stat-card clickable" (click)="statusFilter = 'needs-action'">
+            <div class="stat-icon orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Needs Action</span>
+              <strong class="stat-value">{{ needsActionCount }}</strong>
+            </div>
+          </article>
+
+          <article class="stat-card clickable" (click)="statusFilter = 'unread'">
+            <div class="stat-icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Unread</span>
+              <strong class="stat-value">{{ unreadCount }}</strong>
+            </div>
+          </article>
+
+          <article class="stat-card clickable" (click)="statusFilter = 'all'; selectedFilter = 'appointments'">
+            <div class="stat-icon red">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Urgent</span>
+              <strong class="stat-value">{{ urgentCount }}</strong>
+            </div>
+          </article>
+        </div>
+
+        <!-- ── Feed ──────────────────────────────────────────────── -->
+        <div class="feed-section">
+
+          <!-- Single filter bar: category tabs + status chips in one row -->
+          <div class="feed-controls">
+            <!-- Category tabs -->
+            <button *ngFor="let f of filters" class="filter-tab" [class.active]="selectedFilter === f.key" (click)="setFilter(f.key)">
+              {{ f.label }}
+              <span class="filter-count">{{ getFilterCount(f.key) }}</span>
+            </button>
+            <!-- Divider -->
+            <div class="filter-divider"></div>
+            <!-- Status chips -->
+            <button class="status-chip" [class.active]="statusFilter === 'all'"          (click)="statusFilter = 'all'">All</button>
+            <button class="status-chip" [class.active]="statusFilter === 'unread'"       (click)="statusFilter = 'unread'">Unread</button>
+            <button class="status-chip" [class.active]="statusFilter === 'read'"         (click)="statusFilter = 'read'">Read</button>
+            <button class="status-chip" [class.active]="statusFilter === 'needs-action'" (click)="statusFilter = 'needs-action'">Needs Action</button>
+          </div>
+
+          <!-- Notification List -->
+          <div class="notifications-list">
+
+            <!-- Empty State -->
+            <div class="empty-state" *ngIf="visibleNotifications.length === 0">
+              <div class="empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </div>
+              <h3>No notifications found</h3>
+              <p>Try adjusting your filters or search query.</p>
+            </div>
+
+            <!-- Notification Cards -->
+            <article
+              class="notification-card"
+              *ngFor="let notif of visibleNotifications"
+              [class.unread]="notif.unread"
+              [ngClass]="getPriorityBorderClass(notif.priority)"
+              (click)="openDetails(notif, $event)">
+
+              <div class="notif-icon" [ngClass]="notif.tone">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <ng-container *ngIf="notif.icon === 'calendar'">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </ng-container>
+                  <ng-container *ngIf="notif.icon === 'hourglass'">
+                    <path d="M5 22h14M5 2h14M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+                  </ng-container>
+                  <ng-container *ngIf="notif.icon === 'message'">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </ng-container>
+                  <ng-container *ngIf="notif.icon === 'document'">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </ng-container>
+                  <ng-container *ngIf="notif.icon === 'announcement'">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                  </ng-container>
+                </svg>
+              </div>
+
+              <div class="notif-body">
+                <div class="notif-top">
+                  <strong class="notif-title">{{ notif.title }}</strong>
+                  <span class="priority-badge" [ngClass]="notif.priority">
+                    <span class="priority-dot"></span>
+                    {{ notif.priority === 'urgent' ? 'Urgent' : notif.priority === 'needs-action' ? 'Needs Action' : 'Info' }}
+                  </span>
+                  <span class="notif-badge" [ngClass]="notif.tone">{{ notif.label }}</span>
+                </div>
+                <p class="notif-detail">{{ notif.detail }}</p>
+                <div class="notif-timestamps">
+                  <span class="time-relative">{{ notif.time }}</span>
+                  <span class="time-divider">·</span>
+                  <span class="time-exact">{{ notif.exactTime }}</span>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="notif-actions" *ngIf="notif.actionable && notif.status === 'Pending'" (click)="$event.stopPropagation()">
+                  <button class="action-btn approve"
+                    [disabled]="approvingId === notif.id"
+                    (click)="approve(notif, $event)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><polyline points="20 6 9 17 4 12"/></svg>
+                    {{ approvingId === notif.id ? 'Approving…' : 'Approve' }}
+                  </button>
+                  <button class="action-btn reject"
+                    [disabled]="rejectingId === notif.id"
+                    (click)="openReject(notif, $event)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Reject
+                  </button>
+                  <button class="action-btn view" (click)="openDetails(notif, $event)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    View Details
+                  </button>
+                </div>
+
+                <!-- Status chip after action -->
+                <div class="notif-status-chip" *ngIf="notif.status && notif.status !== 'Pending'">
+                  <span [ngClass]="notif.status === 'Approved' ? 'chip-approved' : 'chip-rejected'">{{ notif.status }}</span>
+                </div>
+              </div>
+
+              <div class="notif-right">
+                <span class="unread-dot" *ngIf="notif.unread"></span>
+                <button class="read-toggle" (click)="toggleRead(notif, $event)">
+                  {{ notif.unread ? '✓ Read' : '↩ Unread' }}
+                </button>
+              </div>
+
+            </article>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- View Details Modal -->
+<div class="modal-overlay" *ngIf="selectedNotification" (click)="closeDetails()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ selectedNotification.title }}</h2>
+      <button class="btn-close" (click)="closeDetails()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-row" *ngIf="selectedNotification.patientName">
+        <span>Patient</span><strong>{{ selectedNotification.patientName }}</strong>
+      </div>
+      <div class="modal-row" *ngIf="selectedNotification.appointmentId">
+        <span>Request ID</span><strong>{{ selectedNotification.appointmentId }}</strong>
+      </div>
+      <div class="modal-row">
+        <span>Category</span><strong>{{ selectedNotification.category }}</strong>
+      </div>
+      <div class="modal-row">
+        <span>Priority</span>
+        <strong>
+          <span class="priority-badge" [ngClass]="selectedNotification.priority">
+            <span class="priority-dot"></span>
+            {{ selectedNotification.priority === 'urgent' ? 'Urgent' : selectedNotification.priority === 'needs-action' ? 'Needs Action' : 'Informational' }}
+          </span>
+        </strong>
+      </div>
+      <div class="modal-row">
+        <span>Status</span><strong>{{ selectedNotification.status || 'N/A' }}</strong>
+      </div>
+      <div class="modal-row">
+        <span>Time</span><strong>{{ selectedNotification.exactTime }}</strong>
+      </div>
+      <div class="modal-detail-box">
+        <strong>Details</strong>
+        <p>{{ selectedNotification.detail }}</p>
+      </div>
+      <div class="modal-detail-box">
+        <strong>Meta</strong>
+        <p>{{ selectedNotification.meta }}</p>
+      </div>
+    </div>
+    <div class="modal-footer" *ngIf="selectedNotification.actionable && selectedNotification.status === 'Pending'">
+      <button class="action-btn approve" (click)="approve(selectedNotification, $event); closeDetails()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"/></svg>
+        Approve
+      </button>
+      <button class="action-btn reject" (click)="openReject(selectedNotification, $event); closeDetails()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Reject
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal-overlay" *ngIf="showRejectModal && rejectTarget" (click)="closeRejectModal()">
+  <div class="modal-box reject-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Reject Appointment Request</h2>
+      <button class="btn-close" (click)="closeRejectModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="reject-info">
+      <div class="reject-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      </div>
+      <h3>{{ rejectTarget.patientName }}</h3>
+      <p>{{ rejectTarget.title }}</p>
+      <p class="reject-time">{{ rejectTarget.exactTime }}</p>
+    </div>
+    <div class="form-group">
+      <label>Reason for Rejection <span class="required">*</span></label>
+      <textarea [(ngModel)]="rejectReason" class="form-textarea" rows="4" placeholder="Provide a clear reason. This will be communicated to the patient." (input)="rejectError = ''"></textarea>
+      <p class="form-hint">Common reasons: Dentist unavailable, time slot conflict, service not available.</p>
+      <p class="form-error-text" *ngIf="rejectError">{{ rejectError }}</p>
+    </div>
+    <div class="modal-footer">
+      <button class="action-btn view" (click)="closeRejectModal()">Cancel</button>
+      <button class="action-btn reject" (click)="submitReject()"
+        [disabled]="!rejectReason.trim() || rejectingId !== null">
+        {{ rejectingId !== null ? 'Rejecting…' : 'Confirm Rejection' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="notif-toast" *ngIf="toastMessage" [attr.data-type]="toastType">
+  <svg viewBox="0 0 20 20" fill="none" *ngIf="toastType === 'success'">
+    <circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M6.5 10l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <svg viewBox="0 0 20 20" fill="none" *ngIf="toastType === 'error'">
+    <circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M10 6v5M10 14h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>
+  {{ toastMessage }}
+</div>

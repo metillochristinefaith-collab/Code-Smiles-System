@@ -1,0 +1,133 @@
+.policy-wrapper {
+  min-height: 100vh;
+  padding: 110px 20px 60px;
+  background:
+    radial-gradient(circle at top left, rgba(59, 165, 255, 0.08), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.08), transparent 30%),
+    #f8fbff;
+}
+
+.policy-card {
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.policy-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.policy-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 24px;
+  background: linear-gradient(135deg, #4aa8ff, #2563eb);
+  color: white;
+  box-shadow:
+    0 14px 28px rgba(37, 99, 235, 0.22),
+    0 0 0 10px rgba(37, 99, 235, 0.08);
+}
+
+.policy-card h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: #1f2937;
+  letter-spacing: -0.5px;
+}
+
+.intro {
+  max-width: 640px;
+  margin: 0 auto;
+  color: #6b7280;
+  line-height: 1.7;
+  font-size: 0.92rem;
+}
+
+.policy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.section {
+  background: rgba(255, 255, 255, 0.94);
+  padding: 18px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(220, 230, 255, 0.7);
+  border-left: 4px solid #3b82f6;
+  box-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.05),
+    0 4px 10px rgba(37, 99, 235, 0.05);
+  min-height: 130px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.section:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 16px 28px rgba(15, 23, 42, 0.07),
+    0 6px 14px rgba(37, 99, 235, 0.08);
+}
+
+.section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #2563eb;
+}
+
+.section p {
+  font-size: 0.86rem;
+  color: #5b6472;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.back-btn {
+  display: block;
+  margin: 30px auto 0;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4aa8ff, #2563eb);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 24px rgba(37, 99, 235, 0.26);
+}
+
+@media (max-width: 768px) {
+  .policy-wrapper {
+    padding: 100px 16px 40px;
+  }
+
+  .policy-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .section {
+    min-height: auto;
+  }
+
+  .policy-card h1 {
+    font-size: 1.75rem;
+  }
+
+  .intro {
+    font-size: 0.88rem;
+  }
+}

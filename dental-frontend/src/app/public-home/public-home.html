@@ -1,0 +1,55 @@
+<section id="home" class="home-shell">
+  <div class="hero-backdrop"></div>
+
+  <div class="hero-layout">
+    <div class="hero-copy">
+      <span class="eyebrow">Code Smiles Dental Clinic</span>
+
+      <h1 class="hero-title">
+        <span class="hero-line">Calm, modern</span>
+        <span class="hero-line">dental care built</span>
+        <span class="hero-line">around <em>easy booking</em></span>
+        <span class="hero-line">and confident smiles.</span>
+      </h1>
+
+      <p class="hero-description">
+        Book appointments with ease, connect with your care team, and enjoy a clean,
+        modern dental experience designed for comfort and convenience.
+      </p>
+
+      <div class="hero-actions">
+        <button type="button" class="primary-action" (click)="handleBook()">
+          Book an Appointment
+        </button>
+        <a routerLink="/contact" class="secondary-action">Contact the Clinic</a>
+      </div>
+    </div>
+
+    <aside class="hero-panel" aria-label="Clinic overview">
+      <img
+        src="/home.jpg"
+        alt="Dentist preparing a patient consultation"
+        class="panel-image"
+      />
+
+      <article class="floating-card bottom-card">
+        <p class="card-label">Care You Can Trust</p>
+        <strong>
+          Advanced technology, gentle treatment, and a team that puts your comfort first.
+        </strong>
+      </article>
+    </aside>
+  </div>
+</section>
+
+<section class="home-section services-anchor" id="services">
+  <app-public-services></app-public-services>
+</section>
+
+<section class="home-section" id="about">
+  <app-public-about></app-public-about>
+</section>
+
+<section class="home-section" id="contact">
+  <app-public-contact></app-public-contact>
+</section>

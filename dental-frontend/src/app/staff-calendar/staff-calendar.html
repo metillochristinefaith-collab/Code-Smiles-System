@@ -1,0 +1,177 @@
+<div class="staff-calendar-page">
+  <app-staff-sidebar></app-staff-sidebar>
+
+  <main class="calendar-main">
+
+    <!-- ── PAGE: two-column ──────────────────────────────────────────────── -->
+    <div class="page-layout">
+
+      <!-- ── LEFT COLUMN (MAIN CALENDAR) ──────────────────────────────────── -->
+      <div class="page-left">
+
+        <!-- Calendar Controls Header -->
+        <header class="calendar-header">
+          <!-- Left: Title -->
+          <div class="header-left">
+            <h1 class="calendar-title">Calendar</h1>
+            <p class="calendar-subtitle">Manage schedules, appointments, and availability.</p>
+          </div>
+
+          <!-- Center: Navigation -->
+          <div class="header-center">
+            <button class="btn-today" (click)="goToToday()">Today</button>
+            <div class="week-nav">
+              <button class="week-nav-btn" (click)="previousWeek()">&lt;</button>
+              <button class="week-nav-btn" (click)="nextWeek()">&gt;</button>
+            </div>
+            <span class="week-range">{{ getWeekRangeDisplay() }}</span>
+            <div class="view-toggle">
+              <button class="view-btn" [class.active]="currentView === 'day'" (click)="changeView('day')">Day</button>
+              <button class="view-btn" [class.active]="currentView === 'week'" (click)="changeView('week')">Week</button>
+              <button class="view-btn" [class.active]="currentView === 'month'" (click)="changeView('month')">Month</button>
+            </div>
+          </div>
+
+          <!-- Right: Action -->
+          <div class="header-right">
+            <button class="btn-new-appointment" (click)="addWalkIn()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              New Appointment
+            </button>
+          </div>
+        </header>
+
+        <!-- WEEKLY GRID -->
+        <div class="board-card" *ngIf="currentView === 'week'">
+          <div class="grid-scroll">
+          <div class="week-grid">
+
+            <!-- Header -->
+            <div class="grid-corner">TIME</div>
+            <div class="day-head" *ngFor="let day of calendarDays" [class.active]="day.active">
+              <span class="day-label">{{ day.label }}</span>
+              <span class="day-date">{{ day.date }}</span>
+            </div>
+
+            <!-- Rows -->
+            <ng-container *ngFor="let time of boardTimeLabels; let rowIndex = index">
+              <div class="time-label">{{ time }}</div>
+              <div class="time-cell"
+                *ngFor="let day of calendarDays; let colIndex = index"
+                [class.after-hours]="isAfterHours(colIndex, rowIndex)">
+                <ng-container *ngFor="let ev of boardEvents">
+                  <article *ngIf="ev.dayIndex === colIndex && ev.startSlot === rowIndex"
+                    class="event-card" [ngClass]="getEventClass(ev.status)">
+                    <span class="ev-time">{{ ev.startTime }}</span>
+                    <strong class="ev-name">{{ ev.patient }}</strong>
+                    <span class="ev-service">{{ ev.service }}</span>
+                  </article>
+                </ng-container>
+                <span *ngIf="isAfterHours(colIndex, rowIndex) && rowIndex === 13"
+                  class="closed-label">Closed · {{ getClosingTime(colIndex) }}</span>
+              </div>
+            </ng-container>
+
+          </div><!-- /week-grid -->
+          </div><!-- /grid-scroll -->
+        </div><!-- /board-card -->
+
+        <!-- DAY VIEW -->
+        <div class="board-card" *ngIf="currentView === 'day'">
+          <div class="day-view-list">
+            <div class="day-view-header">
+              <button class="week-nav-btn" (click)="previousWeek()">&lt;</button>
+              <strong>{{ getWeekRangeDisplay() }}</strong>
+              <button class="week-nav-btn" (click)="nextWeek()">&gt;</button>
+            </div>
+            <div *ngIf="allAppointments.length === 0" style="padding:40px;text-align:center;color:#8fa3bc;">
+              No appointments this day.
+            </div>
+            <div class="day-event-row" *ngFor="let ev of boardEvents">
+              <span class="day-ev-time">{{ ev.startTime }}</span>
+              <div class="day-ev-body" [ngClass]="getEventClass(ev.status)">
+                <strong>{{ ev.patient }}</strong>
+                <span>{{ ev.service }}</span>
+                <small *ngIf="ev.dentist">{{ ev.dentist }}</small>
+              </div>
+              <span class="status-badge" [ngClass]="getStatusClass(ev.status)">{{ ev.status }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MONTH VIEW -->
+        <div class="board-card" *ngIf="currentView === 'month'">
+          <div class="month-header">
+            <button class="week-nav-btn" (click)="previousMonth()">&lt;</button>
+            <strong class="month-title">{{ monthName }}</strong>
+            <button class="week-nav-btn" (click)="nextMonth()">&gt;</button>
+          </div>
+          <div class="month-grid">
+            <div class="month-weekday" *ngFor="let d of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']">{{ d }}</div>
+            <div class="month-day"
+              *ngFor="let day of monthDays"
+              [class.month-day-empty]="!day.day"
+              [class.month-day-today]="day.isToday">
+              <span class="month-day-num" *ngIf="day.day">{{ day.day }}</span>
+              <div class="month-events">
+                <div class="month-event" *ngFor="let ev of day.events.slice(0,3)"
+                  [ngClass]="getEventClass(ev.status)">
+                  {{ formatTime(ev.appointment_time) }} {{ ev.patient_name }}
+                </div>
+                <div class="month-event-more" *ngIf="day.events.length > 3">
+                  +{{ day.events.length - 3 }} more
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /page-left -->
+
+      <!-- ── RIGHT SIDEBAR ─────────────────────────────────────────────────── -->
+      <aside class="page-right">
+
+        <!-- Upcoming Appointments -->
+        <section class="sidebar-card upcoming-sidebar">
+          <div class="sidebar-head">
+            <strong>Upcoming Appointments</strong>
+            <a class="view-all-link" (click)="viewAllAppointments()" style="cursor: pointer;">View all</a>
+          </div>
+          <div class="upcoming-list">
+            <div *ngIf="upcomingAppointments.length === 0" style="padding:16px;color:#8fa3bc;font-size:13px;text-align:center;">
+              No upcoming appointments.
+            </div>
+            <div class="upcoming-item" *ngFor="let appt of upcomingAppointments">
+              <div class="upcoming-time">
+                <strong>{{ appt.date }}</strong>
+                <span>{{ appt.time }}</span>
+              </div>
+              <div class="upcoming-details">
+                <strong class="upcoming-patient">{{ appt.patient }}</strong>
+                <p class="upcoming-service">{{ appt.service }}</p>
+                <span class="status-badge" [ngClass]="getStatusClass(appt.status)">{{ appt.status }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Schedule Legend -->
+        <section class="sidebar-card">
+          <div class="sidebar-head"><strong>Schedule Legend</strong></div>
+          <div class="legend-list">
+            <div class="legend-row" *ngFor="let item of legendItems">
+              <span class="legend-dot" [ngClass]="item.cls"></span>
+              <span class="legend-lbl">{{ item.label }}</span>
+            </div>
+          </div>
+        </section>
+
+      </aside>
+
+    </div><!-- /page-layout -->
+
+  </main>
+</div>

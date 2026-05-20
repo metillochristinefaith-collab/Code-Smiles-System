@@ -1,0 +1,476 @@
+.luxury-header {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: clamp(0.4rem, 1vw, 0.7rem) 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(0, 123, 255, 0.1);
+  z-index: 9999;
+  box-sizing: border-box;
+}
+
+/* PUBLIC */
+.nav-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 94%;
+  max-width: 1800px;
+  margin: 0 auto;
+  gap: clamp(8px, 2vw, 20px);
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+  min-height: clamp(50px, 8vw, 70px);
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.5vw, 15px);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.main-logo {
+  height: clamp(36px, 5vw, 52px);
+  width: auto;
+  filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.2));
+  transition: all 0.35s ease;
+  flex-shrink: 0;
+}
+
+.brand-section:hover .main-logo {
+  transform: scale(1.06);
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.main-name {
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  font-weight: 950;
+  color: #1a1a1a;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.nav-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(6px, 1.5vw, 12px);
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #444;
+  font-size: clamp(0.7rem, 1.2vw, 0.85rem);
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  position: relative;
+  padding: clamp(8px, 1vw, 10px) clamp(16px, 1.5vw, 22px);
+  border-radius: 50px;
+  border: 2px solid transparent;
+  background: transparent;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nav-links a:hover {
+  color: #007bff;
+  background: rgba(0, 123, 255, 0.08);
+  border-color: rgba(0, 123, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 123, 255, 0.08);
+}
+
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: #007bff;
+  border-radius: 50px;
+  transform: translateX(-50%);
+  transition: width 0.25s ease;
+}
+
+.nav-links a:hover::after {
+  width: 18px;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: clamp(8px, 1.5vw, 12px);
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.book-btn {
+  background: linear-gradient(180deg, #1e3a5f 0%, #1b3554 40%, #162c47 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: clamp(10px, 1vw, 12px) clamp(24px, 1.5vw, 32px);
+  border-radius: 100px;
+  font-weight: 800;
+  font-size: clamp(0.65rem, 1vw, 0.75rem);
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(22, 44, 71, 0.20);
+  flex-shrink: 0;
+}
+
+.book-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(22, 44, 71, 0.28);
+  filter: brightness(1.06);
+}
+
+.header-login-link {
+  text-decoration: none;
+  font-size: clamp(0.7rem, 1.2vw, 0.85rem);
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #444;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.header-login-link:hover {
+  color: #007bff;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1280px) {
+  .main-name {
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+  }
+}
+
+@media (max-width: 992px) {
+  .nav-wrapper {
+    gap: clamp(6px, 1.2vw, 10px);
+  }
+
+  .main-name {
+    display: none;
+  }
+
+  .nav-links {
+    gap: clamp(4px, 0.8vw, 8px);
+    flex-wrap: nowrap;
+  }
+
+  .nav-links a {
+    padding: clamp(5px, 0.7vw, 7px) clamp(8px, 0.9vw, 12px);
+    font-size: clamp(0.6rem, 0.85vw, 0.7rem);
+    letter-spacing: 0.8px;
+  }
+
+  .action-buttons {
+    gap: clamp(5px, 0.8vw, 8px);
+  }
+
+  .book-btn {
+    padding: clamp(7px, 0.7vw, 9px) clamp(12px, 1vw, 16px);
+    font-size: clamp(0.55rem, 0.8vw, 0.65rem);
+  }
+
+  .header-login-link {
+    font-size: clamp(0.6rem, 0.85vw, 0.7rem);
+  }
+}
+
+/* Hamburger button — hidden on desktop */
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.hamburger-btn:hover {
+  background: rgba(0, 123, 255, 0.08);
+}
+
+.hamburger-line {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: #1a1a1a;
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+/* Animate to X when open */
+.mobile-open .hamburger-btn .hamburger-line:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.mobile-open .hamburger-btn .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+.mobile-open .hamburger-btn .hamburger-line:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Mobile nav actions — only shown inside the drawer */
+.mobile-nav-actions {
+  display: none;
+}
+
+/* Mobile overlay */
+.mobile-overlay {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .nav-wrapper {
+    gap: 0;
+    position: relative;
+  }
+
+  /* Hide desktop nav links and action buttons */
+  .nav-links {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(20px);
+    z-index: 9998;
+    padding: 80px 24px 40px;
+  }
+
+  .nav-links.nav-open {
+    display: flex;
+  }
+
+  .nav-links a {
+    font-size: 1.1rem;
+    letter-spacing: 1.5px;
+    padding: 14px 28px;
+    width: 100%;
+    text-align: center;
+    border-radius: 12px;
+    border: 1px solid transparent;
+  }
+
+  .nav-links a:hover {
+    border-color: rgba(0, 123, 255, 0.2);
+    background: rgba(0, 123, 255, 0.06);
+  }
+
+  .mobile-nav-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .mobile-nav-actions .book-btn,
+  .mobile-nav-actions .header-login-link {
+    width: 100%;
+    text-align: center;
+    display: block;
+    padding: 14px 24px;
+    border-radius: 12px;
+  }
+
+  .action-buttons {
+    display: none;
+  }
+
+  .hamburger-btn {
+    display: flex;
+    z-index: 9999;
+  }
+
+  .mobile-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 9997;
+  }
+
+  .main-name {
+    display: block;
+    font-size: 1.1rem;
+  }
+
+  .main-logo {
+    height: 38px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ZOOM-AWARE HEADER RESPONSIVE RULES
+   When users zoom in, the header needs to stay readable
+══════════════════════════════════════════════════════════════ */
+
+/* At 125% zoom or smaller viewport */
+@media (max-width: 900px) {
+  .luxury-header {
+    padding: clamp(0.3rem, 0.8vw, 0.5rem) 0;
+  }
+
+  .nav-wrapper {
+    gap: clamp(6px, 1.2vw, 12px);
+  }
+
+  .main-logo {
+    height: clamp(32px, 4.5vw, 44px);
+  }
+
+  .main-name {
+    font-size: clamp(0.95rem, 2.2vw, 1.3rem);
+  }
+
+  .nav-links {
+    gap: clamp(4px, 0.9vw, 8px);
+    flex-wrap: nowrap;
+  }
+
+  .nav-links a {
+    padding: clamp(5px, 0.7vw, 7px) clamp(8px, 1vw, 12px);
+    font-size: clamp(0.6rem, 0.9vw, 0.7rem);
+  }
+
+  .action-buttons {
+    gap: clamp(5px, 0.9vw, 8px);
+  }
+
+  .book-btn {
+    padding: clamp(7px, 0.7vw, 9px) clamp(12px, 1vw, 16px);
+    font-size: clamp(0.55rem, 0.8vw, 0.65rem);
+  }
+
+  .header-login-link {
+    font-size: clamp(0.6rem, 0.9vw, 0.7rem);
+  }
+}
+
+/* At 150% zoom or smaller viewport */
+@media (max-width: 700px) {
+  .luxury-header {
+    padding: clamp(0.25rem, 0.6vw, 0.4rem) 0;
+  }
+
+  .nav-wrapper {
+    gap: clamp(4px, 1vw, 8px);
+  }
+
+  .main-logo {
+    height: clamp(28px, 3.8vw, 36px);
+  }
+
+  .main-name {
+    font-size: clamp(0.85rem, 1.8vw, 1.1rem);
+  }
+
+  .nav-links {
+    gap: clamp(3px, 0.7vw, 6px);
+    flex-wrap: nowrap;
+  }
+
+  .nav-links a {
+    padding: clamp(4px, 0.6vw, 6px) clamp(6px, 0.8vw, 10px);
+    font-size: clamp(0.55rem, 0.8vw, 0.65rem);
+  }
+
+  .action-buttons {
+    gap: clamp(4px, 0.7vw, 6px);
+  }
+
+  .book-btn {
+    padding: clamp(6px, 0.6vw, 8px) clamp(10px, 0.9vw, 14px);
+    font-size: clamp(0.5rem, 0.7vw, 0.6rem);
+  }
+
+  .header-login-link {
+    font-size: clamp(0.55rem, 0.8vw, 0.65rem);
+  }
+}
+
+/* At 200% zoom or smaller viewport */
+@media (max-width: 550px) {
+  .luxury-header {
+    padding: clamp(0.2rem, 0.5vw, 0.3rem) 0;
+  }
+
+  .nav-wrapper {
+    gap: clamp(3px, 0.8vw, 6px);
+  }
+
+  .main-logo {
+    height: clamp(24px, 3.2vw, 30px);
+  }
+
+  .main-name {
+    font-size: clamp(0.75rem, 1.5vw, 0.95rem);
+  }
+
+  .nav-links {
+    gap: clamp(2px, 0.6vw, 4px);
+    flex-wrap: nowrap;
+  }
+
+  .nav-links a {
+    padding: clamp(3px, 0.5vw, 5px) clamp(5px, 0.7vw, 8px);
+    font-size: clamp(0.5rem, 0.7vw, 0.6rem);
+  }
+
+  .action-buttons {
+    gap: clamp(3px, 0.6vw, 5px);
+  }
+
+  .book-btn {
+    padding: clamp(5px, 0.5vw, 7px) clamp(8px, 0.8vw, 12px);
+    font-size: clamp(0.45rem, 0.6vw, 0.55rem);
+  }
+
+  .header-login-link {
+    font-size: clamp(0.5rem, 0.7vw, 0.6rem);
+  }
+}

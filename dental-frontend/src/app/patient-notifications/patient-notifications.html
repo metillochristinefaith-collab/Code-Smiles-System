@@ -1,0 +1,240 @@
+<div class="notif-page">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="notif-main">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <header class="notif-header">
+      <div>
+        <h1>Notifications</h1>
+        <p>Stay updated with your appointments, treatments, and messages.</p>
+      </div>
+      <div class="header-right">
+        <button class="notif-bell" type="button" aria-label="Notifications" routerLink="/patient-notifications">
+          <svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-5 5v2.4c0 .7-.2 1.4-.6 2L5 15h14l-1.4-2.6c-.4-.6-.6-1.3-.6-2V8a5 5 0 0 0-5-5"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+        </button>
+        <a class="user-chip" routerLink="/patient-profile">
+          <div class="user-avatar">
+            <img *ngIf="avatarUrl" [src]="avatarUrl" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />
+            <span *ngIf="!avatarUrl">{{ patientInitials }}</span>
+          </div>
+          <div class="user-copy">
+            <strong>{{ patientName }}</strong>
+            <span>Patient ID: {{ patientId }}</span>
+          </div>
+          <svg class="chevron-sm" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- ── Filter bar ─────────────────────────────────────────── -->
+    <div class="filter-card">
+      <div class="filter-tabs">
+        <button
+          *ngFor="let f of filters"
+          type="button"
+          class="filter-tab"
+          [class.active]="selectedFilter === f.key"
+          (click)="setFilter(f.key)">
+          {{ f.label }}
+          <span class="tab-count" *ngIf="filterCounts[f.key] > 0">{{ filterCounts[f.key] }}</span>
+        </button>
+      </div>
+      <button type="button" class="mark-all-btn" (click)="markAllAsRead()">Mark all as read</button>
+    </div>
+
+    <!-- ── Body ───────────────────────────────────────────────── -->
+    <div class="notif-body">
+
+      <!-- Left: notification list -->
+      <div class="notif-list-col">
+
+        <!-- Needs Action -->
+        <section *ngIf="needsActionNotifications.length > 0">
+          <div class="section-label">
+            Needs Action
+            <span class="section-badge red">{{ needsActionCount }}</span>
+          </div>
+          <div class="notif-card">
+            <div
+              *ngFor="let item of needsActionNotifications; let last = last"
+              class="notif-row"
+              [class.row-last]="last"
+              [class.unread]="!item.isRead">
+
+              <!-- Icon -->
+              <div class="notif-icon tone-{{ item.tone }}">
+                <svg [attr.viewBox]="item.iconViewBox">
+                  <path *ngFor="let p of item.iconPaths" [attr.d]="p"></path>
+                </svg>
+              </div>
+
+              <!-- Content -->
+              <div class="notif-content">
+                <div class="notif-title-row">
+                  <strong>{{ item.title }}</strong>
+                  <span class="notif-time">{{ formatRelativeDate(item.createdAt) }}</span>
+                </div>
+                <span class="notif-sub">{{ item.subtitle }}</span>
+                <p class="notif-desc">{{ item.description }}</p>
+              </div>
+
+              <!-- Actions -->
+              <div class="notif-actions">
+                <button
+                  *ngFor="let action of item.actions"
+                  type="button"
+                  class="action-btn"
+                  [class.btn-primary]="action.style === 'primary'"
+                  [class.btn-ghost]="action.style === 'secondary'"
+                  [class.btn-confirm]="action.style === 'confirm'"
+                  [class.btn-reschedule]="action.style === 'reschedule'"
+                  (click)="handleAction(item, action)">
+                  {{ action.label }}
+                </button>
+                <!-- Calendar icon for appointment items -->
+                <button
+                  *ngIf="item.type === 'appointment'"
+                  type="button"
+                  class="icon-action-btn"
+                  title="Add to calendar"
+                  (click)="handleAction(item, {label:'Add to Calendar', kind:'add-calendar', style:'secondary'})">
+                  <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M8 3.5v4M16 3.5v4M4 9.5h16"/></svg>
+                </button>
+              </div>
+
+              <!-- Menu -->
+              <div class="notif-menu">
+                <button type="button" class="menu-btn" (click)="toggleMenu(item.id)" aria-label="More options">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+                </button>
+                <div class="menu-drop" *ngIf="activeMenuId === item.id">
+                  <button type="button" (click)="markAsRead(item.id)">Mark as read</button>
+                  <button type="button" (click)="deleteNotification(item.id)">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Recent -->
+        <section *ngIf="recentNotifications.length > 0">
+          <div class="section-label">
+            Recent
+            <span class="section-badge blue">{{ recentNotifications.length }}</span>
+          </div>
+          <div class="notif-card">
+            <div
+              *ngFor="let item of recentNotifications; let last = last"
+              class="notif-row"
+              [class.row-last]="last"
+              [class.unread]="!item.isRead">
+
+              <div class="notif-icon tone-{{ item.tone }}">
+                <svg [attr.viewBox]="item.iconViewBox">
+                  <path *ngFor="let p of item.iconPaths" [attr.d]="p"></path>
+                </svg>
+              </div>
+
+              <div class="notif-content">
+                <div class="notif-title-row">
+                  <strong>{{ item.title }}</strong>
+                  <span class="notif-time">{{ formatRelativeDate(item.createdAt) }}</span>
+                </div>
+                <span class="notif-sub">{{ item.subtitle }}</span>
+                <p class="notif-desc">{{ item.description }}</p>
+              </div>
+
+              <div class="notif-actions">
+                <button
+                  *ngFor="let action of item.actions"
+                  type="button"
+                  class="action-btn btn-ghost"
+                  (click)="handleAction(item, action)">
+                  {{ action.label }}
+                </button>
+              </div>
+
+              <div class="notif-menu">
+                <button type="button" class="menu-btn" (click)="toggleMenu(item.id)" aria-label="More options">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+                </button>
+                <div class="menu-drop" *ngIf="activeMenuId === item.id">
+                  <button type="button" (click)="markAsRead(item.id)">Mark as read</button>
+                  <button type="button" (click)="deleteNotification(item.id)">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Empty state -->
+        <div class="empty-state" *ngIf="filteredNotifications.length === 0">
+          <svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-5 5v2.4c0 .7-.2 1.4-.6 2L5 15h14l-1.4-2.6c-.4-.6-.6-1.3-.6-2V8a5 5 0 0 0-5-5"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+          <p>No notifications to show.</p>
+        </div>
+
+      </div>
+
+      <!-- Right: sidebar -->
+      <aside class="notif-aside">
+
+        <!-- Notification Preferences -->
+        <div class="aside-card">
+          <div class="aside-card-head">
+            <h3>Notification Preferences</h3>
+            <button type="button" class="manage-btn" routerLink="/patient-profile">Manage</button>
+          </div>
+          <div class="pref-list">
+            <div class="pref-row" *ngFor="let pref of preferences">
+              <div class="pref-icon tone-{{ pref.tone }}">
+                <svg [attr.viewBox]="pref.iconViewBox">
+                  <path *ngFor="let p of pref.iconPaths" [attr.d]="p"></path>
+                </svg>
+              </div>
+              <div class="pref-copy">
+                <strong>{{ pref.title }}</strong>
+                <span>{{ pref.description }}</span>
+              </div>
+              <label class="toggle" [attr.aria-label]="pref.title">
+                <input type="checkbox" [checked]="pref.enabled" (change)="togglePreference(pref.key)" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Need Help -->
+        <div class="aside-card aside-card-white">
+          <div class="aside-icon-row">
+            <div class="aside-icon aside-icon-blue">
+              <svg viewBox="0 0 24 24"><path d="M6 8.5a6 6 0 1 1 12 0v6a2 2 0 0 1-2 2h-1.2"/><path d="M6 10H4.8A1.8 1.8 0 0 0 3 11.8v2.4A1.8 1.8 0 0 0 4.8 16H6"/><path d="M18 10h1.2a1.8 1.8 0 0 1 1.8 1.8v2.4a1.8 1.8 0 0 1-1.8 1.8H18"/></svg>
+            </div>
+            <div>
+              <h4>Need Help?</h4>
+              <p>We're here to help you manage your notifications.</p>
+              <button type="button" class="phone-link" (click)="openHelpCenter()">(555) 123-4567</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security -->
+        <div class="aside-card aside-card-green">
+          <div class="aside-icon-row">
+            <div class="aside-icon aside-icon-green">
+              <svg viewBox="0 0 24 24"><path d="M12 3 18 5.5v5.4c0 4-2.5 7.6-6 9.1-3.5-1.5-6-5.1-6-9.1V5.5L12 3Z"/><path d="M10.5 12 12 13.5l2.8-3.4"/></svg>
+            </div>
+            <div>
+              <h4>Your Information is Secure</h4>
+              <p>We protect your data with industry-standard encryption and secure storage.</p>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+    </div>
+
+  </main>
+
+  <div class="toast" *ngIf="toastMessage" role="status">{{ toastMessage }}</div>
+</div>

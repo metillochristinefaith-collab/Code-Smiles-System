@@ -1,0 +1,123 @@
+<div class="terms-page-shell">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="terms-main">
+    <section class="terms-shell">
+      <header class="page-topbar">
+        <div class="page-copy">
+          <h1>Terms of Use</h1>
+          <p>Review the guidelines for using the patient portal, booking services, and managing your account responsibly.</p>
+        </div>
+
+        <div class="topbar-profile">
+          <button
+            class="header-icon-btn"
+            type="button"
+            aria-label="Notifications"
+            routerLink="/patient-notifications">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3a5 5 0 0 0-5 5v2.4c0 .7-.2 1.4-.6 2L5 15h14l-1.4-2.6c-.4-.6-.6-1.3-.6-2V8a5 5 0 0 0-5-5" />
+              <path d="M10 18a2 2 0 0 0 4 0" />
+            </svg>
+            <span class="header-icon-dot"></span>
+          </button>
+
+          <a class="header-user" routerLink="/patient-profile">
+            <div class="header-avatar" aria-hidden="true">{{ initial }}</div>
+            <div class="header-user-copy">
+              <strong>{{ patientProfile.name }}</strong>
+              <span>Patient ID: {{ patientProfile.id }}</span>
+            </div>
+          </a>
+        </div>
+      </header>
+
+      <section class="feature-grid">
+        <article class="feature-card" *ngFor="let item of featureCards">
+          <div class="feature-icon" [ngClass]="item.tone" aria-hidden="true">
+            <svg [attr.viewBox]="item.iconViewBox">
+              <path *ngFor="let path of item.iconPaths" [attr.d]="path"></path>
+            </svg>
+          </div>
+          <div>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.description }}</p>
+          </div>
+        </article>
+      </section>
+
+      <div class="policy-tabs">
+        <a routerLink="/patient-privacy-policy" class="tab-btn">Privacy Policy</a>
+        <a routerLink="/patient-terms" class="tab-btn active">Terms of Use</a>
+        <span class="last-updated">Last Updated: August 20, 2024</span>
+      </div>
+
+      <section class="content-grid">
+        <section class="policy-card">
+          <h2>Using the Patient Portal</h2>
+          <p class="lead-copy">These terms explain the basic responsibilities that come with using your Code Smiles account, requesting appointments, and viewing personal care information.</p>
+
+          <div class="policy-points">
+            <article class="policy-point" *ngFor="let point of termsPoints">
+              <div class="policy-icon" [ngClass]="point.tone" aria-hidden="true">
+                <svg [attr.viewBox]="point.iconViewBox">
+                  <path *ngFor="let path of point.iconPaths" [attr.d]="path"></path>
+                </svg>
+              </div>
+              <div>
+                <strong>{{ point.title }}</strong>
+                <p>{{ point.description }}</p>
+              </div>
+            </article>
+          </div>
+
+          <a routerLink="/patient-help-center" class="section-link">Need help understanding a portal policy?</a>
+        </section>
+
+        <aside class="side-column">
+          <section class="question-card">
+            <div class="question-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3.5 19 7v5.4c0 4-2.7 7.4-7 8.5-4.3-1.1-7-4.5-7-8.5V7Z" />
+                <path d="M9.5 12 11 13.5 14.8 9.8" />
+              </svg>
+            </div>
+            <div>
+              <h3>Need Clarification?</h3>
+              <p>If anything in our portal terms is unclear, our clinic team can walk you through it.</p>
+            </div>
+            <a routerLink="/patient-contact" class="primary-action-btn">Contact Clinic</a>
+          </section>
+
+          <section class="links-card">
+            <h3>Quick Links</h3>
+            <div class="links-list">
+              <a *ngFor="let link of quickLinks" [routerLink]="link.route" class="quick-link">
+                <div>
+                  <strong>{{ link.title }}</strong>
+                  <span>{{ link.description }}</span>
+                </div>
+                <i>&rarr;</i>
+              </a>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="help-banner">
+        <div class="help-banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 4 19 7.5v4.8c0 4.1-2.7 7.6-7 8.7-4.3-1.1-7-4.6-7-8.7V7.5Z" />
+            <path d="M9.5 12.5 11.2 14 14.8 10.5" />
+          </svg>
+        </div>
+
+        <div class="help-banner-copy">
+          <h2>Using the portal means agreeing to these terms while your personal information remains protected by our Privacy Policy.</h2>
+        </div>
+
+        <a routerLink="/patient-privacy-policy" class="primary-action-btn">View Privacy Policy</a>
+      </section>
+    </section>
+  </main>
+</div>

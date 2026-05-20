@@ -1,0 +1,265 @@
+<div class="dentist-shell da-shell">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="da-main">
+
+    <!-- ── Topbar ──────────────────────────────────────── -->
+    <header class="da-topbar">
+      <div class="da-topbar-left">
+        <h1 class="da-title">My Appointments</h1>
+        <p class="da-subtitle">View and manage your schedule for today. Click on any appointment to view details and update status.</p>
+      </div>
+      <div class="da-topbar-right">
+        <div class="da-date-chip">
+          <span>📅</span>
+          <span>{{ displayDate }}</span>
+        </div>
+        <button class="da-notif-btn" type="button" routerLink="/dentist-notifications">
+          🔔
+          <span class="da-notif-badge">3</span>
+        </button>
+        <div class="da-profile-chip">
+          <div class="da-profile-avatar">
+            <img *ngIf="avatarUrl" [src]="avatarUrl" alt="Profile" class="da-avatar-img" />
+            <span *ngIf="!avatarUrl">{{ dentistInitials }}</span>
+          </div>
+          <div class="da-profile-copy">
+            <strong>{{ dentistDisplayName }}</strong>
+            <span>{{ dentistSpecialty }}</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Table area ───────────────────────────────────── -->
+    <div class="da-table-area">
+
+      <!-- Tabs -->
+      <div class="da-tabs-row">
+        <div class="da-tabs">
+          <button *ngFor="let tab of tabs" type="button"
+                  [class.active]="tab === activeTab"
+                  (click)="setTab(tab)">
+            {{ tab }}
+            <span class="da-tab-count" *ngIf="tab==='Today'">{{ todayCount }}</span>
+            <span class="da-tab-count" *ngIf="tab==='Upcoming'">{{ upcomingCount }}</span>
+            <span class="da-tab-count" *ngIf="tab==='Rescheduled'">{{ rescheduledCount }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="da-filters-bar">
+        <div class="da-search-wrap">
+          <span>🔍</span>
+          <input class="da-search" type="text" placeholder="Search by patient name or treatment…" [(ngModel)]="searchQuery" />
+        </div>
+        <select class="da-select" [(ngModel)]="filterStatus">
+          <option *ngFor="let s of statusOptions" [value]="s">{{ s === 'All' ? 'All Statuses' : s }}</option>
+        </select>
+        <select class="da-select" [(ngModel)]="filterTreatment">
+          <option *ngFor="let t of treatmentOptions" [value]="t">{{ t === 'All' ? 'All Treatments' : t }}</option>
+        </select>
+        <div class="da-date-filter">
+          <span>📅</span>
+          <span>Select Date</span>
+        </div>
+        <button class="da-filter-btn" type="button">⚙ Filters</button>
+      </div>
+
+      <!-- Table -->
+      <table class="da-table">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Patient</th>
+            <th>Treatment / Services</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="isLoading">
+            <td colspan="6" class="da-table-empty">Loading appointments...</td>
+          </tr>
+          <tr *ngIf="!isLoading && filteredAppointments.length === 0">
+            <td colspan="6" class="da-table-empty">No appointments found.</td>
+          </tr>
+          <tr *ngFor="let a of filteredAppointments">
+            <td class="da-td-time">
+              <strong>{{ formatDate(a.appointment_date) }}</strong>
+              <span>{{ formatTime(a.appointment_time) }}</span>
+            </td>
+            <td>
+              <div class="da-patient-cell">
+                <div class="da-avatar">{{ a.initials }}</div>
+                <div>
+                  <strong>{{ a.patient_name }}</strong>
+                  <span>{{ a.phone }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="da-td-treatment">
+              <strong>{{ a.treatment }}</strong>
+              <span *ngIf="a.services && a.services.length">{{ a.services.join(', ') }}</span>
+            </td>
+            <td class="da-td-dur">{{ a.duration_minutes }} min</td>
+            <td>
+              <span class="da-pill" [attr.data-status]="statusTone(a.status)">{{ a.status }}</span>
+            </td>
+            <td class="da-td-actions">
+              <button class="da-view-btn" type="button" (click)="openDetail(a)">
+                👁 View Details
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Pagination -->
+      <div class="da-pagination">
+        <span class="da-pg-info">Showing 1 to {{ filteredAppointments.length }} of {{ filteredAppointments.length }} appointments</span>
+        <div class="da-pg-controls">
+          <button class="da-pg-btn" type="button">‹</button>
+          <button class="da-pg-btn active" type="button">1</button>
+          <button class="da-pg-btn" type="button">›</button>
+        </div>
+        <div class="da-pg-size">
+          Show
+          <select class="da-select-sm"><option>25</option><option>10</option><option>50</option></select>
+          per page
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ── Centered Detail Modal ───────────────────────────── -->
+  <div class="da-modal-overlay" [class.open]="!!selectedAppointment"
+       (click)="clearSelection()" *ngIf="selectedAppointment">
+    <div class="da-detail-modal" (click)="$event.stopPropagation()">
+
+      <div class="da-modal-head">
+        <div class="da-modal-head-left">
+          <div class="da-avatar da-avatar-xl">{{ selectedAppointment.initials }}</div>
+          <div>
+            <h2 class="da-modal-patient-name">{{ selectedAppointment.patient_name }}</h2>
+            <span class="da-modal-patient-meta">{{ selectedAppointment.phone }} · {{ selectedAppointment.email }}</span>
+          </div>
+        </div>
+        <div class="da-modal-head-right">
+          <span class="da-pill" [attr.data-status]="statusTone(selectedAppointment.status)">{{ selectedAppointment.status }}</span>
+          <button class="da-modal-close" type="button" (click)="clearSelection()">✕</button>
+        </div>
+      </div>
+
+      <!-- Modal body — scrollable -->
+      <div class="da-modal-body-scroll">
+
+        <!-- Info grid -->
+        <div class="da-info-grid">
+          <div class="da-info-block">
+            <span class="da-info-label">📅 Date &amp; Time</span>
+            <strong>{{ formatDate(selectedAppointment.appointment_date) }}</strong>
+            <span>{{ formatTime(selectedAppointment.appointment_time) }} · {{ selectedAppointment.duration_minutes }} min</span>
+          </div>
+          <div class="da-info-block">
+            <span class="da-info-label">🦷 Treatment</span>
+            <strong>{{ selectedAppointment.treatment }}</strong>
+            <span *ngIf="selectedAppointment.services && selectedAppointment.services.length">{{ selectedAppointment.services.join(', ') }}</span>
+          </div>
+          <div class="da-info-block">
+            <span class="da-info-label">👤 Assigned Dentist</span>
+            <strong>{{ selectedAppointment.dentist_name || 'Not assigned' }}</strong>
+          </div>
+          <div class="da-info-block">
+            <span class="da-info-label">⚡ Urgency</span>
+            <strong>{{ selectedAppointment.urgency || 'Standard' }}</strong>
+          </div>
+        </div>
+
+        <!-- Detail sections -->
+        <div class="da-detail-sections">
+          <div class="da-detail-section" *ngIf="selectedAppointment.notes">
+            <span class="da-section-label">Notes</span>
+            <p>{{ selectedAppointment.notes }}</p>
+          </div>
+        </div>
+
+        <!-- Add note -->
+        <div class="da-note-section">
+          <span class="da-section-label">Add / Update Treatment Note</span>
+          <textarea class="da-textarea" rows="3"
+                    placeholder="Enter treatment notes…"
+                    [(ngModel)]="treatmentNote"></textarea>
+          <button class="da-btn da-btn-save" type="button"
+                  (click)="saveTreatmentNote(selectedAppointment)">
+            💾 Save Note
+          </button>
+        </div>
+
+        <div class="da-action-message" *ngIf="actionMessage">{{ actionMessage }}</div>
+
+      </div>
+
+      <!-- Modal footer -->
+      <div class="da-modal-footer">
+        <div class="da-footer-actions">
+          <button class="da-btn da-btn-ghost" type="button" (click)="clearSelection()">Close</button>
+          <button class="da-btn da-btn-amber" type="button" (click)="openFollowUp()">
+            🔄 Schedule Follow-up
+          </button>
+          <button class="da-btn da-btn-success" type="button"
+                  (click)="markCompleted(selectedAppointment)"
+                  [disabled]="selectedAppointment.status === 'Completed'">
+            ✓ Mark Completed
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Reschedule Modal ─────────────────────────────────── -->
+  <div class="da-modal-overlay da-reschedule-overlay" *ngIf="showFollowUpModal" (click)="closeFollowUp()">
+    <div class="da-reschedule-modal" (click)="$event.stopPropagation()">
+      <div class="da-rmodal-head">
+        <div>
+          <h3>Reschedule Appointment</h3>
+          <p>Rescheduling for <strong>{{ selectedAppointment?.patient_name }}</strong></p>
+        </div>
+        <button type="button" class="da-modal-close" (click)="closeFollowUp()">✕</button>
+      </div>
+      <div class="da-rmodal-body">
+        <div class="da-field">
+          <label class="da-field-label">New Date</label>
+          <input class="da-input" type="date" [(ngModel)]="followUpDate" />
+        </div>
+        <div class="da-field">
+          <label class="da-field-label">Visit Type</label>
+          <select class="da-select da-select-full" [(ngModel)]="followUpType">
+            <option>Procedure Continuation</option>
+            <option>Return Visit</option>
+            <option>Follow-Up Check</option>
+            <option>Routine Cleaning</option>
+          </select>
+        </div>
+        <div class="da-field">
+          <label class="da-field-label">Reason for Rescheduling</label>
+          <textarea class="da-textarea" rows="3"
+                    placeholder="e.g. Patient conflict, doctor unavailable, follow-up needed…"
+                    [(ngModel)]="followUpNote"></textarea>
+        </div>
+      </div>
+      <div class="da-rmodal-footer">
+        <button class="da-btn da-btn-ghost" type="button" (click)="closeFollowUp()">Cancel</button>
+        <button class="da-btn da-btn-primary" type="button" (click)="scheduleFollowUp()">
+          🔄 Confirm Reschedule
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

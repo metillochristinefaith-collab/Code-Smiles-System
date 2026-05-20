@@ -1,0 +1,216 @@
+<div class="treatment-plan-page">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="plan-main">
+    <section class="plan-shell">
+      <header class="page-topbar">
+        <div class="page-copy">
+          <a routerLink="/patient-treatment-progress" class="back-link">
+            <svg viewBox="0 0 24 24">
+              <path d="M15 18 9 12l6-6" />
+            </svg>
+            Treatment Progress
+          </a>
+          <h1>{{ treatmentPlan.title }}</h1>
+          <p>{{ treatmentPlan.subtitle }} full care plan and milestone details.</p>
+        </div>
+
+        <div class="topbar-actions">
+          <button
+            class="header-icon-btn"
+            type="button"
+            aria-label="Notifications"
+            routerLink="/patient-notifications">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3a5 5 0 0 0-5 5v2.4c0 .7-.2 1.4-.6 2L5 15h14l-1.4-2.6c-.4-.6-.6-1.3-.6-2V8a5 5 0 0 0-5-5" />
+              <path d="M10 18a2 2 0 0 0 4 0" />
+            </svg>
+            <span class="header-icon-dot"></span>
+          </button>
+
+          <a class="header-user" routerLink="/patient-profile">
+            <div class="header-avatar" aria-hidden="true">{{ initial }}</div>
+            <div class="header-user-copy">
+              <strong>{{ patientProfile.name }}</strong>
+              <span>Patient ID: {{ patientProfile.id }}</span>
+            </div>
+          </a>
+        </div>
+      </header>
+
+      <section class="hero-panel">
+        <div class="hero-icon" [ngClass]="treatmentPlan.icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" *ngIf="treatmentPlan.icon === 'orthodontics'">
+            <path d="M12 4c-3.8 0-6 2.2-6 5.8 0 4.1 2.2 9.7 5.2 9.7 1.8 0 1.6-2.8 2.8-2.8s1 2.8 2.8 2.8c3 0 5.2-5.6 5.2-9.7C18 6.2 15.8 4 12 4Z" />
+          </svg>
+          <svg viewBox="0 0 24 24" *ngIf="treatmentPlan.icon === 'whitening'">
+            <path d="M12 3.5 13.8 9l5.7 1.2-5.7 1.2L12 17l-1.8-5.6L4.5 10.2 10.2 9 12 3.5Z" />
+          </svg>
+          <svg viewBox="0 0 24 24" *ngIf="treatmentPlan.icon === 'filling'">
+            <path d="M12 4c-3.8 0-6 2.2-6 5.8 0 4.1 2.2 9.7 5.2 9.7 1.8 0 1.6-2.8 2.8-2.8s1 2.8 2.8 2.8c3 0 5.2-5.6 5.2-9.7C18 6.2 15.8 4 12 4Z" />
+            <path d="M9.5 11.5h5" />
+          </svg>
+          <svg viewBox="0 0 24 24" *ngIf="treatmentPlan.icon === 'retainer'">
+            <path d="M4.5 13c1.6-2.5 4.3-4 7.5-4s5.9 1.5 7.5 4" />
+            <path d="M6.5 13.2c.6 2.5 2.6 4.3 5.5 4.3s4.9-1.8 5.5-4.3" />
+          </svg>
+          <svg viewBox="0 0 24 24" *ngIf="treatmentPlan.icon === 'consultation'">
+            <path d="M12 4c-3.8 0-6 2.2-6 5.8 0 4.1 2.2 9.7 5.2 9.7 1.8 0 1.6-2.8 2.8-2.8s1 2.8 2.8 2.8c3 0 5.2-5.6 5.2-9.7C18 6.2 15.8 4 12 4Z" />
+          </svg>
+        </div>
+
+        <div class="hero-copy">
+          <span class="status-chip" [ngClass]="treatmentPlan.statusClass">
+            {{ treatmentPlan.status }}
+          </span>
+          <h2>{{ treatmentPlan.shortTitle }}</h2>
+          <p>{{ treatmentPlan.nextStepDescription }}</p>
+        </div>
+
+        <div class="hero-progress">
+          <div class="progress-stat">
+            <span>Overall Progress</span>
+            <strong>{{ treatmentPlan.progress }}%</strong>
+          </div>
+          <div class="plan-progress-bar">
+            <span class="plan-progress-fill" [style.width.%]="treatmentPlan.progress"></span>
+          </div>
+          <p>{{ treatmentPlan.stepsCompleted }} of {{ treatmentPlan.totalSteps }} steps completed</p>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <section class="main-column">
+          <section class="detail-card next-step-card">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 3v3M17 3v3M4 8h16" />
+                <rect x="4" y="5.5" width="16" height="14.5" rx="2.4" />
+              </svg>
+              <div>
+                <h3>Next Step</h3>
+                <p>{{ treatmentPlan.nextStepTitle }}</p>
+              </div>
+            </div>
+
+            <div class="next-step-grid">
+              <div>
+                <span>Date</span>
+                <strong>{{ treatmentPlan.nextStepDate }}</strong>
+              </div>
+              <div>
+                <span>Time</span>
+                <strong>{{ treatmentPlan.nextStepTime }}</strong>
+              </div>
+              <div>
+                <span>Provider</span>
+                <strong>{{ treatmentPlan.nextStepDoctor }}</strong>
+              </div>
+              <a routerLink="/patient-appointments" class="primary-action-btn">View Appointment</a>
+            </div>
+          </section>
+
+          <section class="detail-card">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 18.5h3l2.3-6 4 3 2.3-7L20 12.5" />
+              </svg>
+              <div>
+                <h3>Plan Milestones</h3>
+                <p>Every step included in this treatment plan.</p>
+              </div>
+            </div>
+
+            <div class="milestone-list">
+              <article
+                class="milestone-row"
+                *ngFor="let step of treatmentPlan.steps"
+                [class.current]="step.stage === 'current'">
+                <div class="milestone-marker" [ngClass]="step.stage">
+                  <svg *ngIf="step.stage === 'done'" viewBox="0 0 24 24">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  <span *ngIf="step.stage !== 'done'">{{ step.order }}</span>
+                </div>
+
+                <div class="milestone-copy">
+                  <div class="milestone-head">
+                    <strong>{{ step.title }}</strong>
+                    <span class="status-chip" [ngClass]="step.statusClass">{{ step.status }}</span>
+                  </div>
+                  <p>{{ step.date }} · {{ step.dentist }}</p>
+                  <span>{{ step.note }}</span>
+                </div>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <aside class="side-column">
+          <section class="detail-card current-card">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8" />
+                <path d="M12 8v4l3 2" />
+              </svg>
+              <h3>Current Focus</h3>
+            </div>
+
+            <strong>{{ currentStep.title }}</strong>
+            <p>{{ currentStep.note }}</p>
+            <div class="focus-meta">
+              <span>{{ currentStep.date }}</span>
+              <span>{{ currentStep.dentist }}</span>
+            </div>
+          </section>
+
+          <section class="detail-card records-card">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24">
+                <path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+                <path d="M15 3v4h4" />
+              </svg>
+              <h3>Linked Records</h3>
+            </div>
+
+            <div class="record-list" *ngIf="linkedRecords.length; else noRecords">
+              <button
+                *ngFor="let record of linkedRecords"
+                type="button"
+                class="record-row"
+                (click)="viewLinkedRecord(record)">
+                <span>{{ record.title }}</span>
+                <strong>View</strong>
+              </button>
+            </div>
+
+            <ng-template #noRecords>
+              <p class="empty-copy">No linked records are attached yet.</p>
+            </ng-template>
+          </section>
+
+          <section class="detail-card plan-list-card">
+            <div class="section-title">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 6h12M8 12h12M8 18h12" />
+                <path d="M4 6h.01M4 12h.01M4 18h.01" />
+              </svg>
+              <h3>Other Plans</h3>
+            </div>
+
+            <div class="other-plan-list">
+              <a
+                *ngFor="let plan of treatmentPlans"
+                [routerLink]="['/patient-treatment-plan', plan.id]"
+                class="other-plan-row"
+                [class.active]="plan.id === treatmentPlan.id">
+                <span>{{ plan.shortTitle }}</span>
+                <strong>{{ plan.progress }}%</strong>
+              </a>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </section>
+  </main>
+</div>

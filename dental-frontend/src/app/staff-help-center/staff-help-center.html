@@ -1,0 +1,425 @@
+﻿<div class="help-page">
+  <app-staff-sidebar></app-staff-sidebar>
+
+  <main class="help-main">
+
+    <!-- â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+    <header class="help-header">
+      <div class="help-header-copy">
+        <h1>Help Center</h1>
+        <p>Find answers, get support, or review our policies â€” all in one place.</p>
+      </div>
+    </header>
+
+    <!-- â”€â”€ TABS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+    <nav class="help-tabs" role="tablist">
+      <button
+        role="tab"
+        class="help-tab"
+        [class.active]="activeTab === 'faqs'"
+        (click)="setTab('faqs')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><path d="M9.7 9.6a2.5 2.5 0 1 1 4.2 1.8c-.8.7-1.4 1.2-1.4 2.3M12 16.9h.01"/></svg>
+        FAQs
+      </button>
+      <button
+        role="tab"
+        class="help-tab"
+        [class.active]="activeTab === 'contact'"
+        (click)="setTab('contact')">
+        <svg viewBox="0 0 24 24"><path d="M4.5 6.5h15A1.5 1.5 0 0 1 21 8v8A1.5 1.5 0 0 1 19.5 17.5h-15A1.5 1.5 0 0 1 3 16V8A1.5 1.5 0 0 1 4.5 6.5Z"/><path d="M4 8l8 6 8-6"/></svg>
+        Contact Support
+      </button>
+      <button
+        role="tab"
+        class="help-tab"
+        [class.active]="activeTab === 'privacy'"
+        (click)="setTab('privacy')">
+        <svg viewBox="0 0 24 24"><path d="M12 3 19 6.5v4.8c0 4.1-2.7 7.6-7 8.7-4.3-1.1-7-4.6-7-8.7V6.5Z"/></svg>
+        Privacy Policy
+      </button>
+      <button
+        role="tab"
+        class="help-tab"
+        [class.active]="activeTab === 'terms'"
+        (click)="setTab('terms')">
+        <svg viewBox="0 0 24 24"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M15 3.5v4h4M9 11h6M9 15h6"/></svg>
+        Terms of Use
+      </button>
+    </nav>
+
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <!-- TAB: FAQs                                                      -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <section class="tab-panel" *ngIf="activeTab === 'faqs'">
+      <div class="faq-layout">
+
+        <!-- LEFT: search + pills + accordion -->
+        <div class="faq-main">
+
+          <!-- Search -->
+          <div class="faq-search-wrap">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+            <input
+              type="text"
+              [(ngModel)]="searchQuery"
+              placeholder="Search questions, topics, keywords..."
+              autocomplete="off"
+            />
+            <button *ngIf="searchQuery" class="search-clear" (click)="searchQuery = ''; openFaqId = null">âœ•</button>
+          </div>
+
+          <!-- Category pills -->
+          <div class="category-pills" *ngIf="!isLoadingFaqs && !faqError && faqs.length > 0">
+            <button
+              *ngFor="let cat of faqCategories"
+              class="pill"
+              [class.active]="activeCategory === cat"
+              (click)="setCategory(cat)">
+              {{ cat }}
+            </button>
+          </div>
+
+          <!-- Loading -->
+          <div class="state-box" *ngIf="isLoadingFaqs">
+            <div class="spinner"></div>
+            <span>Loading FAQs...</span>
+          </div>
+
+          <!-- Error -->
+          <div class="state-box state-error" *ngIf="!isLoadingFaqs && faqError">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            <p>{{ faqError }}</p>
+            <button class="btn-retry" (click)="loadFaqs()">
+              <svg viewBox="0 0 24 24"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+              Retry
+            </button>
+          </div>
+
+          <!-- Empty search result -->
+          <div class="state-box" *ngIf="!isLoadingFaqs && !faqError && faqs.length > 0 && filteredFaqs.length === 0">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+            <p>No FAQs match <strong>"{{ searchQuery || activeCategory }}"</strong>.</p>
+            <button class="btn-retry" (click)="searchQuery = ''; setCategory('All')">Clear filters</button>
+          </div>
+
+          <!-- FAQ accordion -->
+          <div class="faq-list" *ngIf="!isLoadingFaqs && !faqError && filteredFaqs.length > 0">
+            <div
+              class="faq-item"
+              *ngFor="let faq of filteredFaqs"
+              [class.open]="openFaqId === faq.id">
+              <button class="faq-question" (click)="toggleFaq(faq.id)">
+                <span class="faq-q-text">{{ faq.question }}</span>
+                <span class="faq-cat-tag">{{ faq.category }}</span>
+                <svg class="faq-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="faq-answer" *ngIf="openFaqId === faq.id">
+                <p>{{ faq.answer }}</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT: aside -->
+        <aside class="faq-aside" *ngIf="!isLoadingFaqs">
+
+          <!-- Quick links -->
+          <div class="aside-card">
+            <h3>Quick Links</h3>
+            <button class="aside-link" (click)="setTab('contact')">
+              <svg viewBox="0 0 24 24"><path d="M4.5 6.5h15A1.5 1.5 0 0 1 21 8v8A1.5 1.5 0 0 1 19.5 17.5h-15A1.5 1.5 0 0 1 3 16V8A1.5 1.5 0 0 1 4.5 6.5Z"/><path d="M4 8l8 6 8-6"/></svg>
+              <span>Contact Support</span>
+              <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button class="aside-link" (click)="setTab('privacy')">
+              <svg viewBox="0 0 24 24"><path d="M12 3 19 6.5v4.8c0 4.1-2.7 7.6-7 8.7-4.3-1.1-7-4.6-7-8.7V6.5Z"/></svg>
+              <span>Privacy Policy</span>
+              <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button class="aside-link" (click)="setTab('terms')">
+              <svg viewBox="0 0 24 24"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M15 3.5v4h4M9 11h6M9 15h6"/></svg>
+              <span>Terms of Use</span>
+              <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+
+          <!-- Contact card -->
+          <div class="aside-contact">
+            <h3>Still need help?</h3>
+            <p>Our support team is available Monday â€“ Friday, 8:00 AM â€“ 6:00 PM.</p>
+            <div style="font-size:0.82rem; opacity:0.9;">
+              <div>ðŸ“ž (555) 123-4567</div>
+              <div style="margin-top:4px;">âœ‰ support&#64;codesmiles.com</div>
+            </div>
+            <button class="btn-white" (click)="setTab('contact')">Send a Message</button>
+          </div>
+
+        </aside>
+
+      </div>
+    </section>
+
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <!-- TAB: Contact Support                                           -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <section class="tab-panel" *ngIf="activeTab === 'contact'">
+
+      <!-- Success state -->
+      <div class="contact-success" *ngIf="submitSuccess">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h2>Message Sent!</h2>
+        <p>Your support request has been received. Our team will get back to you within 24 hours.</p>
+        <button class="btn-primary" (click)="resetContact()">Send Another Message</button>
+      </div>
+
+      <!-- Contact form -->
+      <div class="contact-layout" *ngIf="!submitSuccess">
+        <div class="contact-form-card">
+          <h2>Send Us a Message</h2>
+          <p class="contact-desc">Describe your issue and our support team will respond within 24 hours.</p>
+
+          <div class="form-field">
+            <label>Subject <span class="req">*</span></label>
+            <input
+              type="text"
+              [(ngModel)]="contactSubject"
+              placeholder="e.g. Cannot reschedule my appointment"
+              maxlength="200"
+            />
+          </div>
+
+          <div class="form-field">
+            <label>Message <span class="req">*</span></label>
+            <textarea
+              [(ngModel)]="contactMessage"
+              rows="6"
+              placeholder="Describe your issue in detail..."
+              maxlength="2000">
+            </textarea>
+            <span class="char-count">{{ contactMessage.length }} / 2000</span>
+          </div>
+
+          <div class="form-error" *ngIf="submitError">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            {{ submitError }}
+          </div>
+
+          <button
+            class="btn-primary btn-submit-full"
+            [disabled]="isSubmitting || !contactSubject.trim() || !contactMessage.trim()"
+            (click)="submitContact()">
+            <svg *ngIf="isSubmitting" class="spin-icon" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            <svg *ngIf="!isSubmitting" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z"/></svg>
+            {{ isSubmitting ? 'Sending...' : 'Send Message' }}
+          </button>
+        </div>
+
+        <aside class="contact-info-card">
+          <h3>Other Ways to Reach Us</h3>
+          <div class="contact-channel">
+            <div class="channel-icon">
+              <svg viewBox="0 0 24 24"><path d="M6.6 5.5h2.2l1.2 3.3-1.6 1.5a15.3 15.3 0 0 0 5.2 5.2l1.5-1.6 3.3 1.2v2.2a1.5 1.5 0 0 1-1.5 1.5A13.4 13.4 0 0 1 5.1 7a1.5 1.5 0 0 1 1.5-1.5Z"/></svg>
+            </div>
+            <div>
+              <strong>(555) 123-4567</strong>
+              <span>Mon â€“ Fri, 8:00 AM â€“ 6:00 PM</span>
+            </div>
+          </div>
+          <div class="contact-channel">
+            <div class="channel-icon">
+              <svg viewBox="0 0 24 24"><path d="M4.5 6.5h15A1.5 1.5 0 0 1 21 8v8A1.5 1.5 0 0 1 19.5 17.5h-15A1.5 1.5 0 0 1 3 16V8A1.5 1.5 0 0 1 4.5 6.5Z"/><path d="M4 8l8 6 8-6"/></svg>
+            </div>
+            <div>
+              <strong>support&#64;codesmiles.com</strong>
+              <span>We reply within 24 hours</span>
+            </div>
+          </div>
+          <div class="contact-channel">
+            <div class="channel-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 20s-6-3.6-6-9.3A6 6 0 1 1 18 10.7C18 16.4 12 20 12 20Z"/><circle cx="12" cy="10.5" r="2"/></svg>
+            </div>
+            <div>
+              <strong>123 Smile Street</strong>
+              <span>San Francisco, CA 94105</span>
+            </div>
+          </div>
+          <div class="contact-hours">
+            <h4>Clinic Hours</h4>
+            <div class="hours-row"><span>Monday â€“ Friday</span><strong>8:00 AM â€“ 8:30 PM</strong></div>
+            <div class="hours-row"><span>Saturday</span><strong>9:00 AM â€“ 9:00 PM</strong></div>
+            <div class="hours-row"><span>Sunday</span><strong>9:00 AM â€“ 9:30 PM</strong></div>
+          </div>
+        </aside>
+      </div>
+
+    </section>
+
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <!-- TAB: Privacy Policy                                            -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <section class="tab-panel legal-panel" *ngIf="activeTab === 'privacy'">
+      <div class="legal-header">
+        <div class="legal-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 3 19 6.5v4.8c0 4.1-2.7 7.6-7 8.7-4.3-1.1-7-4.6-7-8.7V6.5Z"/><path d="M9.5 12.5 11.2 14 14.8 10.5"/></svg>
+        </div>
+        <div>
+          <h2>Privacy Policy</h2>
+          <p>Last updated: January 2026 &nbsp;Â·&nbsp; Code Smiles Dental Clinic</p>
+        </div>
+      </div>
+
+      <div class="legal-body">
+        <div class="legal-section">
+          <h3>1. Information We Collect</h3>
+          <p>We collect personal information you provide when using the Code Smiles patient portal, including:</p>
+          <ul>
+            <li>Full name, email address, phone number, and date of birth</li>
+            <li>Dental and medical records, X-rays, and treatment history</li>
+            <li>Appointment details, booking requests, and scheduling preferences</li>
+            <li>Insurance information and billing records</li>
+            <li>Communication preferences and notification settings</li>
+          </ul>
+        </div>
+
+        <div class="legal-section">
+          <h3>2. How We Use Your Information</h3>
+          <p>Your information is used to:</p>
+          <ul>
+            <li>Provide and manage dental care services and appointments</li>
+            <li>Send appointment confirmations, reminders, and updates</li>
+            <li>Process insurance claims and billing</li>
+            <li>Improve your portal experience and clinic services</li>
+            <li>Comply with applicable healthcare laws and regulations</li>
+          </ul>
+        </div>
+
+        <div class="legal-section">
+          <h3>3. How We Protect Your Information</h3>
+          <p>We use industry-standard security measures to protect your data, including:</p>
+          <ul>
+            <li>Encrypted data transmission (HTTPS/TLS)</li>
+            <li>Secure, access-controlled database storage</li>
+            <li>Role-based access controls for clinic staff</li>
+            <li>Regular security reviews and updates</li>
+          </ul>
+        </div>
+
+        <div class="legal-section">
+          <h3>4. Sharing Your Information</h3>
+          <p>We do not sell or rent your personal information. We may share it only with:</p>
+          <ul>
+            <li>Authorized clinic staff involved in your care</li>
+            <li>Insurance providers for claims processing (with your consent)</li>
+            <li>Regulatory authorities when required by law</li>
+          </ul>
+        </div>
+
+        <div class="legal-section">
+          <h3>5. Your Rights</h3>
+          <p>You have the right to:</p>
+          <ul>
+            <li>Access and review your personal information stored in the portal</li>
+            <li>Request corrections to inaccurate or outdated information</li>
+            <li>Request deletion of your account and associated data</li>
+            <li>Opt out of non-essential communications at any time</li>
+          </ul>
+          <p>To exercise these rights, contact us at <strong>privacy&#64;codesmiles.com</strong>.</p>
+        </div>
+
+        <div class="legal-section">
+          <h3>6. HIPAA Compliance</h3>
+          <p>Code Smiles adheres to the Health Insurance Portability and Accountability Act (HIPAA). Your protected health information (PHI) is handled in accordance with HIPAA Privacy and Security Rules.</p>
+        </div>
+
+        <div class="legal-section">
+          <h3>7. Contact Us</h3>
+          <p>If you have questions about this Privacy Policy, please contact our Privacy Officer at <strong>privacy&#64;codesmiles.com</strong> or call <strong>(555) 123-4567</strong>.</p>
+        </div>
+      </div>
+
+      <div class="legal-footer">
+        <button class="btn-secondary" (click)="setTab('terms')">View Terms of Use â†’</button>
+        <button class="btn-primary" (click)="setTab('contact')">Contact Support</button>
+      </div>
+    </section>
+
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <!-- TAB: Terms of Use                                              -->
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+    <section class="tab-panel legal-panel" *ngIf="activeTab === 'terms'">
+      <div class="legal-header">
+        <div class="legal-icon legal-icon-amber">
+          <svg viewBox="0 0 24 24"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M15 3.5v4h4M9 11h6M9 15h6"/></svg>
+        </div>
+        <div>
+          <h2>Terms of Use</h2>
+          <p>Last updated: January 2026 &nbsp;Â·&nbsp; Code Smiles Dental Clinic</p>
+        </div>
+      </div>
+
+      <div class="legal-body">
+        <div class="legal-section">
+          <h3>1. Acceptance of Terms</h3>
+          <p>By accessing and using the Code Smiles patient portal, you agree to be bound by these Terms of Use. If you do not agree, please do not use the portal.</p>
+        </div>
+
+        <div class="legal-section">
+          <h3>2. Account Responsibilities</h3>
+          <p>You are responsible for:</p>
+          <ul>
+            <li>Keeping your login credentials secure and confidential</li>
+            <li>Ensuring all information you submit is accurate and current</li>
+            <li>Notifying the clinic immediately of any unauthorized account access</li>
+            <li>Signing out of shared or public devices after each session</li>
+          </ul>
+        </div>
+
+        <div class="legal-section">
+          <h3>3. Appointment Requests</h3>
+          <p>Appointment bookings, reschedules, and cancellations submitted through the portal are subject to clinic confirmation. A submitted request does not guarantee a confirmed appointment until you receive a confirmation notification.</p>
+        </div>
+
+        <div class="legal-section">
+          <h3>4. Medical Records and Information</h3>
+          <p>Portal information is provided to help you follow your care plan. The clinic may confirm or update details directly when clinically necessary. Do not rely solely on portal information for urgent medical decisions.</p>
+        </div>
+
+        <div class="legal-section">
+          <h3>5. Appropriate Use</h3>
+          <p>The portal is intended for routine dental coordination and account management. It is not a substitute for emergency care. In case of a dental emergency, contact the clinic directly or visit an emergency facility.</p>
+        </div>
+
+        <div class="legal-section">
+          <h3>6. Prohibited Activities</h3>
+          <p>You may not:</p>
+          <ul>
+            <li>Use the portal for any unlawful purpose</li>
+            <li>Attempt to access other patients' records or accounts</li>
+            <li>Submit false or misleading information</li>
+            <li>Interfere with the portal's security or functionality</li>
+          </ul>
+        </div>
+
+        <div class="legal-section">
+          <h3>7. Changes to Terms</h3>
+          <p>Code Smiles reserves the right to update these Terms of Use at any time. Continued use of the portal after changes constitutes acceptance of the updated terms.</p>
+        </div>
+
+        <div class="legal-section">
+          <h3>8. Contact</h3>
+          <p>Questions about these terms? Contact us at <strong>support&#64;codesmiles.com</strong> or call <strong>(555) 123-4567</strong>.</p>
+        </div>
+      </div>
+
+      <div class="legal-footer">
+        <button class="btn-secondary" (click)="setTab('privacy')">â† View Privacy Policy</button>
+        <button class="btn-primary" (click)="setTab('contact')">Contact Support</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+

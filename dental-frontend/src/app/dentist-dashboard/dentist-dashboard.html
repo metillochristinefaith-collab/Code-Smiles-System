@@ -1,0 +1,142 @@
+<div class="dentist-shell dentist-dashboard-shell">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="dd-main">
+
+    <!-- ── Topbar ──────────────────────────────────────── -->
+    <header class="dd-topbar">
+      <div>
+        <p class="dd-greeting">{{ greeting }}! Here's your clinic overview for today.</p>
+        <h1 class="dd-name">{{ fullName }}</h1>
+        <span class="dd-spec">{{ specialty }}</span>
+      </div>
+      <div class="dd-topbar-right">
+        <div class="dd-date-chip">
+          <span>📅</span>
+          <span>{{ today }}</span>
+        </div>
+        <div class="dd-profile-chip">
+          <div class="dd-profile-avatar">
+            <img *ngIf="avatarUrl" [src]="avatarUrl" alt="Profile" class="dd-avatar-img" />
+            <span *ngIf="!avatarUrl">{{ initial }}</span>
+          </div>
+          <div class="dd-profile-copy">
+            <strong>{{ fullName }}</strong>
+            <span>{{ specialty }}</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Stats ───────────────────────────────────────── -->
+    <section class="dd-stats">
+      <article class="dd-stat" *ngFor="let s of stats" [attr.data-tone]="s.tone">
+        <div class="dd-stat-icon">{{ s.icon }}</div>
+        <div class="dd-stat-copy">
+          <span>{{ s.label }}</span>
+          <strong>{{ s.value }}</strong>
+          <small>{{ s.unit }}</small>
+        </div>
+        <div class="dd-stat-bar"></div>
+      </article>
+    </section>
+
+    <!-- ── Main grid ───────────────────────────────────── -->
+    <div class="dd-grid">
+
+      <!-- LEFT COLUMN -->
+      <div class="dd-col-left">
+
+        <!-- Today's Appointments -->
+        <section class="dd-card dd-card-appointments">
+          <div class="dd-card-head">
+            <div class="dd-card-title-group">
+              <span class="dd-card-dot blue"></span>
+              <h2 class="dd-card-title">Today's Appointments</h2>
+            </div>
+            <a class="dd-link" routerLink="/dentist-appointments">View all →</a>
+          </div>
+          <div class="dd-appt-list">
+            <div class="dd-appt-row" *ngFor="let a of todayAppointments">
+              <span class="dd-appt-time">{{ a.time }}</span>
+              <div class="dd-avatar">{{ a.initials }}</div>
+              <div class="dd-appt-copy">
+                <strong>{{ a.patient }}</strong>
+                <span>{{ a.treatment }}</span>
+              </div>
+              <span class="dd-pill" [attr.data-status]="a.status">{{ statusLabel(a.status) }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="dd-card dd-card-actions">
+          <div class="dd-card-head">
+            <div class="dd-card-title-group">
+              <span class="dd-card-dot green"></span>
+              <h2 class="dd-card-title">Quick Actions</h2>
+            </div>
+          </div>
+          <div class="dd-actions-grid">
+            <a class="dd-action-btn" *ngFor="let q of quickActions"
+               [routerLink]="q.route" [attr.data-tone]="q.tone">
+              <div class="dd-action-icon-wrap" [attr.data-tone]="q.tone">
+                <span class="dd-action-icon">{{ q.icon }}</span>
+              </div>
+              <span class="dd-action-label">{{ q.label }}</span>
+              <span class="dd-action-arrow">→</span>
+            </a>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="dd-col-right">
+
+        <!-- Pending Treatment Plans -->
+        <section class="dd-card dd-card-plans">
+          <div class="dd-card-head">
+            <div class="dd-card-title-group">
+              <span class="dd-card-dot amber"></span>
+              <h2 class="dd-card-title">Pending Treatment Plans</h2>
+            </div>
+            <a class="dd-link" routerLink="/dentist-treatment-plans">View all →</a>
+          </div>
+          <div class="dd-plan-list">
+            <div class="dd-plan-row" *ngFor="let p of pendingPlans">
+              <div class="dd-avatar" [attr.data-priority]="p.priority">{{ p.initials }}</div>
+              <div class="dd-plan-copy">
+                <strong>{{ p.patient }}</strong>
+                <span>{{ p.procedure }}</span>
+              </div>
+              <span class="dd-followup-badge">{{ p.followUp }}</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Notifications -->
+        <section class="dd-card dd-card-notifs">
+          <div class="dd-card-head">
+            <div class="dd-card-title-group">
+              <span class="dd-card-dot red"></span>
+              <h2 class="dd-card-title">Notifications</h2>
+            </div>
+            <a class="dd-link" routerLink="/dentist-notifications">See all →</a>
+          </div>
+          <div class="dd-notif-list">
+            <div class="dd-notif-row" *ngFor="let n of notifications" [attr.data-type]="n.type">
+              <span class="dd-notif-icon">{{ notifIcon(n.type) }}</span>
+              <div class="dd-notif-copy">
+                <span>{{ n.message }}</span>
+                <small>{{ n.time }}</small>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+  </main>
+</div>

@@ -1,0 +1,284 @@
+﻿:host {
+  display: block;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.dp-shell {
+  min-height: 100vh;
+  background: #f4f7fb;
+}
+
+.dp-main {
+  margin-left: 270px;
+  width: calc(100% - 270px);
+  min-height: 100vh;
+  box-sizing: border-box;
+  color: #1a2e45;
+  padding-bottom: 28px;
+}
+
+.dp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 28px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e8edf4;
+}
+
+.dp-title { margin: 0; font-size: 1.55rem; font-weight: 800; color: #0f2540; }
+.dp-subtitle { margin: 4px 0 0; font-size: 0.84rem; color: #6a8099; }
+
+.dp-back-btn {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #1a7fa0;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #e0f5f8;
+  border: 1px solid #b8e8f0;
+  white-space: nowrap;
+}
+
+.dp-card {
+  margin: 18px 28px 0;
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid #e8edf4;
+  border-radius: 16px;
+  box-shadow: 0 14px 34px rgba(17, 40, 68, 0.06);
+}
+
+.dp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dp-search-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 220px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: #f4f7fb;
+  border: 1px solid #dde4ee;
+  font-size: 0.85rem;
+}
+
+.dp-search {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px 0;
+  font: inherit;
+  font-size: 0.84rem;
+  color: #0f2540;
+  outline: none;
+}
+
+.dp-search::placeholder { color: #9ab0c4; }
+
+.dp-select {
+  min-height: 39px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #dde4ee;
+  background: #f4f7fb;
+  font: inherit;
+  font-size: 0.82rem;
+  color: #2a4a6a;
+  outline: none;
+  cursor: pointer;
+}
+
+.dp-card-head,
+.dp-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.dp-kicker {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #79a0bd;
+}
+
+.dp-card-head h2,
+.dp-banner-info h2 {
+  margin: 0;
+  font-size: 1.08rem;
+  color: #0f2540;
+}
+
+.dp-count-chip {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #edf7fb;
+  color: #1a7fa0;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.dp-patient-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.dp-patient-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #e4edf6;
+  background: #f9fcff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+}
+
+.dp-patient-card:hover,
+.dp-patient-card.active {
+  border-color: #79c9d9;
+  background: #eefaff;
+  transform: translateY(-1px);
+}
+
+.dp-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #4db8d4, #1a7fa0);
+  flex-shrink: 0;
+}
+
+.dp-avatar-lg { width: 54px; height: 54px; font-size: 0.9rem; }
+
+.dp-item-info { min-width: 0; }
+.dp-item-info strong { display: block; font-size: 0.9rem; color: #0f2540; }
+.dp-item-info span { display: block; margin-top: 2px; font-size: 0.76rem; color: #6a8099; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-item-treatment { color: #1a7fa0 !important; font-weight: 700; }
+
+.dp-status-pill {
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.dp-status-pill[data-status="active"] { background: #e8f8f0; color: #15946f; }
+.dp-status-pill[data-status="completed"] { background: #e8f1ff; color: #356fd6; }
+.dp-status-pill[data-status="consult"] { background: #fff4df; color: #bf7b13; }
+.dp-status-pill[data-status="followup"] { background: #f0ecff; color: #7655d8; }
+
+.dp-list-empty,
+.dp-history-empty {
+  padding: 24px;
+  text-align: center;
+  color: #8aa2ba;
+  background: #f8fbff;
+  border: 1px dashed #dbe7f2;
+  border-radius: 14px;
+}
+
+.dp-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dp-banner-info > span {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.82rem;
+  color: #6a8099;
+}
+
+.dp-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dp-info-card {
+  padding: 13px 14px;
+  border-radius: 13px;
+  border: 1px solid #e4edf6;
+  background: #f8fbff;
+}
+
+.dp-info-card.wide { grid-column: span 2; }
+.dp-info-card span { display: block; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #7d98b0; }
+.dp-info-card strong { display: block; margin-top: 5px; font-size: 0.88rem; color: #0f2540; line-height: 1.35; }
+
+.dp-section-title {
+  margin: 18px 0 10px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6a8099;
+}
+
+.dp-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dp-history-card {
+  padding: 13px 14px;
+  border-radius: 13px;
+  border: 1px solid #e4edf6;
+  background: #ffffff;
+}
+
+.dp-history-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dp-history-head strong { color: #0f2540; }
+.dp-history-tooth,
+.dp-history-date { display: block; margin-top: 3px; font-size: 0.76rem; color: #6a8099; }
+.dp-history-card p { margin: 8px 0 0; color: #536b84; font-size: 0.84rem; line-height: 1.45; }
+
+.dp-simple-empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #8aa2ba;
+}
+
+.dp-empty-icon { font-size: 2rem; }
+.dp-simple-empty strong { display: block; margin-top: 8px; color: #2a4a6a; }
+.dp-simple-empty p { max-width: 360px; margin: 6px auto 0; line-height: 1.5; }
+
+@media (max-width: 980px) {
+  .dp-toolbar,
+  .dp-header,
+  .dp-card-head,
+  .dp-detail-head { align-items: stretch; flex-direction: column; }
+  .dp-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

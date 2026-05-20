@@ -1,0 +1,1058 @@
+:host {
+  --surface: #ffffff;
+  --surface-soft: #f8fbff;
+  --surface-tint: #edf4ff;
+  --line: #dfe8f6;
+  --text: #223b5f;
+  --muted: #6f84a2;
+  --blue: #4b86eb;
+  --blue-dark: #1f4f8d;
+  --navy: #17365f;
+  --success-bg: #d7f4ea;
+  --success-text: #2ea172;
+  --pending-bg: #fff1d9;
+  --pending-text: #d3862f;
+  --completed-bg: #e5efff;
+  --completed-text: #5979aa;
+  --cancelled-bg: #f7e5e5;
+  --cancelled-text: #bc6b6b;
+  --shadow: 0 14px 34px rgba(31, 53, 84, 0.08);
+
+  display: block;
+  min-height: 100dvh;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(117, 167, 241, 0.16), transparent 20%),
+    linear-gradient(180deg, #f8fbff 0%, #f2f7fd 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.patient-appointments-page {
+  --patient-sidebar-width: 270px;
+  min-height: 100dvh;
+  margin-left: var(--patient-sidebar-width);
+}
+
+.appointments-main {
+  min-height: 100dvh;
+  padding: 22px 32px 28px 32px;
+}
+
+.appointments-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Header:
+   Mirrors the dashboard header so the portal feels like one polished system. */
+.appointments-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 4px 2px 0;
+}
+
+.page-copy {
+  min-width: 0;
+}
+
+.page-copy h1,
+.section-head h2,
+.reminder-copy h3,
+.help-banner-copy h2 {
+  margin: 0;
+  color: var(--navy);
+}
+
+.page-copy h1 {
+  font-size: 1.95rem;
+  line-height: 1.04;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.page-copy p,
+.section-head p,
+.reminder-copy p,
+.help-banner-copy p,
+.callout-copy p {
+  margin: 8px 0 0;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.header-profile {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.header-icon-btn,
+.header-user {
+  border-radius: 999px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.header-icon-btn {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(75, 134, 235, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--blue-dark);
+  box-shadow: 0 8px 22px rgba(31, 53, 84, 0.06);
+  position: relative;
+  text-decoration: none;
+}
+
+.header-icon-btn:hover,
+.header-user:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(31, 53, 84, 0.1);
+}
+
+.header-icon-btn svg,
+.tab-icon svg,
+.btn-icon svg,
+.meta-icon svg,
+.reminder-icon svg,
+.callout-icon svg,
+.info-strip-icon svg,
+.empty-icon-wrap svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.header-icon-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.header-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #8db7ff, #5b8fee);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.08rem;
+}
+
+.header-user-copy strong,
+.header-user-copy span {
+  display: block;
+}
+
+.header-user-copy strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.header-user-copy span {
+  margin-top: 3px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* Controls:
+   Tabs and CTA are aligned on one row with the active tab styled like the reference. */
+.appointments-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.appointment-tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tab-btn,
+.book-appointment-btn,
+.primary-action-btn,
+.ghost-action-btn {
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid #d8e4f7;
+  background: #f9fbff;
+  color: #4f6787;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.tab-btn.active {
+  color: #fff;
+  background: linear-gradient(180deg, #1f4f8d, #1a467c);
+  border-color: transparent;
+  box-shadow: 0 10px 24px rgba(31, 79, 141, 0.18);
+}
+
+.tab-icon {
+  display: inline-grid;
+  place-items: center;
+  color: currentColor;
+}
+
+.book-appointment-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(180deg, #1f4f8d, #1a467c);
+  box-shadow: 0 10px 24px rgba(31, 79, 141, 0.18);
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.btn-icon,
+.meta-icon {
+  display: inline-grid;
+  place-items: center;
+  color: currentColor;
+}
+
+/* Info strip:
+   Added to match the mockup's soft reminder bar above the list. */
+.info-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #eaf2ff, #e5efff);
+  border: 1px solid #dbe7fb;
+}
+
+.info-strip-icon {
+  display: inline-grid;
+  place-items: center;
+  color: #5d8fe8;
+}
+
+.info-strip p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #5b7293;
+}
+
+/* Main two-column area:
+   Matches the screenshot with the appointments list taking priority and a narrower reminders card. */
+.appointments-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(280px, 0.86fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.appointments-card,
+.reminders-card,
+.help-banner {
+  background: var(--surface);
+  border: 1px solid rgba(223, 232, 246, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.appointments-card,
+.reminders-card {
+  border-radius: 24px;
+  padding: 16px 16px 14px;
+}
+
+.appointments-card {
+  min-height: 0;
+}
+
+.appointments-card.appointments-card-scrollable {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.section-head h2 {
+  font-size: 0.96rem;
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+.section-link {
+  color: var(--blue);
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.section-head-compact {
+  margin-bottom: 16px;
+}
+
+.appointments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.appointments-list.appointments-list-scrollable {
+  max-height: min(650px, calc(100dvh - 280px));
+  overflow: auto;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+
+.appointments-list.appointments-list-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.appointments-list.appointments-list-scrollable::-webkit-scrollbar-thumb {
+  background: #d8e4f7;
+  border-radius: 999px;
+}
+
+.appointments-list.appointments-list-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Appointment cards:
+   Rebuilt as soft bordered cards with a compact left date block and stacked right-side actions. */
+.appointment-item {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+}
+
+.appointment-date-card {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  min-height: 102px;
+  padding: 10px 8px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #e9f1ff, #f9fbff);
+  border: 1px solid #dbe6fa;
+}
+
+.appointment-date-card.accent-blue {
+  background: linear-gradient(180deg, #e9f1ff, #f4f8ff);
+}
+
+.appointment-date-card.accent-amber {
+  background: linear-gradient(180deg, #fff2df, #fff9f0);
+  border-color: #fde5c3;
+}
+
+.appointment-date-card.accent-violet {
+  background: linear-gradient(180deg, #f1e9ff, #faf7ff);
+  border-color: #e6dbff;
+}
+
+.appointment-date-card.accent-teal {
+  background: linear-gradient(180deg, #e4f6f8, #f3fcfd);
+  border-color: #d1eef2;
+}
+
+.date-month,
+.date-weekday {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5e87c4;
+}
+
+.appointment-date-card.accent-amber .date-month,
+.appointment-date-card.accent-amber .date-weekday {
+  color: #d3862f;
+}
+
+.appointment-date-card.accent-violet .date-month,
+.appointment-date-card.accent-violet .date-weekday {
+  color: #7656d6;
+}
+
+.appointment-date-card.accent-teal .date-month,
+.appointment-date-card.accent-teal .date-weekday {
+  color: #4e9caf;
+}
+
+.date-day {
+  font-size: 1.72rem;
+  line-height: 1;
+  color: var(--navy);
+}
+
+.appointment-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 164px;
+  align-items: start;
+  gap: 16px;
+  width: 100%;
+}
+
+.appointment-copy {
+  min-width: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.appointment-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.appointment-title-row h3 {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.appointment-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.meta-line {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #5c7291;
+  font-size: 0.8rem;
+}
+
+.meta-icon {
+  flex-shrink: 0;
+  color: #5a88d7;
+}
+
+.meta-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+/* Rescheduled by Clinic badge — shown alongside the Approved chip */
+.reschedule-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  white-space: nowrap;
+}
+
+.status-chip.confirmed,
+.status-chip.approved {
+  color: var(--success-text);
+  background: var(--success-bg);
+}
+
+.status-chip.scheduled,
+.status-chip.pending-approval,
+.status-chip.pending {
+  color: var(--pending-text);
+  background: var(--pending-bg);
+}
+
+.status-chip.completed {
+  color: var(--completed-text);
+  background: var(--completed-bg);
+}
+
+.status-chip.cancelled {
+  color: var(--cancelled-text);
+  background: var(--cancelled-bg);
+}
+
+.appointment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+  align-items: stretch;
+  flex-shrink: 0;
+  justify-self: end;
+}
+
+.primary-action-btn,
+.ghost-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.primary-action-btn {
+  color: #fff;
+  background: linear-gradient(180deg, #1f4f8d, #1a467c);
+  box-shadow: 0 10px 24px rgba(31, 79, 141, 0.18);
+  border: 0;
+  cursor: pointer;
+  appearance: none;
+}
+
+.primary-action-btn::after {
+  content: "\203A";
+  margin-left: 8px;
+  font-size: 0.96rem;
+  line-height: 1;
+}
+
+.ghost-action-btn {
+  border: 1px solid #d6e2f5;
+  color: #4d6788;
+  background: #fff;
+  gap: 8px;
+  justify-content: flex-start;
+  cursor: pointer;
+  appearance: none;
+}
+
+.action-icon {
+  display: inline-grid;
+  place-items: center;
+  color: #4e83d8;
+}
+
+.action-icon svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.panel-footer-link {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 12px;
+  color: var(--blue);
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+/* Reminders sidebar:
+   Styled to match the screenshot's softer, simpler support panel. */
+.reminders-card {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  position: sticky;
+  top: 16px;
+}
+
+.reminders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.reminder-item {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #eef3fb;
+}
+
+.reminder-item:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.reminder-icon,
+.callout-icon,
+.help-banner-icon,
+.empty-icon-wrap {
+  display: grid;
+  place-items: center;
+  color: #5c8fe8;
+  background: linear-gradient(180deg, #edf4ff, #f8fbff);
+}
+
+.reminder-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+}
+
+.reminder-copy h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.reminder-copy p {
+  margin-top: 6px;
+}
+
+.reminder-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #eaf2ff, #edf4ff);
+  border: 1px solid #dce7fb;
+}
+
+.callout-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  flex-shrink: 0;
+}
+
+.callout-copy strong,
+.callout-copy a {
+  display: block;
+}
+
+.callout-copy strong {
+  font-size: 0.92rem;
+  color: var(--navy);
+}
+
+.callout-copy a {
+  margin-top: 8px;
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.empty-state {
+  padding: 34px 20px;
+  border: 1px dashed rgba(77, 143, 225, 0.22);
+  border-radius: 18px;
+  text-align: center;
+  background: rgba(245, 249, 255, 0.92);
+}
+
+.empty-icon-wrap {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+}
+
+.empty-state h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--navy);
+}
+
+.empty-state p {
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
+/* Interaction:
+   Subtle motion keeps the page polished without feeling loud. */
+.tab-btn,
+.book-appointment-btn,
+.appointment-item,
+.primary-action-btn,
+.ghost-action-btn,
+.header-icon-btn,
+.header-user {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.appointment-item:hover,
+.tab-btn:hover,
+.book-appointment-btn:hover,
+.primary-action-btn:hover,
+.ghost-action-btn:hover,
+.header-icon-btn:hover,
+.header-user:hover {
+  transform: translateY(-1px);
+}
+
+.appointment-item:hover {
+  box-shadow: 0 16px 30px rgba(31, 53, 84, 0.08);
+}
+
+/* Responsive:
+   Preserves the same visual system when the layout collapses. */
+@media (max-width: 1280px) {
+  .appointments-content {
+    grid-template-columns: 1fr;
+  }
+
+  .appointments-list.appointments-list-scrollable {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .reminders-card {
+    position: static;
+  }
+}
+
+@media (max-width: 1080px) {
+  .patient-appointments-page {
+    margin-left: 0 !important;
+    width: 100% !important;
+    min-height: 100dvh;
+  }
+
+  .appointments-main {
+    width: 100% !important;
+    padding: 20px 16px 24px !important;
+    margin: 0 !important;
+  }
+
+  .appointments-header,
+  .appointments-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-profile {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 760px) {
+  .page-copy h1 {
+    font-size: 1.7rem;
+  }
+
+  .appointment-item {
+    grid-template-columns: 1fr;
+  }
+
+  .appointment-main {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .appointment-actions,
+  .tab-btn,
+  .book-appointment-btn,
+  .primary-action-btn,
+  .ghost-action-btn {
+    width: 100%;
+  }
+
+  .reminder-item {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
+/* ══ CANCEL APPOINTMENT MODAL ══════════════════════════════════ */
+.cancel-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 33, 56, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.cancel-modal {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 28px 28px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(16, 40, 66, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.cancel-modal-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  display: grid;
+  place-items: center;
+}
+.cancel-modal-icon svg { width: 28px; height: 28px; }
+
+.cancel-modal h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #1a2e47;
+}
+
+.cancel-modal-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6b7f96;
+  line-height: 1.5;
+}
+
+.cancel-appt-summary {
+  width: 100%;
+  background: #f8fbff;
+  border: 1px solid #e0e8f2;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.cancel-appt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.cancel-appt-row span { font-size: 0.8rem; color: #8fa3bc; font-weight: 600; }
+.cancel-appt-row strong { font-size: 0.88rem; color: #1a2e47; font-weight: 700; text-align: right; }
+
+.cancel-reason-field {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.cancel-reason-field label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #1a2e47;
+}
+
+.req { color: #dc2626; margin-left: 2px; }
+
+.cancel-reason-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #d0daea;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: #1a2e47;
+  resize: none;
+  transition: all 0.2s;
+  line-height: 1.5;
+}
+.cancel-reason-field textarea:focus {
+  outline: none;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+}
+
+.cancel-hint {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #8fa3bc;
+}
+
+.cancel-modal-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.cancel-modal-keep {
+  flex: 1;
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #d0daea;
+  background: #fff;
+  color: #1a2e47;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.cancel-modal-keep:hover { background: #f5f8fd; border-color: #4d8fe1; color: #4d8fe1; }
+
+.cancel-modal-confirm {
+  flex: 1;
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+.cancel-modal-confirm:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+  transform: translateY(-1px);
+}
+.cancel-modal-confirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Confirm Attendance Button & Badge ─────────────────────────────────────── */
+.confirm-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(180deg, #2ea172, #27916a);
+  box-shadow: 0 8px 20px rgba(46, 161, 114, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  appearance: none;
+}
+
+.confirm-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(46, 161, 114, 0.3);
+}
+
+.confirm-action-btn .action-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+.confirmed-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--success-text);
+  background: var(--success-bg);
+  border: 1px solid rgba(46, 161, 114, 0.2);
+}
+
+.confirmed-badge svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

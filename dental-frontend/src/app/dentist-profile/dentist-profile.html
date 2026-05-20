@@ -1,0 +1,154 @@
+﻿<div class="profile-page">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="profile-main">
+    <header class="profile-header">
+      <div>
+        <h1>My Profile</h1>
+        <p>Manage your professional information and account settings.</p>
+      </div>
+    </header>
+
+    <section class="hero-card">
+      <div class="hero-left">
+        <div class="avatar-wrap">
+          <input id="dentist-photo-upload" type="file" accept="image/*" (change)="onPhotoSelect($event)" hidden />
+          <div class="avatar-circle" *ngIf="!avatarUrl">{{ avatarInitials }}</div>
+          <img *ngIf="avatarUrl" [src]="avatarUrl" alt="Profile photo" class="avatar-circle avatar-img" />
+          <button class="avatar-cam" type="button" title="Change photo" (click)="triggerPhotoUpload()">
+            <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </button>
+        </div>
+
+        <div class="hero-info">
+          <p class="hero-kicker">Profile Overview</p>
+          <div class="hero-name-row">
+            <h2>Dr. {{ personal.firstName }} {{ personal.lastName }}</h2>
+            <span class="active-badge">Active</span>
+          </div>
+          <p class="hero-meta">{{ professional.specialization }} &nbsp;•&nbsp; Dentist ID: {{ professional.dentistId }}</p>
+          <div class="hero-actions">
+            <button type="button" class="btn-primary-sm" (click)="navigateToEdit()">Edit Profile</button>
+            <button type="button" class="btn-outline-sm" (click)="navigateToChangePassword()">Change Password</button>
+            <button type="button" class="btn-outline-sm" (click)="showToast('Your profile data export is being prepared.')">Download My Data</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat-item" *ngFor="let s of patientStats">
+          <div class="stat-icon">{{ s.icon }}</div>
+          <div>
+            <span>{{ s.label }}</span>
+            <strong>{{ s.value }}</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="body-grid">
+      <div class="left-col">
+        <section class="section-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">IDENTITY</p>
+              <h3>Personal Information</h3>
+              <p class="section-sub">Your basic dentist account and clinic profile information.</p>
+            </div>
+            <button type="button" class="edit-link" (click)="navigateToEdit()">Edit</button>
+          </div>
+
+          <div class="fields-grid">
+            <div class="field-item">
+              <div class="field-icon">📞</div>
+              <div><span>Phone Number</span><strong>{{ personal.phone || '—' }}</strong></div>
+            </div>
+            <div class="field-item">
+              <div class="field-icon">⚧</div>
+              <div><span>Gender</span><strong>{{ personal.gender || '—' }}</strong></div>
+            </div>
+            <div class="field-item">
+              <div class="field-icon">✉</div>
+              <div><span>Email Address</span><strong>{{ personal.email || '—' }}</strong></div>
+            </div>
+            <div class="field-item">
+              <div class="field-icon">🦷</div>
+              <div><span>Specialization</span><strong>{{ professional.specialization }}</strong></div>
+            </div>
+            <div class="field-item">
+              <div class="field-icon">🏥</div>
+              <div><span>Department</span><strong>{{ professional.department }}</strong></div>
+            </div>
+            <div class="field-item">
+              <div class="field-icon">🪪</div>
+              <div><span>PRC License</span><strong>{{ professional.licenseNumber }}</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">CLINIC</p>
+              <h3>Clinic & Schedule</h3>
+              <p class="section-sub">Your assigned branch, education, and available clinic days.</p>
+            </div>
+            <button type="button" class="edit-link" (click)="navigateToEdit()">Edit</button>
+          </div>
+
+          <div class="contact-rows">
+            <div class="contact-row">
+              <div class="field-icon">🏥</div>
+              <div>
+                <span>Assigned Clinic</span>
+                <strong>{{ professional.clinic }}</strong>
+              </div>
+            </div>
+            <div class="contact-row">
+              <div class="field-icon">🎓</div>
+              <div>
+                <span>Education</span>
+                <strong>{{ professional.education }}</strong>
+              </div>
+            </div>
+            <div class="contact-row">
+              <div class="field-icon">📅</div>
+              <div>
+                <span>Clinic Days</span>
+                <strong>{{ schedule.clinicDays.join(', ') }}</strong>
+                <p class="field-sub">{{ schedule.startTime }} – {{ schedule.endTime }} · Lunch {{ schedule.lunchBreak }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="right-col">
+        <section class="side-card">
+          <div class="side-card-icon side-icon-blue">🎧</div>
+          <div class="side-card-body">
+            <p class="section-kicker">SUPPORT</p>
+            <h4>Need Help?</h4>
+            <p>Contact clinic administration for profile updates, scheduling, or account concerns.</p>
+            <button type="button" class="support-phone" (click)="showToast('Help center will be available soon.')">Clinic Support</button>
+          </div>
+        </section>
+
+        <section class="side-card side-card-green">
+          <div class="side-card-icon side-icon-green">🔒</div>
+          <div class="side-card-body">
+            <p class="section-kicker">PRIVACY</p>
+            <h4>Your Information is Secure</h4>
+            <p>Your professional profile is protected with secure access and role-based permissions.</p>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="profile-footer">
+      <span>{{ professional.department }} • {{ professional.yearsExperience }} years experience</span>
+    </footer>
+  </main>
+
+  <div class="toast" *ngIf="toastMessage" role="status">{{ toastMessage }}</div>
+</div>

@@ -1,0 +1,375 @@
+<div class="staff-booking-page">
+  <app-staff-sidebar></app-staff-sidebar>
+
+  <main class="booking-main">
+    <section class="booking-header">
+      <div class="header-left">
+        <button type="button" class="back-to-dashboard-btn" (click)="goBack()">
+          <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
+          Back to Appointments
+        </button>
+      </div>
+      <div class="header-center">
+        <h1>{{ submitSuccess ? 'Staff Appointment Submitted' : 'Staff Appointment Booking' }}</h1>
+        <p>
+          {{
+            submitSuccess
+              ? 'The request is now in the clinic queue.'
+              : 'Create an appointment request for walk-ins, phone calls, or registered patients'
+          }}
+        </p>
+      </div>
+      <div class="header-right">
+        <span class="staff-mode-pill">Staff mode</span>
+      </div>
+    </section>
+
+    <div class="portal-stepper" *ngIf="!submitSuccess">
+      <div class="stepper-track">
+        <div class="stepper-step" [class.active]="stepNumber >= 1" [class.completed]="stepNumber > 1">
+          <div class="step-bubble">
+            <svg *ngIf="stepNumber > 1" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+            <span *ngIf="stepNumber <= 1">1</span>
+          </div>
+          <div class="step-info"><span class="step-name">Service</span><span class="step-sub">Step 1 of 4</span></div>
+        </div>
+        <div class="stepper-line" [class.filled]="stepNumber > 1"></div>
+        <div class="stepper-step" [class.active]="stepNumber >= 2" [class.completed]="stepNumber > 2">
+          <div class="step-bubble">
+            <svg *ngIf="stepNumber > 2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+            <span *ngIf="stepNumber <= 2">2</span>
+          </div>
+          <div class="step-info"><span class="step-name">Date &amp; Time</span><span class="step-sub">Step 2 of 4</span></div>
+        </div>
+        <div class="stepper-line" [class.filled]="stepNumber > 2"></div>
+        <div class="stepper-step" [class.active]="stepNumber >= 3" [class.completed]="stepNumber > 3">
+          <div class="step-bubble">
+            <svg *ngIf="stepNumber > 3" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+            <span *ngIf="stepNumber <= 3">3</span>
+          </div>
+          <div class="step-info"><span class="step-name">Patient</span><span class="step-sub">Step 3 of 4</span></div>
+        </div>
+        <div class="stepper-line" [class.filled]="stepNumber > 3"></div>
+        <div class="stepper-step" [class.active]="stepNumber >= 4">
+          <div class="step-bubble"><span>4</span></div>
+          <div class="step-info"><span class="step-name">Confirm</span><span class="step-sub">Step 4 of 4</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="submitSuccess" class="booking-success-card fade-in">
+      <div class="success-icon-wrap">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></svg>
+      </div>
+      <h2 *ngIf="bookingType === 'Walk-in'">✓ Walk-in Appointment Confirmed</h2>
+      <h2 *ngIf="bookingType === 'Registered patient'">Appointment Request Submitted</h2>
+      <p *ngIf="bookingType === 'Walk-in'">{{ confirmedBooking.fullName }} is now checked in and ready.</p>
+      <p *ngIf="bookingType === 'Registered patient'">{{ confirmedBooking.fullName }} is now pending clinic approval.</p>
+      <div class="success-pill" *ngIf="bookingType === 'Walk-in'">✓ Confirmed</div>
+      <div class="success-pill" *ngIf="bookingType === 'Registered patient'">Pending Review</div>
+      <div class="booking-details">
+        <div class="detail-item"><span>Patient</span><strong>{{ confirmedBooking.fullName }}</strong></div>
+        <div class="detail-item"><span>Date &amp; Time</span><strong>{{ confirmedBooking.date | date:'MMMM d, y' }} at {{ confirmedBooking.time }}</strong></div>
+        <div class="detail-item"><span>Services</span><strong>{{ confirmedServiceNames }}</strong></div>
+        <div class="detail-item" *ngIf="bookingType === 'Walk-in'"><span>Status</span><strong style="color: #10b981;">Checked In</strong></div>
+        <div class="detail-item" *ngIf="bookingType === 'Registered patient'"><span>Status</span><strong style="color: #f59e0b;">Pending</strong></div>
+      </div>
+      <div class="success-actions">
+        <button type="button" class="btn-outline" (click)="bookAnother()">Book Another</button>
+        <button type="button" class="btn-primary-portal" (click)="goToAppointments()">View Appointments</button>
+      </div>
+    </div>
+
+    <div *ngIf="!submitSuccess" class="booking-flow-card">
+      <div *ngIf="currentStep === 1" class="step-body fade-in">
+        <div class="step-heading">
+          <h2>Select a Treatment for the Patient</h2>
+          <p>Staff can book on behalf of walk-ins, callers, and registered clinic patients.</p>
+        </div>
+        <div class="staff-context-note">
+          <div class="staff-context-icon">FD</div>
+          <div>
+            <strong>Front Desk Assisted Booking</strong>
+            <span>Patient details and staff intake fields will be collected before review.</span>
+          </div>
+        </div>
+        <div class="category-grid">
+          <button
+            type="button"
+            class="category-card"
+            *ngFor="let category of categoryCards"
+            [class.selected]="selectedCategory === category.name"
+            (click)="selectCategory(category.name)">
+            <div class="category-icon-wrap" [attr.data-tone]="category.tone">{{ category.icon }}</div>
+            <div class="category-text"><strong>{{ category.name }}</strong><span>{{ category.description }}</span></div>
+            <div class="category-arrow"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg></div>
+            <div class="category-check" *ngIf="selectedCategory === category.name">
+              <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="currentStep === 1.5" class="step-body fade-in">
+        <div class="step-heading">
+          <h2>{{ selectedCategory }}</h2>
+          <p>Select services for this patient visit. The total appointment block can be up to 120 minutes.</p>
+        </div>
+        <div class="service-selection-layout">
+          <div class="service-list">
+            <button
+              type="button"
+              class="service-row-btn"
+              *ngFor="let service of currentSubServices"
+              [class.selected]="selectedServices.includes(service.name)"
+              [disabled]="!selectedServices.includes(service.name) && (selectedServices.length >= 3 || totalSelectedDuration + service.duration > MAX_MINUTES)"
+              (click)="toggleService(service.name)">
+              <span class="service-row-name">{{ service.name }}</span>
+              <span class="service-row-duration">{{ service.duration }} min</span>
+            </button>
+          </div>
+          <aside class="selection-cart">
+            <div class="cart-label">Staff Selection</div>
+            <div class="cart-progress">
+              <div class="cart-progress-bar">
+                <div class="cart-progress-fill" [style.width.%]="(totalSelectedDuration / MAX_MINUTES) * 100" [class.at-limit]="totalSelectedDuration >= MAX_MINUTES"></div>
+              </div>
+              <div class="cart-progress-text">
+                <span>{{ totalSelectedDuration }} / {{ MAX_MINUTES }} mins</span>
+                <span *ngIf="selectedServices.length >= 3" class="limit-reached">Max 3 reached</span>
+              </div>
+            </div>
+            <div class="cart-chips">
+              <div class="cart-chip fade-in" *ngFor="let service of selectedServices">
+                <span>{{ service }}</span>
+                <button type="button" class="chip-remove" (click)="toggleService(service)">x</button>
+              </div>
+              <div *ngIf="selectedServices.length === 0" class="cart-empty">No services selected yet</div>
+            </div>
+            <button type="button" class="btn-reset" (click)="resetSelection()" [disabled]="selectedServices.length === 0">Reset Selection</button>
+          </aside>
+        </div>
+      </div>
+
+      <div *ngIf="currentStep === 2" class="step-body fade-in">
+        <div class="step-heading">
+          <h2>Select Date &amp; Time</h2>
+          <p>Estimated session: <strong>{{ totalSelectedDuration }} minutes</strong>. Choose an available clinic slot.</p>
+        </div>
+        <div class="datetime-layout">
+          <div class="calendar-panel">
+            <div class="calendar-nav">
+              <button type="button" class="cal-nav-btn" (click)="prevMonth()">&lsaquo;</button>
+              <h3 class="cal-month-label">{{ currentMonthName }} {{ currentYear }}</h3>
+              <button type="button" class="cal-nav-btn" (click)="nextMonth()">&rsaquo;</button>
+            </div>
+            <div class="cal-grid">
+              <span class="cal-day-name" *ngFor="let day of ['Su','Mo','Tu','We','Th','Fr','Sa']">{{ day }}</span>
+              <button
+                type="button"
+                *ngFor="let day of calendarDays"
+                class="cal-date"
+                [class.empty]="!day.number"
+                [class.selected]="selectedDate === day.date"
+                [class.available]="day.isAvailable && !day.isPast && !day.isFullyBooked"
+                [class.fully-booked]="day.isFullyBooked"
+                [class.unavailable]="day.isPast || !day.isAvailable"
+                [class.today]="day.isToday"
+                [disabled]="day.isPast || !day.number || day.isFullyBooked || !day.isAvailable"
+                (click)="selectDate(day.date)">
+                {{ day.number }}
+              </button>
+            </div>
+            <div class="cal-legend">
+              <div class="legend-item"><span class="legend-dot available"></span><span>Available</span></div>
+              <div class="legend-item"><span class="legend-dot selected"></span><span>Selected</span></div>
+              <div class="legend-item"><span class="legend-dot booked"></span><span>Fully Booked</span></div>
+              <div class="legend-item"><span class="legend-dot unavailable"></span><span>Unavailable</span></div>
+            </div>
+          </div>
+          <div class="timeslot-panel">
+            <div class="timeslot-label">Available Slots</div>
+            <div *ngIf="selectedDate; else noDateSelected" class="timeslot-list">
+              <button
+                type="button"
+                *ngFor="let slot of availableSlots"
+                class="timeslot-btn"
+                [class.active]="selectedTime === slot.time"
+                [class.full]="slot.slotsLeft === 0"
+                [disabled]="slot.slotsLeft === 0"
+                (click)="selectedTime = slot.time">
+                <span class="slot-time">{{ slot.time }}</span>
+                <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">
+                  {{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' left' }}
+                </span>
+              </button>
+            </div>
+            <ng-template #noDateSelected>
+              <div class="timeslot-placeholder">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                <p>Select a date to view available time slots</p>
+              </div>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="currentStep === 3" class="step-body fade-in">
+        <div class="step-heading">
+          <h2>Patient &amp; Staff Intake</h2>
+          <p>Booking for <strong>{{ selectedDate | date:'MMMM d, y' }}</strong> at <strong>{{ selectedTime }}</strong></p>
+        </div>
+        <div class="details-form">
+          <div class="staff-intake-panel">
+            <div class="staff-intake-title">
+              <span class="staff-intake-dot"></span>
+              <strong>Staff Intake</strong>
+            </div>
+            <div class="intake-group">
+              <span class="intake-label">Booking type</span>
+              <div class="segmented-control">
+                <button type="button" [class.active]="bookingType === 'Walk-in'" (click)="bookingType = 'Walk-in'">
+                  Walk-in
+                  <span class="badge-auto-approved">✓ Auto-Approved</span>
+                </button>
+                <button type="button" [class.active]="bookingType === 'Registered patient'" (click)="bookingType = 'Registered patient'">
+                  Registered
+                  <span class="badge-pending">Pending Review</span>
+                </button>
+              </div>
+            </div>
+            <div class="intake-group">
+              <span class="intake-label">Priority</span>
+              <div class="segmented-control compact">
+                <button type="button" [class.active]="intakePriority === 'Standard'" (click)="intakePriority = 'Standard'">Standard</button>
+                <button type="button" [class.active]="intakePriority === 'Urgent'" (click)="intakePriority = 'Urgent'">Urgent</button>
+              </div>
+            </div>
+            <div class="intake-group source-select">
+              <label class="intake-label" for="intakeSource">Source</label>
+              <select id="intakeSource" [(ngModel)]="intakeSource" name="intakeSource">
+                <option value="Front desk">Front desk</option>
+                <option value="Phone call">Phone call</option>
+                <option value="Staff referral">Staff referral</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field" [class.invalid]="patientName && !isNameValid">
+              <label>Full Name <span class="req">*</span></label>
+              <input type="text" name="patientName" [(ngModel)]="patientName" placeholder="Patient full name" autocomplete="off" />
+              <p class="field-error" *ngIf="patientName && !isNameValid">Enter the patient's full name.</p>
+            </div>
+            <div class="form-field" [class.invalid]="patientPhone && !isPhoneValid">
+              <label>Phone Number <span class="req">*</span></label>
+              <input type="tel" name="patientPhone" [(ngModel)]="patientPhone" placeholder="09XXXXXXXXX" maxlength="11" autocomplete="off" />
+              <p class="field-error" *ngIf="patientPhone && !isPhoneValid">Enter a valid PH mobile number.</p>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field form-field-wide" [class.invalid]="patientEmail && !isEmailValid">
+              <label>Email Address <span class="optional">(optional)</span></label>
+              <input type="email" name="patientEmail" [(ngModel)]="patientEmail" placeholder="patient@email.com" autocomplete="off" />
+              <p class="field-error" *ngIf="patientEmail && !isEmailValid">Please enter a valid email.</p>
+            </div>
+            <div class="form-field form-field-narrow" [class.invalid]="patientAge && !isAgeValid">
+              <label>Age <span class="optional">(optional)</span></label>
+              <input type="number" name="patientAge" [(ngModel)]="patientAge" min="1" max="120" placeholder="Age" />
+              <p class="field-error" *ngIf="patientAge && !isAgeValid">Invalid age.</p>
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Staff Notes</label>
+            <textarea name="notes" [(ngModel)]="notes" placeholder="Allergies, walk-in context, or front desk instructions" autocomplete="off"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="currentStep === 4" class="step-body fade-in">
+        <div class="step-heading">
+          <h2>Review &amp; Confirm</h2>
+          <p>Check the patient and staff intake details before submitting the appointment request.</p>
+        </div>
+        <div class="error-banner" *ngIf="submitError">{{ submitError }}</div>
+        <div class="review-grid">
+          <div class="review-box">
+            <div class="review-box-header"><span class="header-dot blue"></span><span>Appointment Schedule</span></div>
+            <div class="review-row"><span>Date</span><strong>{{ selectedDate | date:'MMMM d, y' }}</strong></div>
+            <div class="review-row"><span>Time</span><strong class="time-highlight">{{ selectedTime }}</strong></div>
+            <div class="review-row"><span>Duration</span><strong>{{ totalSelectedDuration }} minutes</strong></div>
+            <div class="review-row"><span>Priority</span><strong>{{ intakePriority }}</strong></div>
+          </div>
+          <div class="review-box">
+            <div class="review-box-header"><span class="header-dot green"></span><span>Patient Intake</span></div>
+            <div class="review-row"><span>Type</span><strong>{{ bookingType }}</strong></div>
+            <div class="review-row"><span>Name</span><strong>{{ patientName }}</strong></div>
+            <div class="review-row"><span>Phone</span><strong>{{ patientPhone }}</strong></div>
+            <div class="review-row" *ngIf="patientEmail"><span>Email</span><strong>{{ patientEmail }}</strong></div>
+            <div class="review-row" *ngIf="patientAge"><span>Age</span><strong>{{ patientAge }}</strong></div>
+          </div>
+        </div>
+        <div class="review-services-box">
+          <div class="review-box-header">
+            <span class="header-dot amber"></span>
+            <span>Selected Services</span>
+            <span class="services-count-badge">{{ selectedSubServices.length }} selected</span>
+          </div>
+          <div class="review-chips">
+            <span *ngFor="let service of selectedSubServices" class="review-chip"><span class="chip-dot-blue"></span>{{ service.name }}</span>
+          </div>
+          <div class="review-notes">
+            <span class="notes-label">Staff routing</span>
+            <p>{{ intakeSource }} / {{ intakePriority }} / {{ bookingType }}</p>
+          </div>
+          <div class="review-notes" *ngIf="notes.trim()">
+            <span class="notes-label">Notes</span>
+            <p>{{ notes.trim() }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-footer" *ngIf="!submitSuccess">
+      <ng-container *ngIf="currentStep === 1">
+        <button type="button" class="btn-cancel-link" (click)="goBack()">Cancel</button>
+        <button type="button" class="btn-next" [disabled]="!selectedCategory" (click)="currentStep = 1.5">Continue
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+        </button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 1.5">
+        <button type="button" class="btn-prev" (click)="currentStep = 1"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="goBack()">Cancel</button>
+        <button type="button" class="btn-next" [disabled]="selectedServices.length === 0" (click)="currentStep = 2">Next: Date &amp; Time
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+        </button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 2">
+        <button type="button" class="btn-prev" (click)="currentStep = 1.5"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="goBack()">Cancel</button>
+        <button type="button" class="btn-next" [disabled]="!selectedDate || !selectedTime" (click)="currentStep = 3">Next: Patient Details
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+        </button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 3">
+        <button type="button" class="btn-prev" (click)="currentStep = 2"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="goBack()">Cancel</button>
+        <button type="button" class="btn-next" [disabled]="!isNameValid || !isPhoneValid || !isEmailValid || !isAgeValid" (click)="currentStep = 4">Next: Review
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+        </button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 4">
+        <button type="button" class="btn-prev" (click)="currentStep = 3"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="goBack()">Cancel</button>
+        <button type="button" class="btn-submit" [disabled]="!canSubmit || isSubmitting" (click)="submit()">
+          <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></svg>
+          {{ isSubmitting ? 'Submitting...' : 'Submit Appointment' }}
+        </button>
+      </ng-container>
+    </div>
+
+    <div class="security-note" *ngIf="!submitSuccess">
+      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+      Staff-created appointments are routed to the same approval queue
+    </div>
+  </main>
+</div>

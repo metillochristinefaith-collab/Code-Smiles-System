@@ -1,0 +1,567 @@
+:host {
+  --surface: #ffffff;
+  --surface-soft: #f8fbff;
+  --line: #dfe8f6;
+  --text: #223b5f;
+  --muted: #6f84a2;
+  --navy: #17365f;
+  --blue: #347fd6;
+  --blue-dark: #1f4f8d;
+  --blue-soft: #eaf2ff;
+  --green: #2ea172;
+  --green-soft: #e7f7ef;
+  --amber: #d98a2b;
+  --amber-soft: #fff1d9;
+  --purple: #7a63d8;
+  --purple-soft: #f1ecff;
+  --gray-soft: #eef3f8;
+  --shadow: 0 16px 34px rgba(17, 40, 68, 0.07);
+
+  display: block;
+  min-height: 100dvh;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(117, 167, 241, 0.16), transparent 20%),
+    linear-gradient(180deg, #f8fbff 0%, #f2f7fd 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.treatment-plan-page {
+  --patient-sidebar-width: 270px;
+  min-height: 100dvh;
+  margin-left: var(--patient-sidebar-width);
+}
+
+.plan-main {
+  min-height: 100dvh;
+  padding: 22px 32px 28px 32px;
+}
+
+.plan-shell,
+.main-column,
+.side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-topbar,
+.topbar-actions,
+.hero-panel,
+.section-title,
+.milestone-head,
+.next-step-grid,
+.focus-meta,
+.other-plan-row,
+.record-row {
+  display: flex;
+  align-items: center;
+}
+
+.page-topbar {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.page-copy h1,
+.hero-copy h2,
+.section-title h3 {
+  margin: 0;
+  color: var(--navy);
+  font-weight: 800;
+}
+
+.page-copy h1 {
+  margin-top: 8px;
+  font-size: 1.95rem;
+  line-height: 1.04;
+}
+
+.page-copy p,
+.hero-copy p,
+.hero-progress p,
+.section-title p,
+.milestone-copy p,
+.milestone-copy span,
+.current-card p,
+.empty-copy {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--blue);
+  text-decoration: none;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.back-link svg,
+.hero-icon svg,
+.section-title svg,
+.milestone-marker svg,
+.header-icon-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.topbar-actions {
+  gap: 12px;
+}
+
+.header-icon-btn,
+.header-user {
+  border: 1px solid rgba(214, 226, 245, 0.9);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 22px rgba(31, 53, 84, 0.06);
+}
+
+.header-icon-btn {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--blue-dark);
+  cursor: pointer;
+}
+
+.header-icon-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2f73ea;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 999px;
+  padding: 6px 12px 6px 6px;
+  text-decoration: none;
+}
+
+.header-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #2459cf;
+  color: #fff;
+  font-weight: 800;
+}
+
+.header-user-copy strong,
+.header-user-copy span {
+  display: block;
+}
+
+.header-user-copy strong {
+  color: var(--navy);
+  font-size: 0.9rem;
+}
+
+.header-user-copy span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.hero-panel,
+.detail-card {
+  border: 1px solid rgba(223, 232, 246, 0.92);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.hero-panel {
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+}
+
+.hero-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.hero-icon.orthodontics,
+.hero-icon.consultation {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.hero-icon.whitening {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.hero-icon.filling {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.hero-icon.retainer {
+  color: #6e8097;
+  background: #f1f5fb;
+}
+
+.hero-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-copy h2 {
+  margin-top: 8px;
+  font-size: 1.45rem;
+}
+
+.hero-progress {
+  width: min(100%, 360px);
+}
+
+.progress-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progress-stat span {
+  color: #5b6d88;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.progress-stat strong {
+  color: var(--navy);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.plan-progress-bar {
+  height: 11px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7eef9;
+}
+
+.plan-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3777e5, #5597ff);
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.42fr) minmax(320px, 0.7fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.detail-card {
+  padding: 16px;
+}
+
+.section-title {
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--navy);
+}
+
+.section-title h3 {
+  font-size: 1rem;
+}
+
+.next-step-card {
+  background: linear-gradient(180deg, #ffffff, #f7fbff);
+}
+
+.next-step-grid {
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.next-step-grid div {
+  min-width: 160px;
+  flex: 1;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #d8e4f7;
+  background: #fff;
+}
+
+.next-step-grid span {
+  display: block;
+  color: #6f8097;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.next-step-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--navy);
+  font-size: 0.95rem;
+}
+
+.primary-action-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(180deg, #1f4f8d, #1a467c);
+  box-shadow: 0 10px 24px rgba(31, 79, 141, 0.18);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.milestone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.milestone-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #dfe8f6;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.milestone-row.current {
+  border-color: #bdd4fb;
+  background: linear-gradient(180deg, #edf3ff, #e9f0ff);
+}
+
+.milestone-marker {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid #cfd9e8;
+  color: #94a4bc;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.milestone-marker.done {
+  border-color: #35c39a;
+  background: #eefbf5;
+  color: #2ea786;
+}
+
+.milestone-marker.current {
+  border-color: #2f73ea;
+  background: #2f73ea;
+  color: #fff;
+}
+
+.milestone-head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.milestone-head strong,
+.current-card > strong {
+  color: var(--navy);
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-chip.active {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.status-chip.completed {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.status-chip.pending {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.status-chip.upcoming {
+  color: #6f8097;
+  background: var(--gray-soft);
+}
+
+.current-card > strong {
+  display: block;
+  margin-top: 14px;
+}
+
+.focus-meta {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.focus-meta span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.record-list,
+.other-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.record-row,
+.other-plan-row {
+  width: 100%;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid #d8e4f7;
+  background: #fff;
+  color: var(--blue-dark);
+  text-align: left;
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.record-row strong,
+.other-plan-row strong {
+  font-size: 0.76rem;
+  color: var(--blue);
+}
+
+.other-plan-row.active {
+  border-color: #8eb6fb;
+  background: var(--blue-soft);
+}
+
+.hero-panel,
+.detail-card,
+.record-row,
+.other-plan-row,
+.primary-action-btn,
+.back-link,
+.header-icon-btn,
+.header-user {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.record-row:hover,
+.other-plan-row:hover,
+.primary-action-btn:hover,
+.back-link:hover,
+.header-icon-btn:hover,
+.header-user:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1180px) {
+  .treatment-plan-page {
+    margin-left: 0;
+  }
+
+  .plan-main {
+    padding: 18px;
+  }
+
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-topbar,
+  .hero-panel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .topbar-actions,
+  .hero-progress {
+    width: 100%;
+  }
+
+  .topbar-actions {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 720px) {
+  .milestone-head,
+  .next-step-grid {
+    align-items: flex-start;
+  }
+
+  .milestone-head,
+  .next-step-grid,
+  .primary-action-btn {
+    width: 100%;
+  }
+
+  .milestone-head {
+    flex-direction: column;
+  }
+
+  .primary-action-btn {
+    min-height: 42px;
+  }
+}

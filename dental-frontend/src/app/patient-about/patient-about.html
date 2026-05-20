@@ -1,0 +1,226 @@
+<div class="patient-clinic-page">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="clinic-main">
+    <section class="about-philosophy">
+      <div class="philosophy-content">
+        <span class="sub-label">Our Philosophy</span>
+
+        <h2 class="hero-title">
+          We believe a smile is the
+          <br>
+          ultimate expression of
+          <br>
+          <span class="confidence-cute">
+            <span class="spark sL">&#10022;</span>
+            <span class="highlight-blue confidence-word">confidence</span>
+            <span class="spark sR">&#10022;</span>
+          </span>
+        </h2>
+
+        <p>
+          At Code Smiles, we do not just treat teeth. We care for people.
+          Our mission is to transform every dental visit into a comfortable,
+          stress-free experience you genuinely look forward to.
+        </p>
+
+        <div class="about-cta">
+          <a routerLink="/patient-booking" class="primary-btn">Book Appointment</a>
+          <a routerLink="/patient-services" class="secondary-btn">View Services</a>
+        </div>
+
+        <div class="about-stats">
+          <div class="stat">
+            <h3>500+</h3>
+            <p>Happy Patients</p>
+          </div>
+          <div class="stat">
+            <h3>10+</h3>
+            <p>Years Experience</p>
+          </div>
+          <div class="stat">
+            <h3>4.9*</h3>
+            <p>Patient Satisfaction</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="innovation-section">
+      <div class="innovation-header">
+        <h3>Why patients choose Code Smiles</h3>
+        <p>Modern tools + calming care, built for comfort and guided by expertise.</p>
+      </div>
+
+      <div class="innovation-grid">
+        <div class="innovation-card">
+          <div class="innovation-top">
+            <div class="icon-bubble">01</div>
+            <div class="innovation-title">
+              <h4>Modern Innovation</h4>
+              <span>Precision dentistry powered by modern tools.</span>
+            </div>
+          </div>
+
+          <p class="innovation-desc">
+            Equipped with 3D digital scanning and laser dentistry for unmatched precision and comfort.
+          </p>
+        </div>
+
+        <div class="innovation-card">
+          <div class="innovation-top">
+            <div class="icon-bubble">02</div>
+            <div class="innovation-title">
+              <h4>Spa-Like Comfort</h4>
+              <span>Relaxed visits, gentle care, better experience.</span>
+            </div>
+          </div>
+
+          <p class="innovation-desc">
+            A calming environment with sedation options and personalized patient-centered care.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <p class="video-section-label">Inside Code Smiles</p>
+
+    <section class="about-video-section">
+      <div class="about-video-shell">
+        <video
+          #aboutVideo
+          class="about-video"
+          loop
+          playsinline
+          preload="auto">
+          <source src="/code-smiles.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+
+        <button
+          type="button"
+          class="video-audio-toggle"
+          (click)="toggleMute()"
+          [attr.aria-label]="isMuted ? 'Unmute video' : 'Mute video'">
+          {{ isMuted ? 'Unmute' : 'Mute' }}
+        </button>
+      </div>
+    </section>
+
+    <div class="team-divider">
+      <span class="divider-line"></span>
+      <span class="divider-pill">Meet the Team</span>
+      <span class="divider-line"></span>
+    </div>
+
+    <div class="team-kicker">
+      <h3>Expert dentists. Gentle assistants. One caring clinic.</h3>
+      <p>
+        Our specialists lead every procedure, supported by trusted dental assistants who make every visit smooth,
+        calm, and comfortable.
+      </p>
+    </div>
+
+    <div class="dentist-grid">
+      <div class="dentist-card">
+        <input class="team-toggle" type="checkbox" id="team1">
+
+        <label class="pic-frame team-trigger" for="team1">
+          <img src="eduria.jpg" alt="General Dentist">
+          <span class="team-pill">View Team</span>
+        </label>
+
+        <h5>Dr. Raphoncel Eduria</h5>
+        <p class="specialty">General Dentistry, Oral Surgery  </p>
+
+        <div class="team-drop">
+          <div class="team-drop-head">
+            <span class="team-title">Dental Assistants</span>
+            <label class="close-x" for="team1">&times;</label>
+          </div>
+
+          <ul class="team-list">
+            <li><span class="role">Lead</span> Lisa Manoban</li>
+            <li><span class="role">Assistant</span> Ruka Kawai</li>
+            <li><span class="role">Assistant</span> Jung Ahyeon</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="dentist-card">
+        <input class="team-toggle" type="checkbox" id="team2">
+
+        <label class="pic-frame team-trigger" for="team2">
+          <img src="metillo.jpg" alt="Orthodontist">
+          <span class="team-pill">View Team</span>
+        </label>
+
+        <h5>Dr. Christine Faith Metillo</h5>
+        <p class="specialty">Orthodontics, Dental Implants</p>
+
+        <div class="team-drop">
+          <div class="team-drop-head">
+            <span class="team-title">Dental Assistants</span>
+            <label class="close-x" for="team2">&times;</label>
+          </div>
+
+          <ul class="team-list">
+            <li><span class="role">Lead</span> Jisoo Kim</li>
+            <li><span class="role">Assistant</span> Kim Minju</li>
+            <li><span class="role">Assistant</span> Enami Asa</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="dentist-card">
+        <input class="team-toggle" type="checkbox" id="team3">
+
+        <label class="pic-frame team-trigger" for="team3">
+          <img src="dr. bongolto.jpg" alt="Dr. Nico Bongolto">
+          <span class="team-pill">View Team</span>
+        </label>
+
+        <h5>Dr. Nico Bongolto</h5>
+        <p class="specialty">Pediatric Care</p>
+
+        <div class="team-drop">
+          <div class="team-drop-head">
+            <span class="team-title">Dental Assistants</span>
+            <label class="close-x" for="team3">&times;</label>
+          </div>
+
+          <ul class="team-list">
+            <li><span class="role">Lead</span> Roseanne Park</li>
+            <li><span class="role">Assistant</span> Lee Dain</li>
+            <li><span class="role">Assistant</span> Shin Haram</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="dentist-card">
+        <input class="team-toggle" type="checkbox" id="team4">
+
+        <label class="pic-frame team-trigger" for="team4">
+          <img src="acojedo.jpg" alt="Cosmetic Surgeon">
+          <span class="team-pill">View Team</span>
+        </label>
+
+        <h5>Dr. Derence Acojedo</h5>
+        <p class="specialty">Cosmetic Surgery</p>
+
+        <div class="team-drop">
+          <div class="team-drop-head">
+            <span class="team-title">Dental Assistants</span>
+            <label class="close-x" for="team4">&times;</label>
+          </div>
+
+          <ul class="team-list">
+            <li><span class="role">Lead</span> Jennie Kim</li>
+            <li><span class="role">Assistant</span> Yuna Kim</li>
+            <li><span class="role">Assistant</span> Dara Kim</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

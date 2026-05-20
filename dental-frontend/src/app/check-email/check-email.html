@@ -1,0 +1,76 @@
+<div class="check-email-page">
+  <div class="page-bg" aria-hidden="true"></div>
+
+  <div class="card-wrap">
+    <div class="card">
+      <div class="card-stripe"></div>
+
+      <!-- Brand -->
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">&#129463;</div>
+        <span>Code Smiles</span>
+      </div>
+
+      <!-- Email icon -->
+      <div class="email-icon-wrap" aria-hidden="true">
+        <div class="email-icon-ring"></div>
+        <div class="email-icon">
+          <svg viewBox="0 0 48 48" fill="none">
+            <rect x="4" y="10" width="40" height="28" rx="4" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M4 14l20 14 20-14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1>{{ title }}</h1>
+      <p class="subtitle">
+        {{ subtitle }}<br/>
+        <strong class="email-highlight">{{ maskedEmail }}</strong>
+      </p>
+      <p class="instruction">{{ instruction }}</p>
+
+      <!-- Divider -->
+      <div class="divider"></div>
+
+      <!-- Resend feedback -->
+      <div class="feedback success" *ngIf="resendMessage">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M6.5 10l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {{ resendMessage }}
+      </div>
+      <div class="feedback error" *ngIf="resendError">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M10 6v5M10 14h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        {{ resendError }}
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button
+          type="button"
+          class="btn-resend"
+          (click)="resend()"
+          [disabled]="isResending || cooldown > 0">
+          <svg viewBox="0 0 20 20" fill="none" *ngIf="!isResending">
+            <path d="M3 10a7 7 0 1 1 1.5 4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M3 14.5V10h4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <svg class="spin" viewBox="0 0 20 20" fill="none" *ngIf="isResending">
+            <path d="M10 3a7 7 0 1 1-4.95 2.05" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span *ngIf="!isResending && cooldown === 0">{{ resendLabel }}</span>
+          <span *ngIf="isResending">Sending…</span>
+          <span *ngIf="!isResending && cooldown > 0">Resend in {{ cooldown }}s</span>
+        </button>
+
+        <button type="button" class="btn-login" (click)="goToLogin()">
+          Back to Sign In
+        </button>
+      </div>
+
+      <!-- Help note -->
+      <p class="help-note">
+        Didn't receive it? Check your spam folder or try a different email address.
+      </p>
+    </div>
+  </div>
+</div>

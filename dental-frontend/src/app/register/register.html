@@ -1,0 +1,282 @@
+<div class="auth-page register-page">
+  <div class="register-decor" aria-hidden="true">
+    <span class="decor decor-tooth-left">&#129463;</span>
+    <span class="decor decor-spark-top">&#10024;</span>
+    <span class="decor decor-spark-right">&#10022;</span>
+    <span class="decor decor-diamond-bottom">&#128142;</span>
+    <span class="decor decor-brush-left">&#129701;</span>
+  </div>
+
+  <div class="register-content">
+    <section class="register-left">
+      <div class="brand-badge">
+        <span class="badge-dot"></span>
+        Code Smiles Dental Portal
+      </div>
+
+      <div class="hero-copy">
+        <h1>Healthy<br /><em>smiles</em><br />start with trust.</h1>
+        <p>
+          Build your patient account to book visits, review your schedule,
+          and stay connected with your care team in one calm, familiar place.
+        </p>
+      </div>
+
+      <div class="hero-features">
+        <div class="feature-item">
+          <div class="feature-icon">&#128197;</div>
+          <span>Open your account and book with less friction</span>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">&#128221;</div>
+          <span>Keep appointments, records, and updates in one portal</span>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">&#128274;</div>
+          <span>Secure access designed for patient information</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="register-card">
+      <div class="card-stripe"></div>
+
+      <div class="card-header">
+        <div class="mini-badge">Code Smiles</div>
+        <h2 class="card-title">Create Account</h2>
+        <p class="card-subtitle">
+          Join the patient portal to manage appointments and follow your care
+          journey with ease.
+        </p>
+      </div>
+
+      <form class="login-form" #registerForm="ngForm" (ngSubmit)="register(registerForm)" novalidate>
+  <div class="form-main">
+    <div class="form-row">
+      <div class="form-group half">
+        <label for="firstName">First Name</label>
+        <div class="input-wrap" [class.invalid]="(firstName.touched || submitted) && !isFirstNameValid">
+          <span class="input-icon">&#128100;</span>
+          <input
+            id="firstName"
+            type="text"
+            name="firstName"
+            [(ngModel)]="registerData.firstName"
+            #firstName="ngModel"
+            placeholder="Enter your first name"
+            autocomplete="given-name"
+            autocapitalize="words"
+            autocorrect="off"
+            spellcheck="false"
+            required
+          />
+        </div>
+        <small class="error-text" *ngIf="(firstName.touched || submitted) && !isFirstNameValid">
+          Please enter a valid first name.
+        </small>
+      </div>
+
+      <div class="form-group half">
+        <label for="lastName">Last Name</label>
+        <div class="input-wrap" [class.invalid]="(lastName.touched || submitted) && !isLastNameValid">
+          <span class="input-icon">&#128100;</span>
+          <input
+            id="lastName"
+            type="text"
+            name="lastName"
+            [(ngModel)]="registerData.lastName"
+            #lastName="ngModel"
+            placeholder="Enter your last name"
+            autocomplete="family-name"
+            autocapitalize="words"
+            autocorrect="off"
+            spellcheck="false"
+            required
+          />
+        </div>
+        <small class="error-text" *ngIf="(lastName.touched || submitted) && !isLastNameValid">
+          Please enter a valid last name.
+        </small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group half">
+        <label for="email">Email Address</label>
+        <div class="input-wrap" [class.invalid]="(email.touched || submitted) && !isRegisterEmailValid">
+          <span class="input-icon">&#9993;</span>
+          <input
+            id="email"
+            type="email"
+            name="email"
+            [(ngModel)]="registerData.email"
+            #email="ngModel"
+            placeholder="Enter your email"
+            autocomplete="email"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            required
+          />
+        </div>
+        <small class="error-text" *ngIf="(email.touched || submitted) && !isRegisterEmailValid">
+          Please enter a valid email address.
+        </small>
+      </div>
+
+      <div class="form-group half">
+        <label for="contactNumber">Contact Number</label>
+        <div class="input-wrap" [class.invalid]="(contactNumber.touched || submitted) && !isContactValid">
+          <span class="input-icon">&#9742;</span>
+          <input
+            id="contactNumber"
+            type="text"
+            name="contactNumber"
+            [(ngModel)]="registerData.contactNumber"
+            #contactNumber="ngModel"
+            placeholder="09XXXXXXXXX"
+            autocomplete="tel"
+            required
+            maxlength="11"
+            inputmode="numeric"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            (input)="onContactInput($event)"
+          />
+        </div>
+        <small class="error-text" *ngIf="(contactNumber.touched || submitted) && !isContactValid">
+          Enter a valid mobile number (example: 09123456789).
+        </small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group half">
+        <label for="password">Password</label>
+        <div class="input-wrap" [class.invalid]="(password.touched || submitted) && !isRegisterPasswordValid">
+          <span class="input-icon">&#128274;</span>
+          <input
+            id="password"
+            [type]="showPassword ? 'text' : 'password'"
+            name="password"
+            [(ngModel)]="registerData.password"
+            #password="ngModel"
+            placeholder="Create password"
+            autocomplete="new-password"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            required
+          />
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="togglePassword()"
+          >
+            {{ showPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+        <small class="error-text" *ngIf="(password.touched || submitted) && !isRegisterPasswordValid">
+          Password must be at least 8 characters and include uppercase, lowercase, and a number.
+        </small>
+      </div>
+
+      <div class="form-group half">
+        <label for="confirmPassword">Confirm Password</label>
+        <div class="input-wrap" [class.invalid]="(confirmPassword.touched || submitted) && (!isConfirmPasswordFilled || !doPasswordsMatch)">
+          <span class="input-icon">&#128272;</span>
+          <input
+            id="confirmPassword"
+            [type]="showConfirmPassword ? 'text' : 'password'"
+            name="confirmPassword"
+            [(ngModel)]="registerData.confirmPassword"
+            #confirmPassword="ngModel"
+            placeholder="Confirm password"
+            autocomplete="new-password"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            required
+          />
+          <button
+            type="button"
+            class="toggle-password"
+            (click)="toggleConfirmPassword()"
+          >
+            {{ showConfirmPassword ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+        <small class="error-text" *ngIf="(confirmPassword.touched || submitted) && !isConfirmPasswordFilled">
+          Please confirm your password.
+        </small>
+        <small class="error-text" *ngIf="(confirmPassword.touched || submitted) && isConfirmPasswordFilled && !doPasswordsMatch">
+          Passwords do not match.
+        </small>
+      </div>
+    </div>
+
+    <div class="form-options">
+      <label class="remember-me">
+        <input
+          type="checkbox"
+          name="agreeTerms"
+          [(ngModel)]="registerData.agreeTerms"
+          #agreeTerms="ngModel"
+        />
+        <span>
+          I agree to the terms of service and
+          <a routerLink="/privacy-policy">privacy policy</a>
+        </span>
+      </label>
+
+      <small class="error-text" *ngIf="submitted && !isTermsAccepted">
+        You must agree to the terms and privacy policy.
+      </small>
+    </div>
+
+    <!-- Backend error message -->
+    <div class="error-banner" *ngIf="errorMessage" role="alert" aria-live="polite">
+      {{ errorMessage }}
+    </div>
+
+    <button type="submit" class="sign-in-btn" [disabled]="isLoading">
+      {{ submitButtonText }} &rarr;
+    </button>
+  </div>
+
+  <div class="form-bottom">
+    <div class="divider"><span>or</span></div>
+
+    <div class="auth-alt-slot">
+      <button
+        type="button"
+        class="google-btn"
+        [disabled]="isGoogleLoading"
+        (click)="signUpWithGoogle()"
+        *ngIf="!isGoogleLoading">
+        <img
+          src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+          class="google-icon"
+          alt="Google"
+        />
+        Sign up with Google
+      </button>
+      <div class="google-btn-loading" *ngIf="isGoogleLoading">
+        <svg class="google-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        </svg>
+        Signing up with Google…
+      </div>
+      <div class="error-banner" *ngIf="errorMessage && !isGoogleLoading" role="alert" aria-live="polite">
+        {{ errorMessage }}
+      </div>
+    </div>
+
+    <p class="signup-text">
+      Already have an account? <a routerLink="/login">Sign in</a>
+    </p>
+  </div>
+</form>

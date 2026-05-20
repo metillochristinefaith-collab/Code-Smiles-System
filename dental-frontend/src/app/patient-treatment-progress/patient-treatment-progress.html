@@ -1,0 +1,342 @@
+<div class="tp-page">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="tp-main">
+
+    <!-- ── Header ────────────────────────────────────────────── -->
+    <header class="tp-header">
+      <div class="header-left">
+        <h1>Treatment Progress</h1>
+        <p>Track your smile journey and stay on top of every step.</p>
+      </div>
+      <div class="header-right">
+        <button class="notif-btn" type="button" aria-label="Notifications" routerLink="/patient-notifications">
+          <svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-5 5v2.4c0 .7-.2 1.4-.6 2L5 15h14l-1.4-2.6c-.4-.6-.6-1.3-.6-2V8a5 5 0 0 0-5-5"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+        </button>
+        <a class="user-chip" routerLink="/patient-profile">
+          <div class="user-avatar">
+            <img *ngIf="avatarUrl" [src]="avatarUrl" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />
+            <span *ngIf="!avatarUrl">{{ patientProfile.name.charAt(0) }}</span>
+          </div>
+          <div class="user-copy">
+            <strong>{{ patientProfile.name }}</strong>
+            <span>Patient ID: {{ patientProfile.id }}</span>
+          </div>
+          <svg class="chevron-sm" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+        </a>
+      </div>
+    </header>
+
+    <section class="status-banner" *ngIf="isLoading || hasError">
+      <div *ngIf="isLoading" class="loading-banner">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" stroke-dasharray="31.416" stroke-dashoffset="31.416"><animate attributeName="stroke-dashoffset" values="31.416;0" dur="1s" repeatCount="indefinite"/></circle></svg>
+        <span>Loading your treatment progress…</span>
+      </div>
+      <div *ngIf="!isLoading && hasError" class="error-banner">
+        <span>Unable to load treatment progress. Please refresh or try again later.</span>
+      </div>
+    </section>
+
+    <div *ngIf="!isLoading && !hasError">
+
+    <!-- ── Toolbar ────────────────────────────────────────────── -->
+    <div class="toolbar-card">
+      <!-- Active count -->
+      <div class="stat-block">
+        <div class="stat-icon stat-green">
+          <svg viewBox="0 0 24 24"><path d="M3 17l4-8 4 4 4-6 4 4"/></svg>
+        </div>
+        <div>
+          <strong>{{ activeCount }}</strong>
+          <span>Active Treatments</span>
+        </div>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Completed count -->
+      <div class="stat-block">
+        <div class="stat-icon stat-blue">
+          <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <div>
+          <strong>{{ completedCount }}</strong>
+          <span>Completed Treatments</span>
+        </div>
+      </div>
+
+      <div class="toolbar-spacer"></div>
+
+      <!-- Search -->
+      <label class="search-input" aria-label="Search treatments">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m16 16 3.5 3.5"/></svg>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          placeholder="Search treatments..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </label>
+
+      <!-- Status filter -->
+      <div class="select-wrap">
+        <select class="status-select" [(ngModel)]="statusFilter">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="completed">Completed</option>
+          <option value="upcoming">Upcoming</option>
+        </select>
+        <svg class="select-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+
+      <!-- View History -->
+      <a class="view-history-btn" routerLink="/patient-medical-vault">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+        View History
+      </a>
+    </div>
+
+    <!-- ── Active Treatments ──────────────────────────────────── -->
+    <section class="group-section" *ngIf="activePlans.length > 0">
+      <p class="group-label">ACTIVE TREATMENTS</p>
+      <div class="group-card">
+        <div
+          *ngFor="let plan of activePlans; let last = last"
+          class="treatment-row"
+          [class.row-last]="last"
+          [class.row-expanded]="isExpanded(plan.id)">
+
+          <!-- Collapsed row -->
+          <button type="button" class="row-btn" (click)="toggleExpand(plan.id)" [attr.aria-expanded]="isExpanded(plan.id)">
+            <!-- Icon -->
+            <div class="row-icon icon-{{ plan.icon }}">
+              <svg viewBox="0 0 24 24" *ngIf="plan.icon === 'orthodontics' || plan.icon === 'filling' || plan.icon === 'consultation'">
+                <path d="M12 4c-3.8 0-6 2.2-6 5.8 0 4.1 2.2 9.7 5.2 9.7 1.8 0 1.6-2.8 2.8-2.8s1 2.8 2.8 2.8c3 0 5.2-5.6 5.2-9.7C18 6.2 15.8 4 12 4Z"/>
+              </svg>
+              <svg viewBox="0 0 24 24" *ngIf="plan.icon === 'whitening'">
+                <path d="M12 3.5 13.8 9l5.7 1.2-5.7 1.2L12 17l-1.8-5.6L4.5 10.2 10.2 9 12 3.5Z"/>
+              </svg>
+              <svg viewBox="0 0 24 24" *ngIf="plan.icon === 'retainer'">
+                <path d="M4.5 13c1.6-2.5 4.3-4 7.5-4s5.9 1.5 7.5 4"/>
+                <path d="M6.5 13.2c.6 2.5 2.6 4.3 5.5 4.3s4.9-1.8 5.5-4.3"/>
+              </svg>
+            </div>
+
+            <!-- Name -->
+            <div class="row-name">
+              <strong>{{ plan.title }}</strong>
+              <span>{{ plan.subtitle }}</span>
+            </div>
+
+            <!-- Progress block -->
+            <div class="row-progress">
+              <div class="prog-label">
+                <strong>{{ plan.progress }}% Complete</strong>
+              </div>
+              <div class="prog-bar">
+                <div class="prog-fill" [style.width.%]="plan.progress"></div>
+              </div>
+              <span class="prog-steps">{{ plan.stepsCompleted }} of {{ plan.totalSteps }} steps completed</span>
+            </div>
+
+            <!-- Next appointment -->
+            <div class="row-appt" *ngIf="plan.nextStepDate && plan.nextStepDate !== 'Not started' && plan.nextStepDate !== 'Pending scheduling'">
+              <span class="appt-label">Next Appointment</span>
+              <div class="appt-date">
+                <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M8 3.5v4M16 3.5v4M4 9.5h16"/></svg>
+                <strong>{{ plan.nextStepDate }} · {{ plan.nextStepTime }}</strong>
+              </div>
+              <span class="appt-desc">{{ plan.nextStepDescription }}</span>
+            </div>
+            <div class="row-appt-empty" *ngIf="!plan.nextStepDate || plan.nextStepDate === 'Not started' || plan.nextStepDate === 'Pending scheduling'"></div>
+
+            <!-- Chevron -->
+            <svg class="row-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+
+          <!-- Expanded detail -->
+          <div class="row-detail" *ngIf="isExpanded(plan.id)">
+            <div class="detail-inner">
+
+              <!-- Steps checklist -->
+              <div class="detail-steps">
+                <p class="detail-section-label">Treatment Steps</p>
+                <div class="steps-list">
+                  <div class="step-item" *ngFor="let step of plan.steps" [ngClass]="'stage-' + step.stage">
+                    <div class="step-dot">
+                      <svg *ngIf="step.stage === 'done'" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                      <svg *ngIf="step.stage === 'current'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>
+                      <svg *ngIf="step.stage === 'next'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                    </div>
+                    <div class="step-text">
+                      <strong>{{ step.title }}</strong>
+                      <span>{{ step.date }} · {{ step.dentist }}</span>
+                    </div>
+                    <span class="step-badge sb-{{ step.statusClass }}">{{ step.status }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Info strip: dentist + next appt + files + actions all in one row -->
+              <div class="detail-strip">
+
+                <div class="strip-block" *ngIf="plan.nextStepDate && plan.nextStepDate !== 'Not started' && plan.nextStepDate !== 'Pending scheduling'">
+                  <span class="strip-label">Next Appointment</span>
+                  <div class="strip-appt">
+                    <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M8 3.5v4M16 3.5v4M4 9.5h16"/></svg>
+                    <strong>{{ plan.nextStepDate }}</strong>
+                  </div>
+                  <span class="strip-sub">{{ plan.nextStepTime }} · {{ plan.nextStepDoctor }}</span>
+                </div>
+
+                <div class="strip-block">
+                  <span class="strip-label">Assigned Dentist</span>
+                  <strong class="strip-val">{{ plan.nextStepDoctor }}</strong>
+                </div>
+
+                <div class="strip-block" *ngIf="getLinkedRecords(plan).length > 0">
+                  <span class="strip-label">Linked Files</span>
+                  <div class="strip-files">
+                    <button
+                      *ngFor="let r of getLinkedRecords(plan)"
+                      type="button"
+                      class="file-chip"
+                      (click)="viewLinkedRecord(r)">
+                      <svg viewBox="0 0 24 24"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M15 3.5v4h4"/></svg>
+                      {{ r.title }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="strip-actions">
+                  <a [routerLink]="plan.appointmentId ? ['/patient-appointments', plan.appointmentId] : ['/patient-appointments']" class="action-primary">
+                    <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M8 3.5v4M16 3.5v4M4 9.5h16"/></svg>
+                    View Appointment
+                  </a>
+                  <a routerLink="/patient-medical-vault" class="action-ghost">
+                    <svg viewBox="0 0 24 24"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M15 3.5v4h4"/></svg>
+                    View Files
+                  </a>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Completed Treatments ───────────────────────────────── -->
+    <section class="group-section" *ngIf="completedPlans.length > 0">
+      <p class="group-label">COMPLETED TREATMENTS</p>
+      <div class="group-card">
+        <div
+          *ngFor="let plan of completedPlans; let last = last"
+          class="treatment-row"
+          [class.row-last]="last"
+          [class.row-expanded]="isExpanded(plan.id)">
+
+          <button type="button" class="row-btn" (click)="toggleExpand(plan.id)" [attr.aria-expanded]="isExpanded(plan.id)">
+            <!-- Icon -->
+            <div class="row-icon icon-{{ plan.icon }}">
+              <svg viewBox="0 0 24 24" *ngIf="plan.icon === 'orthodontics' || plan.icon === 'filling' || plan.icon === 'consultation'">
+                <path d="M12 4c-3.8 0-6 2.2-6 5.8 0 4.1 2.2 9.7 5.2 9.7 1.8 0 1.6-2.8 2.8-2.8s1 2.8 2.8 2.8c3 0 5.2-5.6 5.2-9.7C18 6.2 15.8 4 12 4Z"/>
+              </svg>
+              <svg viewBox="0 0 24 24" *ngIf="plan.icon === 'whitening'">
+                <path d="M12 3.5 13.8 9l5.7 1.2-5.7 1.2L12 17l-1.8-5.6L4.5 10.2 10.2 9 12 3.5Z"/>
+              </svg>
+              <svg viewBox="0 0 24 24" *ngIf="plan.icon === 'retainer'">
+                <path d="M4.5 13c1.6-2.5 4.3-4 7.5-4s5.9 1.5 7.5 4"/>
+                <path d="M6.5 13.2c.6 2.5 2.6 4.3 5.5 4.3s4.9-1.8 5.5-4.3"/>
+              </svg>
+            </div>
+
+            <!-- Name -->
+            <div class="row-name">
+              <strong>{{ plan.title }}</strong>
+              <span>{{ plan.subtitle }}</span>
+            </div>
+
+            <!-- Completed badge + date -->
+            <div class="row-completed-info">
+              <span class="completed-badge">Completed</span>
+              <span class="completed-date">Finished on {{ plan.nextStepDate }}</span>
+            </div>
+
+            <!-- Spacer -->
+            <div class="row-appt-empty"></div>
+
+            <!-- Arrow -->
+            <svg class="row-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+
+          <!-- Expanded detail for completed -->
+          <div class="row-detail" *ngIf="isExpanded(plan.id)">
+            <div class="detail-inner">
+              <div class="detail-steps">
+                <p class="detail-section-label">Treatment Steps</p>
+                <div class="steps-list">
+                  <div class="step-item" *ngFor="let step of plan.steps" [ngClass]="'stage-' + step.stage">
+                    <div class="step-dot">
+                      <svg *ngIf="step.stage === 'done'" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                      <svg *ngIf="step.stage === 'current'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>
+                      <svg *ngIf="step.stage === 'next'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                    </div>
+                    <div class="step-text">
+                      <strong>{{ step.title }}</strong>
+                      <span>{{ step.date }} · {{ step.dentist }}</span>
+                    </div>
+                    <span class="step-badge sb-{{ step.statusClass }}">{{ step.status }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="detail-strip">
+                <div class="strip-block">
+                  <span class="strip-label">Assigned Dentist</span>
+                  <strong class="strip-val">{{ plan.nextStepDoctor }}</strong>
+                </div>
+                <div class="strip-block" *ngIf="getLinkedRecords(plan).length > 0">
+                  <span class="strip-label">Linked Files</span>
+                  <div class="strip-files">
+                    <button *ngFor="let r of getLinkedRecords(plan)" type="button" class="file-chip" (click)="viewLinkedRecord(r)">
+                      <svg viewBox="0 0 24 24"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M15 3.5v4h4"/></svg>
+                      {{ r.title }}
+                    </button>
+                  </div>
+                </div>
+                <div class="strip-actions">
+                  <a routerLink="/patient-medical-vault" class="action-ghost">
+                    <svg viewBox="0 0 24 24"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M15 3.5v4h4"/></svg>
+                    View Files
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Empty state ────────────────────────────────────────── -->
+    <div class="empty-state" *ngIf="filteredPlans.length === 0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="40" height="40"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+      <h3>No treatments found</h3>
+      <p *ngIf="searchTerm || statusFilter !== 'all'">Try adjusting your search or filter.</p>
+      <p *ngIf="!searchTerm && statusFilter === 'all'">Your treatment progress will appear here once you have appointments.</p>
+    </div>
+
+    </div> <!-- Close the *ngIf="!isLoading" div -->
+
+    <!-- ── Footer ────────────────────────────────────────────── -->
+    <footer class="tp-footer">
+      <svg viewBox="0 0 24 24"><path d="M12 3 18 5.5v5.4c0 4-2.5 7.6-6 9.1-3.5-1.5-6-5.1-6-9.1V5.5L12 3Z"/></svg>
+      <span>Only you and your dental care team can access your treatment information.</span>
+    </footer>
+
+  </main>
+
+  <div class="toast" *ngIf="toastMessage" role="status">{{ toastMessage }}</div>
+</div>

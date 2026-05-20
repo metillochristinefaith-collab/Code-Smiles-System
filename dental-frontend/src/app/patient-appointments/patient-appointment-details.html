@@ -1,0 +1,180 @@
+<div class="patient-appointment-details-page">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="appointment-details-main">
+    <!-- Loading state -->
+    <section class="appointment-details-shell" *ngIf="isLoading">
+      <div class="loading-state">
+        <p>Loading appointment details...</p>
+      </div>
+    </section>
+
+    <!-- Error state -->
+    <section class="appointment-details-shell" *ngIf="!isLoading && loadError">
+      <div class="error-state">
+        <h1>Error</h1>
+        <p>{{ loadError }}</p>
+        <a routerLink="/patient-appointments" class="secondary-action">Go to My Appointments</a>
+      </div>
+    </section>
+
+    <!-- Appointment details -->
+    <section class="appointment-details-shell" *ngIf="!isLoading && !loadError && appointment">
+      <div class="details-topbar">
+        <button type="button" class="back-link" (click)="goBack()">
+          <span aria-hidden="true">&larr;</span>
+          <span>Back to My Appointments</span>
+        </button>
+        <span class="appointment-code">{{ appointment.id }}</span>
+      </div>
+
+      <header class="details-hero" [ngClass]="'hero-' + (appointment.accent || 'blue')">
+        <div class="hero-main">
+          <p class="eyebrow">Appointment Details</p>
+          <h1>{{ appointment.service }}</h1>
+          <p class="hero-copy">
+            Quick summary of your visit, request, and latest clinic updates.
+          </p>
+
+          <div class="hero-chip-row">
+            <span class="hero-chip">{{ appointment.category }}</span>
+            <span class="hero-chip">{{ appointment.durationLabel }}</span>
+            <span class="hero-chip">{{ appointment.dentist }}</span>
+          </div>
+        </div>
+
+        <div class="hero-side">
+          <span class="status-chip" [ngClass]="getStatusClass(appointment.status)">{{ appointment.status }}</span>
+
+          <div class="schedule-card">
+            <div class="date-badge" [ngClass]="'accent-' + (appointment.accent || 'blue')">
+              <span>{{ appointment.dateMonth }}</span>
+              <strong>{{ appointment.dateDay }}</strong>
+              <small>{{ appointment.weekday }}</small>
+            </div>
+
+            <div class="schedule-copy">
+              <span class="mini-label">Scheduled Time</span>
+              <strong>{{ appointment.time }}</strong>
+              <p>{{ appointment.location }}</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="details-grid">
+        <article class="details-card overview-card">
+          <div class="card-heading">
+            <span class="card-kicker">Visit Snapshot</span>
+            <h2>Overview</h2>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-box">
+              <span>Clinic</span>
+              <strong>{{ appointment.location }}</strong>
+            </div>
+            <div class="stat-box">
+              <span>Dentist</span>
+              <strong>{{ appointment.dentist }}</strong>
+            </div>
+            <div class="stat-box">
+              <span>Patient</span>
+              <strong>{{ appointment.patientName }}</strong>
+            </div>
+            <div class="stat-box">
+              <span>Booked On</span>
+              <strong>{{ appointment.bookedOn }}</strong>
+            </div>
+          </div>
+
+          <div class="overview-meta">
+            <div><span>Email</span><strong>{{ appointment.patientEmail }}</strong></div>
+            <div><span>Phone</span><strong>{{ appointment.patientPhone }}</strong></div>
+            <div><span>Age</span><strong>{{ appointment.patientAge }}</strong></div>
+          </div>
+
+          <div class="tips-row">
+            <span>Arrive 10 minutes early</span>
+            <span>Bring valid ID</span>
+            <span>Watch for clinic updates</span>
+          </div>
+        </article>
+
+        <aside class="details-card actions-card">
+          <div class="card-heading">
+            <span class="card-kicker">Manage This Visit</span>
+            <h2>Actions</h2>
+          </div>
+
+          <div class="action-stack">
+            <button
+              type="button"
+              class="primary-action"
+              *ngIf="canManageAppointment"
+              (click)="requestReschedule()">
+              Request Reschedule
+            </button>
+
+            <button
+              type="button"
+              class="danger-action"
+              *ngIf="canManageAppointment"
+              (click)="cancelAppointment()">
+              Cancel Appointment
+            </button>
+
+            <a routerLink="/patient-booking" class="secondary-action">Book New Appointment</a>
+          </div>
+
+          <div class="action-note">
+            <span class="mini-label">Current Status</span>
+            <strong [ngClass]="getStatusClass(appointment.status)">{{ appointment.status }}</strong>
+          </div>
+
+          <section class="inline-history">
+            <div class="card-heading inline-history-heading">
+              <span class="card-kicker">Activity Feed</span>
+              <h2>History</h2>
+            </div>
+
+            <ul class="history-list history-timeline">
+              <li *ngFor="let item of appointment.history">
+                <span class="timeline-dot"></span>
+                <div class="timeline-copy">
+                  <strong>{{ item.label }}</strong>
+                  <p>{{ item.value }}</p>
+                </div>
+              </li>
+            </ul>
+          </section>
+        </aside>
+
+        <article class="details-card services-card">
+          <div class="card-heading">
+            <span class="card-kicker">Treatment Request</span>
+            <h2>Services</h2>
+          </div>
+
+          <div class="pill-row">
+            <span class="service-pill" *ngFor="let service of appointment.servicesSummary">{{ service }}</span>
+          </div>
+
+          <p class="body-copy">{{ appointment.description }}</p>
+
+          <div *ngIf="appointment.notes" class="note-box">
+            <strong>Patient Notes</strong>
+            <p>{{ appointment.notes }}</p>
+          </div>
+        </article>
+
+      </section>
+    </section>
+
+    <section class="appointment-details-shell empty-shell" *ngIf="!isLoading && !loadError && !appointment">
+      <h1>Appointment not found</h1>
+      <p>The appointment you opened no longer exists or was not saved on this device.</p>
+      <a routerLink="/patient-appointments" class="secondary-action">Go to My Appointments</a>
+    </section>
+  </main>
+</div>

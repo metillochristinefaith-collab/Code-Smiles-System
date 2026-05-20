@@ -1,0 +1,253 @@
+<div class="dentist-shell rx-shell">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="rx-main">
+
+    <!-- Header -->
+    <header class="rx-header">
+      <div>
+        <h1 class="rx-title">Prescriptions</h1>
+        <p class="rx-subtitle">Create, review, and manage patient prescriptions.</p>
+      </div>
+      <button class="rx-new-btn" type="button" (click)="openForm()">
+        + New Prescription
+      </button>
+    </header>
+
+    <!-- Toast -->
+    <div class="rx-toast" *ngIf="actionMessage">{{ actionMessage }}</div>
+
+    <!-- List Card -->
+    <section class="rx-card">
+      <div class="rx-toolbar">
+        <div class="rx-search-wrap">
+          <span>🔍</span>
+          <input class="rx-search" type="text" placeholder="Search by patient name or ID..." [(ngModel)]="searchQuery" />
+        </div>
+        <select class="rx-select" [(ngModel)]="filterStatus">
+          <option *ngFor="let s of statusOptions" [value]="s">{{ s === 'All' ? 'All Status' : s }}</option>
+        </select>
+      </div>
+
+      <div class="rx-card-head">
+        <div>
+          <p class="rx-kicker">PRESCRIPTION DIRECTORY</p>
+          <h2>{{ filtered.length }} Prescription{{ filtered.length !== 1 ? 's' : '' }}</h2>
+        </div>
+      </div>
+
+      <div class="rx-list-empty" *ngIf="!isLoading && filtered.length === 0">
+        No prescriptions found. Click <strong>+ New Prescription</strong> to create one.
+      </div>
+      <div class="rx-list-empty" *ngIf="isLoading">Loading…</div>
+
+      <div class="rx-patient-grid" *ngIf="!isLoading && filtered.length > 0">
+        <button class="rx-patient-card"
+          type="button"
+          *ngFor="let rx of filtered"
+          [class.active]="selectedRx?.id === rx.id"
+          (click)="selectRx(rx)">
+          <div class="rx-avatar">{{ rx.initials }}</div>
+          <div class="rx-item-info">
+            <strong>{{ rx.patient }}</strong>
+            <span>{{ rx.id }} · {{ rx.date }}</span>
+            <span class="rx-item-condition">{{ rx.diagnosis !== '—' ? rx.diagnosis : rx.condition }}</span>
+            <div class="rx-item-meds" *ngIf="rx.medications.length > 0">
+              <span class="rx-med-chip" *ngFor="let m of rx.medications.slice(0,2)">{{ m.name }}</span>
+            </div>
+          </div>
+          <span class="rx-status-pill" [attr.data-status]="statusTone(rx.status)">{{ rx.status }}</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Detail Card -->
+    <section class="rx-card rx-detail-card" *ngIf="selectedRx; else selectRxState">
+
+      <div class="rx-detail-head">
+        <div class="rx-banner-left">
+          <div class="rx-avatar rx-avatar-lg">{{ selectedRx.initials }}</div>
+          <div class="rx-banner-info">
+            <h2>{{ selectedRx.patient }}</h2>
+            <span>{{ selectedRx.id }} · Issued {{ selectedRx.date }}</span>
+          </div>
+        </div>
+        <div class="rx-detail-actions">
+          <button class="rx-status-btn" type="button" (click)="openStatusModal(selectedRx)">
+            Update Status
+          </button>
+          <span class="rx-status-pill" [attr.data-status]="statusTone(selectedRx.status)">{{ selectedRx.status }}</span>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="rx-tabs">
+        <button *ngFor="let tab of tabs" type="button"
+          [class.active]="activeTab === tab.key"
+          (click)="setTab(tab.key)">{{ tab.label }}</button>
+      </div>
+
+      <div class="rx-tab-content">
+
+        <!-- Details tab -->
+        <div *ngIf="activeTab === 'details'" class="rx-pane">
+          <div class="rx-info-grid">
+            <div class="rx-info-card">
+              <span>Patient</span>
+              <strong>{{ selectedRx.patient }}</strong>
+            </div>
+            <div class="rx-info-card">
+              <span>Prescribing Dentist</span>
+              <strong>{{ selectedRx.dentist }}</strong>
+            </div>
+            <div class="rx-info-card">
+              <span>Date Issued</span>
+              <strong>{{ selectedRx.date }}</strong>
+            </div>
+            <div class="rx-info-card">
+              <span>Diagnosis</span>
+              <strong>{{ selectedRx.diagnosis }}</strong>
+            </div>
+            <div class="rx-info-card wide">
+              <span>Condition / Reason</span>
+              <strong>{{ selectedRx.condition }}</strong>
+            </div>
+          </div>
+
+          <div class="rx-section-title">Medication</div>
+          <div class="rx-list-empty" *ngIf="selectedRx.medications.length === 0">No medication prescribed.</div>
+          <div class="rx-med-card" *ngFor="let m of selectedRx.medications">
+            <div class="rx-med-name">💊 {{ m.name }}</div>
+            <div class="rx-med-row">
+              <div class="rx-med-field"><span>Dosage</span><strong>{{ m.dosage }}</strong></div>
+              <div class="rx-med-field"><span>Frequency</span><strong>{{ m.frequency }}</strong></div>
+              <div class="rx-med-field"><span>Duration</span><strong>{{ m.duration }}</strong></div>
+            </div>
+            <div class="rx-med-instructions" *ngIf="m.instructions">
+              📋 {{ m.instructions }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes tab -->
+        <div *ngIf="activeTab === 'notes'" class="rx-pane">
+          <div class="rx-section-title">Notes</div>
+          <div class="rx-notes-card">
+            <p>{{ selectedRx.notes || 'No notes provided.' }}</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <ng-template #selectRxState>
+      <section class="rx-card rx-simple-empty">
+        <div class="rx-empty-icon">💊</div>
+        <strong>Select a prescription</strong>
+        <p>Choose a prescription from the list above to view details.</p>
+      </section>
+    </ng-template>
+
+  </main>
+</div>
+
+<!-- ── New Prescription Modal ──────────────────────────────────────────────── -->
+<div class="rx-overlay" *ngIf="showForm" (click)="closeForm()"></div>
+<div class="rx-modal" *ngIf="showForm">
+  <div class="rx-modal-head">
+    <h3>New Prescription</h3>
+    <button class="rx-modal-close" type="button" (click)="closeForm()">✕</button>
+  </div>
+
+  <div class="rx-modal-body">
+
+    <div class="rx-form-error" *ngIf="formError">{{ formError }}</div>
+
+    <!-- Patient -->
+    <div class="rx-field-group">
+      <label class="rx-label">Patient *</label>
+      <select class="rx-input" [(ngModel)]="form.patient_id" (ngModelChange)="onPatientSelect()">
+        <option [ngValue]="null" disabled>Select a patient…</option>
+        <option *ngFor="let p of patients" [ngValue]="p.id">
+          {{ p.first_name }} {{ p.last_name }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Diagnosis -->
+    <div class="rx-field-group">
+      <label class="rx-label">Diagnosis / Treatment</label>
+      <input class="rx-input" type="text" placeholder="e.g. Cosmetic Arts" [(ngModel)]="form.diagnosis" />
+    </div>
+
+    <!-- Condition note -->
+    <div class="rx-field-group">
+      <label class="rx-label">Condition / Reason for Prescription</label>
+      <input class="rx-input" type="text" placeholder="e.g. Post-extraction pain management" [(ngModel)]="form.condition_note" />
+    </div>
+
+    <div class="rx-divider">Medication</div>
+
+    <!-- Medication -->
+    <div class="rx-field-group">
+      <label class="rx-label">Medication Name *</label>
+      <input class="rx-input" type="text" placeholder="e.g. Amoxicillin" [(ngModel)]="form.medication" />
+    </div>
+
+    <!-- Dosage + Frequency -->
+    <div class="rx-field-row">
+      <div class="rx-field-group">
+        <label class="rx-label">Dosage *</label>
+        <input class="rx-input" type="text" placeholder="e.g. 500mg" [(ngModel)]="form.dosage" />
+      </div>
+      <div class="rx-field-group">
+        <label class="rx-label">Frequency</label>
+        <input class="rx-input" type="text" placeholder="e.g. 3x a day" [(ngModel)]="form.frequency" />
+      </div>
+    </div>
+
+    <!-- Duration -->
+    <div class="rx-field-group">
+      <label class="rx-label">Duration</label>
+      <input class="rx-input" type="text" placeholder="e.g. 7 days" [(ngModel)]="form.duration" />
+    </div>
+
+    <!-- Instructions -->
+    <div class="rx-field-group">
+      <label class="rx-label">Instructions / Notes</label>
+      <textarea class="rx-input rx-textarea" rows="3" placeholder="e.g. Take after meals. Avoid alcohol." [(ngModel)]="form.instructions"></textarea>
+    </div>
+
+  </div>
+
+  <div class="rx-modal-foot">
+    <button class="rx-btn-cancel" type="button" (click)="closeForm()">Cancel</button>
+    <button class="rx-btn-save" type="button" (click)="submitForm()" [disabled]="isSaving">
+      {{ isSaving ? 'Saving…' : 'Save Prescription' }}
+    </button>
+  </div>
+</div>
+
+<!-- ── Update Status Modal ─────────────────────────────────────────────────── -->
+<div class="rx-overlay" *ngIf="showStatusModal" (click)="closeStatusModal()"></div>
+<div class="rx-modal rx-modal-sm" *ngIf="showStatusModal">
+  <div class="rx-modal-head">
+    <h3>Update Status</h3>
+    <button class="rx-modal-close" type="button" (click)="closeStatusModal()">✕</button>
+  </div>
+  <div class="rx-modal-body">
+    <div class="rx-field-group">
+      <label class="rx-label">New Status</label>
+      <select class="rx-input" [(ngModel)]="pendingStatus">
+        <option value="Active">Active</option>
+        <option value="Completed">Completed</option>
+        <option value="Pending">Pending</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+  </div>
+  <div class="rx-modal-foot">
+    <button class="rx-btn-cancel" type="button" (click)="closeStatusModal()">Cancel</button>
+    <button class="rx-btn-save" type="button" (click)="saveStatus()">Save</button>
+  </div>
+</div>

@@ -1,0 +1,620 @@
+:host {
+  display: block;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ── Shell ──────────────────────────────────────────────── */
+.dentist-dashboard-shell {
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, rgba(116, 173, 239, 0.12), transparent 20%),
+    linear-gradient(180deg, #f3f7fd 0%, #f7fbff 52%, #eff5fd 100%);
+}
+
+/* ── Main ───────────────────────────────────────────────── */
+.dd-main {
+  margin-left: 270px;
+  width: calc(100% - 270px);
+  height: 100vh;
+  padding: 22px 30px 22px 30px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #1d3551;
+  overflow: hidden;
+}
+
+/* ── Topbar ─────────────────────────────────────────────── */
+.dd-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-shrink: 0;
+  padding: 18px 22px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,251,255,0.96));
+  border: 1px solid rgba(27, 55, 89, 0.10);
+  box-shadow: 0 22px 40px rgba(16, 40, 66, 0.08);
+}
+
+.dd-greeting {
+  margin: 0 0 4px;
+  font-size: 0.88rem;
+  color: #6f8096;
+}
+
+.dd-name {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #213a59;
+  line-height: 1.05;
+}
+
+.dd-spec {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: #4a7bb5;
+  font-weight: 600;
+  background: #eef4ff;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.dd-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.dd-date-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: rgba(246, 249, 255, 0.96);
+  border: 1px solid rgba(77, 143, 225, 0.12);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #224a79;
+  white-space: nowrap;
+  box-shadow: 0 10px 18px rgba(16, 40, 66, 0.05);
+}
+
+.dd-profile-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dd-profile-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #9fc2fb, #6b9ee8);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.dd-profile-copy strong,
+.dd-profile-copy span { display: block; }
+
+.dd-profile-copy strong {
+  font-size: 0.95rem;
+  color: #213a59;
+  font-weight: 700;
+}
+
+.dd-profile-copy span {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: #6f8096;
+}
+
+/* ── Stats ──────────────────────────────────────────────── */
+.dd-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.dd-stat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 90px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,251,255,0.96));
+  border: 1px solid rgba(27, 55, 89, 0.10);
+  box-shadow: 0 22px 40px rgba(16, 40, 66, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.dd-stat-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 1.2rem;
+}
+
+.dd-stat[data-tone="blue"]   .dd-stat-icon { background: #e9f1ff; color: #4d8fe1; }
+.dd-stat[data-tone="green"]  .dd-stat-icon { background: #e2f7f0; color: #2aa483; }
+.dd-stat[data-tone="violet"] .dd-stat-icon { background: #efe9ff; color: #7f73e6; }
+.dd-stat[data-tone="amber"]  .dd-stat-icon { background: #fff1dd; color: #e29b3f; }
+
+.dd-stat-copy span {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a8fa7;
+}
+
+.dd-stat-copy strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 2rem;
+  line-height: 1;
+  color: #213a59;
+}
+
+.dd-stat-copy small {
+  color: #5d728d;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.dd-stat-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.dd-stat[data-tone="blue"]   .dd-stat-bar { background: linear-gradient(90deg, #4d98f4, #2f6fd8); }
+.dd-stat[data-tone="green"]  .dd-stat-bar { background: linear-gradient(90deg, #34c98a, #1f8a5e); }
+.dd-stat[data-tone="violet"] .dd-stat-bar { background: linear-gradient(90deg, #a07ef5, #7f5adf); }
+.dd-stat[data-tone="amber"]  .dd-stat-bar { background: linear-gradient(90deg, #f5b942, #cc8f22); }
+
+/* ── Grid ───────────────────────────────────────────────── */
+.dd-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 1fr);
+  gap: 18px;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.dd-col-left,
+.dd-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #c5d5e8 transparent;
+}
+
+.dd-col-left::-webkit-scrollbar,
+.dd-col-right::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dd-col-left::-webkit-scrollbar-track,
+.dd-col-right::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dd-col-left::-webkit-scrollbar-thumb,
+.dd-col-right::-webkit-scrollbar-thumb {
+  background: #c5d5e8;
+  border-radius: 10px;
+}
+
+.dd-col-left::-webkit-scrollbar-thumb:hover,
+.dd-col-right::-webkit-scrollbar-thumb:hover {
+  background: #a8bdd6;
+}
+
+/* ── Card base ──────────────────────────────────────────── */
+.dd-card {
+  border-radius: 20px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(247,251,255,0.96));
+  border: 1px solid rgba(27, 55, 89, 0.10);
+  box-shadow: 0 22px 40px rgba(16, 40, 66, 0.08);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dd-card-appointments { flex: 1 1 0; }
+.dd-card-actions      { flex-shrink: 0; }
+.dd-card-plans        { flex: 1 1 0; }
+.dd-card-notifs       { flex: 1 1 0; }
+
+.dd-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+  flex-shrink: 0;
+}
+
+.dd-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dd-card-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dd-card-dot.blue   { background: #4d98f4; }
+.dd-card-dot.green  { background: #34c98a; }
+.dd-card-dot.amber  { background: #f5b942; }
+.dd-card-dot.red    { background: #f47c4d; }
+
+.dd-card-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #213a59;
+}
+
+.dd-link {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #4a88e1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dd-link:hover { text-decoration: underline; }
+
+/* ── Avatar ─────────────────────────────────────────────── */
+.dd-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #4d98f4, #2f6fd8);
+  flex-shrink: 0;
+}
+
+.dd-avatar[data-priority="high"] {
+  background: linear-gradient(135deg, #f47c4d, #d85a2f);
+}
+
+/* ── Appointments ───────────────────────────────────────── */
+.dd-appt-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  justify-content: space-between;
+}
+
+.dd-appt-row {
+  display: grid;
+  grid-template-columns: 80px 38px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(27, 55, 89, 0.07);
+  flex: 1 1 0;
+}
+
+.dd-appt-row:last-child { border-bottom: none; }
+
+.dd-appt-time {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #224a79;
+  white-space: nowrap;
+}
+
+.dd-appt-copy strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #213a59;
+}
+
+.dd-appt-copy span {
+  display: block;
+  font-size: 0.82rem;
+  color: #6f8096;
+  margin-top: 3px;
+}
+
+/* ── Status pill ────────────────────────────────────────── */
+.dd-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dd-pill[data-status="confirmed"] { color: #2f8f62; background: #ddf4e9; }
+.dd-pill[data-status="progress"]  { color: #4d7de1; background: #dce8ff; }
+.dd-pill[data-status="pending"]   { color: #b6782a; background: #fff0df; }
+.dd-pill[data-status="cancelled"] { color: #d36a6a; background: #ffe7e7; }
+
+/* ── Quick Actions ──────────────────────────────────────── */
+.dd-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dd-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: #213a59;
+  background: #f7f9ff;
+  border: 1px solid rgba(27, 55, 89, 0.07);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.dd-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(16, 40, 66, 0.10);
+}
+
+.dd-action-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.dd-action-icon-wrap[data-tone="blue"]   { background: linear-gradient(135deg, #deeeff, #c8e0ff); }
+.dd-action-icon-wrap[data-tone="green"]  { background: linear-gradient(135deg, #d4f5e7, #bfedd8); }
+.dd-action-icon-wrap[data-tone="violet"] { background: linear-gradient(135deg, #ede8ff, #dfd8ff); }
+.dd-action-icon-wrap[data-tone="amber"]  { background: linear-gradient(135deg, #fff0cc, #ffe8aa); }
+
+.dd-action-icon {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dd-action-icon-wrap[data-tone="blue"]   .dd-action-icon { color: #2f6ed4; }
+.dd-action-icon-wrap[data-tone="green"]  .dd-action-icon { color: #1f8a5e; }
+.dd-action-icon-wrap[data-tone="violet"] .dd-action-icon { color: #7f5adf; }
+.dd-action-icon-wrap[data-tone="amber"]  .dd-action-icon { color: #cc8f22; }
+
+.dd-action-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #213a59;
+  flex: 1 1 auto;
+}
+
+.dd-action-arrow {
+  font-size: 0.9rem;
+  color: #a0b4c8;
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+
+.dd-action-btn:hover .dd-action-arrow {
+  transform: translateX(3px);
+  color: #4a88e1;
+}
+
+/* ── Treatment Plans ────────────────────────────────────── */
+.dd-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 0;
+  min-height: 0;
+  justify-content: flex-start;
+}
+
+.dd-plan-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f7f9ff;
+  border: 1px solid rgba(27, 55, 89, 0.06);
+  flex: 1 1 0;
+}
+
+.dd-plan-copy strong {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #213a59;
+}
+
+.dd-plan-copy span {
+  display: block;
+  font-size: 0.8rem;
+  color: #4a7bb5;
+  margin-top: 3px;
+}
+
+.dd-followup-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #7a8fa7;
+  background: #dfe9ff;
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* ── Notifications ──────────────────────────────────────── */
+.dd-notif-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  justify-content: flex-start;
+}
+
+.dd-notif-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(27, 55, 89, 0.07);
+  flex: 1 1 0;
+}
+
+.dd-notif-row:last-child { border-bottom: none; }
+
+.dd-notif-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.dd-notif-row[data-type="cancel"]     .dd-notif-icon { background: #ffe7e7; color: #d36a6a; }
+.dd-notif-row[data-type="reschedule"] .dd-notif-icon { background: #dce8ff; color: #4d7de1; }
+.dd-notif-row[data-type="urgent"]     .dd-notif-icon { background: #fff0df; color: #b6782a; }
+.dd-notif-row[data-type="followup"]   .dd-notif-icon { background: #ddf4e9; color: #2f8f62; }
+
+.dd-notif-copy span {
+  display: block;
+  font-size: 0.9rem;
+  color: #213a59;
+  line-height: 1.4;
+}
+
+.dd-notif-copy small {
+  display: block;
+  font-size: 0.78rem;
+  color: #7a8fa7;
+  margin-top: 3px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ZOOM-AWARE RESPONSIVE RULES
+   When users zoom in (e.g., 125%, 150%, 200%), the effective
+   viewport width shrinks. These rules ensure layouts stay aligned
+   and readable at any zoom level.
+══════════════════════════════════════════════════════════════ */
+
+/* At 125% zoom, 1024px screen becomes ~820px effective width */
+@media (max-width: 900px) {
+  .dd-main {
+    padding: 20px;
+  }
+
+  .dd-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* At 150% zoom, 1024px screen becomes ~683px effective width */
+@media (max-width: 700px) {
+  .dd-main {
+    padding: 16px;
+  }
+
+  .dd-topbar {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .dd-name {
+    font-size: 1.5rem;
+  }
+
+  .dd-stats { grid-template-columns: 1fr; }
+  .dd-actions-grid { grid-template-columns: 1fr; }
+  .dd-grid { grid-template-columns: 1fr; }
+}
+
+/* At 200% zoom, 1024px screen becomes ~512px effective width */
+@media (max-width: 550px) {
+  .dd-main {
+    padding: 12px;
+  }
+
+  .dd-topbar {
+    padding: 12px 14px;
+  }
+
+  .dd-name {
+    font-size: 1.25rem;
+  }
+
+  .dd-card { padding: 14px; }
+  .dd-stats { grid-template-columns: 1fr; }
+  .dd-actions-grid { grid-template-columns: 1fr; }
+}
+
+/* At 250% zoom or higher, 1024px screen becomes ~410px effective width */
+@media (max-width: 450px) {
+  .dd-main {
+    padding: 10px;
+  }
+
+  .dd-topbar {
+    padding: 10px 12px;
+  }
+
+  .dd-name {
+    font-size: 1.1rem;
+  }
+
+  .dd-card { padding: 12px; }
+}

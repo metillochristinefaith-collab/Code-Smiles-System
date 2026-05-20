@@ -1,0 +1,388 @@
+﻿<!-- placeholder -->
+
+<div class="booking-portal-page">
+  <app-patient-sidebar></app-patient-sidebar>
+  <main class="booking-main">
+
+    <!-- HEADER -->
+    <section class="booking-header">
+      <div class="header-left">
+        <button type="button" class="back-to-dashboard-btn" (click)="requestBackToDashboard()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Back to Dashboard
+        </button>
+      </div>
+      <div class="header-center">
+        <h1>{{ isRescheduleFlow ? 'Reschedule Appointment' : 'Book Appointment' }}</h1>
+        <p *ngIf="!bookingConfirmed">{{ isRescheduleFlow ? 'Complete the steps below to reschedule your appointment' : 'Complete the steps below to request your visit' }}</p>
+        <p *ngIf="bookingConfirmed">{{ wasRescheduleFlow ? 'Your reschedule request has been submitted' : 'Your booking request has been submitted' }}</p>
+      </div>
+      <div class="header-right">
+      </div>
+    </section>
+
+    <!-- STEPPER — outside white card -->
+    <div class="portal-stepper" *ngIf="!bookingConfirmed">
+      <div class="stepper-track">
+        <div class="stepper-step" [class.active]="stepNumber >= 1" [class.completed]="stepNumber > 1">
+          <div class="step-bubble">
+            <svg *ngIf="stepNumber > 1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span *ngIf="stepNumber <= 1">1</span>
+          </div>
+          <div class="step-info"><span class="step-name">Service</span><span class="step-sub">Step 1 of 4</span></div>
+        </div>
+        <div class="stepper-line" [class.filled]="stepNumber > 1"></div>
+        <div class="stepper-step" [class.active]="stepNumber >= 2" [class.completed]="stepNumber > 2">
+          <div class="step-bubble">
+            <svg *ngIf="stepNumber > 2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span *ngIf="stepNumber <= 2">2</span>
+          </div>
+          <div class="step-info"><span class="step-name">Date &amp; Time</span><span class="step-sub">Step 2 of 4</span></div>
+        </div>
+        <div class="stepper-line" [class.filled]="stepNumber > 2"></div>
+        <div class="stepper-step" [class.active]="stepNumber >= 3" [class.completed]="stepNumber > 3">
+          <div class="step-bubble">
+            <svg *ngIf="stepNumber > 3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span *ngIf="stepNumber <= 3">3</span>
+          </div>
+          <div class="step-info"><span class="step-name">Your Details</span><span class="step-sub">Step 3 of 4</span></div>
+        </div>
+        <div class="stepper-line" [class.filled]="stepNumber > 3"></div>
+        <div class="stepper-step" [class.active]="stepNumber >= 4">
+          <div class="step-bubble"><span>4</span></div>
+          <div class="step-info"><span class="step-name">Confirm</span><span class="step-sub">Step 4 of 4</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESCHEDULE BANNER -->
+    <div class="reschedule-banner" *ngIf="isRescheduleFlow && !bookingConfirmed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0M12 8v4l3 3"/></svg>
+      You are updating an existing appointment. Choose a new schedule and submit for clinic approval.
+    </div>
+
+    <!-- SUCCESS STATE — only shown if user dismisses modal and lands here -->
+    <div *ngIf="bookingConfirmed && !showSuccessModal" class="booking-success-card fade-in">
+      <div class="success-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <h2>{{ wasRescheduleFlow ? 'Reschedule Request Submitted!' : 'Booking Request Submitted!' }}</h2>
+      <p>Your request is now pending staff approval. You'll be notified once it's confirmed.</p>
+      <div class="success-pill">Pending Review</div>
+      <div class="success-actions">
+        <button type="button" class="btn-outline" (click)="startNewBooking()">Submit Another Request</button>
+        <button type="button" class="btn-outline" (click)="goToAppointments()">View My Appointments</button>
+        <button type="button" class="btn-primary-portal" (click)="goToDashboard()">Back to Dashboard</button>
+      </div>
+    </div>
+
+    <!-- WHITE CARD — only the step content, NO footer inside -->
+    <div *ngIf="!bookingConfirmed" class="booking-flow-card">
+
+      <!-- STEP 1 -->
+      <div *ngIf="currentStep === 1" class="step-body fade-in">
+        <div class="step-heading">
+          <h2>Select a Treatment Category</h2>
+          <p>Choose a category to view available services. You can select up to 3 services per booking.</p>
+        </div>
+        <div class="category-grid">
+          <button type="button" class="category-card" [class.selected]="selectedCategory === 'General Dentistry'" (click)="selectCategory('General Dentistry')">
+            <div class="category-icon-wrap cat-general">🦷</div>
+            <div class="category-text"><strong>General Dentistry</strong><span>Preventive care &amp; cleanings</span></div>
+            <div class="category-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+            <div class="category-check" *ngIf="selectedCategory === 'General Dentistry'"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </button>
+          <button type="button" class="category-card" [class.selected]="selectedCategory === 'Cosmetic Arts'" (click)="selectCategory('Cosmetic Arts')">
+            <div class="category-icon-wrap cat-cosmetic">✨</div>
+            <div class="category-text"><strong>Cosmetic Arts</strong><span>Veneers and whitening</span></div>
+            <div class="category-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+            <div class="category-check" *ngIf="selectedCategory === 'Cosmetic Arts'"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </button>
+          <button type="button" class="category-card" [class.selected]="selectedCategory === 'Orthodontics'" (click)="selectCategory('Orthodontics')">
+            <div class="category-icon-wrap cat-ortho">💎</div>
+            <div class="category-text"><strong>Orthodontics</strong><span>Braces and aligners</span></div>
+            <div class="category-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+            <div class="category-check" *ngIf="selectedCategory === 'Orthodontics'"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </button>
+          <button type="button" class="category-card" [class.selected]="selectedCategory === 'Oral Surgery'" (click)="selectCategory('Oral Surgery')">
+            <div class="category-icon-wrap cat-surgery">🏥</div>
+            <div class="category-text"><strong>Oral Surgery</strong><span>Specialist surgical care</span></div>
+            <div class="category-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+            <div class="category-check" *ngIf="selectedCategory === 'Oral Surgery'"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </button>
+          <button type="button" class="category-card" [class.selected]="selectedCategory === 'Dental Implants'" (click)="selectCategory('Dental Implants')">
+            <div class="category-icon-wrap cat-implants">⚙️</div>
+            <div class="category-text"><strong>Dental Implants</strong><span>Restorative solutions</span></div>
+            <div class="category-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+            <div class="category-check" *ngIf="selectedCategory === 'Dental Implants'"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </button>
+          <button type="button" class="category-card" [class.selected]="selectedCategory === 'Pediatric Care'" (click)="selectCategory('Pediatric Care')">
+            <div class="category-icon-wrap cat-pediatric">🧸</div>
+            <div class="category-text"><strong>Pediatric Care</strong><span>Care for children</span></div>
+            <div class="category-arrow"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+            <div class="category-check" *ngIf="selectedCategory === 'Pediatric Care'"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 1.5 -->
+      <div *ngIf="currentStep === 1.5" class="step-body fade-in">
+        <div class="step-heading"><h2>{{ selectedCategory }}</h2><p>Select up to 3 services &mdash; max 120 minutes total per session.</p></div>
+        <div class="service-selection-layout">
+          <div class="service-list">
+            <button type="button" class="service-row-btn" *ngFor="let s of currentSubServices" [class.selected]="selectedServices.includes(s.name)" [disabled]="!selectedServices.includes(s.name) && (selectedServices.length >= 3 || totalSelectedDuration + s.duration > 120)" (click)="toggleService(s.name)">
+              <span class="service-row-name">{{ s.name }}</span>
+              <span class="service-row-duration">{{ s.duration }} min</span>
+            </button>
+          </div>
+          <div class="selection-cart">
+            <div class="cart-label">YOUR SELECTION</div>
+            <div class="cart-progress">
+              <div class="cart-progress-bar"><div class="cart-progress-fill" [style.width.%]="(totalSelectedDuration / 120) * 100" [class.at-limit]="totalSelectedDuration >= 120"></div></div>
+              <div class="cart-progress-text"><span>{{ totalSelectedDuration }} / 120 mins</span><span *ngIf="selectedServices.length >= 3" class="limit-reached">Max 3 reached</span></div>
+            </div>
+            <div class="cart-chips">
+              <div class="cart-chip fade-in" *ngFor="let s of selectedServices"><span>{{ s }}</span><button type="button" class="chip-remove" (click)="toggleService(s)">&#x2715;</button></div>
+              <div *ngIf="selectedServices.length === 0" class="cart-empty"><span>No services selected yet</span></div>
+            </div>
+            <button type="button" class="btn-reset" (click)="resetSelection()" [disabled]="selectedServices.length === 0">Reset Selection</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div *ngIf="currentStep === 2" class="step-body fade-in">
+        <div class="step-heading"><h2>Select Date &amp; Time</h2><p>Estimated session: <strong>{{ totalSelectedDuration }} minutes</strong>. Choose a date and available time slot.</p></div>
+        <div class="datetime-layout">
+          <div class="calendar-panel">
+            <div class="calendar-nav">
+              <button type="button" class="cal-nav-btn" (click)="prevMonth()">&#8249;</button>
+              <h3 class="cal-month-label">{{ currentMonthName }} {{ currentYear }}</h3>
+              <button type="button" class="cal-nav-btn" (click)="nextMonth()">&#8250;</button>
+            </div>
+            <div class="cal-grid">
+              <span class="cal-day-name" *ngFor="let d of ['Su','Mo','Tu','We','Th','Fr','Sa']">{{ d }}</span>
+              <button type="button" *ngFor="let day of calendarDays" class="cal-date" [class.empty]="!day.number" [class.selected]="selectedDate === day.date" [class.available]="day.isAvailable && !day.isPast && !day.isFullyBooked" [class.fully-booked]="day.isFullyBooked" [class.unavailable]="day.isPast || !day.isAvailable" [class.today]="day.isToday" [disabled]="day.isPast || !day.number || day.isFullyBooked || !day.isAvailable" (click)="selectDate(day.date)">{{ day.number }}</button>
+            </div>
+            <div class="cal-legend">
+              <div class="legend-item"><span class="legend-dot available"></span><span>Available</span></div>
+              <div class="legend-item"><span class="legend-dot selected"></span><span>Selected</span></div>
+              <div class="legend-item"><span class="legend-dot booked"></span><span>Fully Booked</span></div>
+              <div class="legend-item"><span class="legend-dot unavailable"></span><span>Unavailable</span></div>
+              <div class="legend-item"><span class="legend-dot today"></span><span>Today</span></div>
+            </div>
+          </div>
+          <div class="timeslot-panel">
+            <div class="timeslot-label">AVAILABLE SLOTS</div>
+            <div *ngIf="selectedDate; else noDateSelected" class="timeslot-list">
+              <button type="button" *ngFor="let slot of availableSlots" class="timeslot-btn" [class.active]="selectedTime === slot.time" [class.full]="slot.slotsLeft === 0" [disabled]="slot.slotsLeft === 0" (click)="selectedTime = slot.time">
+                <span class="slot-time">{{ slot.time }}</span>
+                <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">{{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' slot' + (slot.slotsLeft > 1 ? 's' : '') + ' left' }}</span>
+              </button>
+            </div>
+            <ng-template #noDateSelected>
+              <div class="timeslot-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <p>Select a date to view available time slots</p>
+              </div>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div *ngIf="currentStep === 3" class="step-body fade-in">
+        <div class="step-heading"><h2>Your Details</h2><p>Booking for <strong>{{ selectedDate | date:'MMMM d, y' }}</strong> at <strong>{{ selectedTime }}</strong></p></div>
+        <div class="details-form">
+          <div class="form-row">
+            <div class="form-field"><label>First Name <span class="req">*</span></label><input type="text" name="firstName" [(ngModel)]="patientDetails.firstName" placeholder="First name" autocomplete="off"><p class="field-error" *ngIf="!isFirstNameValid && patientDetails.firstName !== ''">Enter a valid first name</p></div>
+            <div class="form-field"><label>Last Name <span class="req">*</span></label><input type="text" name="lastName" [(ngModel)]="patientDetails.lastName" placeholder="Last name" autocomplete="off"><p class="field-error" *ngIf="!isLastNameValid && patientDetails.lastName !== ''">Enter a valid last name</p></div>
+          </div>
+          <div class="form-row">
+            <div class="form-field form-field-wide"><label>Email Address <span class="req">*</span></label><input type="email" name="email" [(ngModel)]="patientDetails.email" placeholder="name@email.com" autocomplete="off"><p class="field-error" *ngIf="!isEmailValid && patientDetails.email !== ''">Please enter a valid email</p></div>
+            <div class="form-field"><label>Phone Number <span class="req">*</span></label><input type="tel" name="phone" [(ngModel)]="patientDetails.phone" placeholder="09XXXXXXXXX" maxlength="11"><p class="field-error" *ngIf="!isPhoneValid && patientDetails.phone !== ''">Invalid phone number</p></div>
+            <div class="form-field form-field-narrow"><label>Age <span class="req">*</span></label><input type="number" name="age" [(ngModel)]="patientDetails.age" min="1" max="120" placeholder="Age"><p class="field-error" *ngIf="!isAgeValid && patientDetails.age !== ''">Invalid age</p></div>
+          </div>
+          <div class="form-field"><label>Additional Notes</label><textarea name="notes" [(ngModel)]="patientDetails.notes" placeholder="Any specific dental concerns or requests?" autocomplete="off"></textarea></div>
+
+          <!-- Reschedule Reason — only shown in reschedule flow -->
+          <div class="form-field reschedule-reason-field" *ngIf="isRescheduleFlow">
+            <label>Reason for Reschedule <span class="req">*</span></label>
+            <textarea
+              name="rescheduleReason"
+              [(ngModel)]="patientDetails.rescheduleReason"
+              placeholder="Please explain why you need to reschedule this appointment..."
+              autocomplete="off"
+              rows="3">
+            </textarea>
+            <p class="field-error" *ngIf="isRescheduleFlow && patientDetails.rescheduleReason.trim().length > 0 && patientDetails.rescheduleReason.trim().length < 5">
+              Please provide a more detailed reason (at least 5 characters).
+            </p>
+            <p class="field-hint">This helps the clinic prepare and approve your reschedule request.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div *ngIf="currentStep === 4" class="step-body fade-in">
+        <div class="step-heading"><h2>Review &amp; Confirm</h2><p>Please review your booking details before submitting the request.</p></div>
+        <div class="error-banner" *ngIf="submitError">{{ submitError }}</div>
+        <div class="review-grid">
+          <div class="review-box">
+            <div class="review-box-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Appointment Schedule</span></div>
+            <div class="review-row"><span>Date</span><strong>{{ selectedDate | date:'MMMM d, y' }}</strong></div>
+            <div class="review-row"><span>Day</span><strong>{{ selectedDate | date:'EEEE' }}</strong></div>
+            <div class="review-row"><span>Time</span><strong class="time-highlight">{{ selectedTime }}</strong></div>
+            <div class="review-row"><span>Duration</span><strong>{{ totalSelectedDuration }} minutes</strong></div>
+          </div>
+          <div class="review-box">
+            <div class="review-box-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Patient Details</span></div>
+            <div class="review-row"><span>Name</span><strong>{{ patientDetails.firstName.trim() }} {{ patientDetails.lastName.trim() }}</strong></div>
+            <div class="review-row"><span>Age</span><strong>{{ patientDetails.age }} yrs old</strong></div>
+            <div class="review-row"><span>Email</span><strong>{{ patientDetails.email }}</strong></div>
+            <div class="review-row"><span>Phone</span><strong>{{ patientDetails.phone }}</strong></div>
+          </div>
+        </div>
+        <div class="review-services-box">
+          <div class="review-box-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Selected Services</span><span class="services-count-badge">{{ selectedSubServices.length }} selected</span></div>
+          <div class="review-chips"><span *ngFor="let s of selectedSubServices" class="review-chip"><span class="chip-dot-blue"></span>{{ s.name }}</span></div>
+          <div class="review-notes" *ngIf="patientDetails.notes.trim()"><span class="notes-label">Additional Notes</span><p>{{ patientDetails.notes.trim() }}</p></div>
+          <!-- Reschedule reason in review -->
+          <div class="review-notes reschedule-reason-review" *ngIf="isRescheduleFlow && patientDetails.rescheduleReason.trim()">
+            <span class="notes-label reschedule-label">Reason for Reschedule</span>
+            <p>{{ patientDetails.rescheduleReason.trim() }}</p>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /booking-flow-card -->
+
+    <!-- BOTTOM BAR — outside white card, on gray background -->
+    <div class="step-footer" *ngIf="!bookingConfirmed">
+      <ng-container *ngIf="currentStep === 1">
+        <button type="button" class="btn-cancel-link" (click)="requestCancel()">Cancel Booking</button>
+        <button type="button" class="btn-next" [disabled]="!selectedCategory" (click)="currentStep = 1.5">Continue <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 1.5">
+        <button type="button" class="btn-prev" (click)="currentStep = 1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="requestCancel()">Cancel</button>
+        <button type="button" class="btn-next" [disabled]="selectedServices.length === 0" (click)="currentStep = 2">Next: Date &amp; Time <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 2">
+        <button type="button" class="btn-prev" (click)="currentStep = 1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="requestCancel()">Cancel</button>
+        <button type="button" class="btn-next" [disabled]="!selectedDate || !selectedTime" (click)="currentStep = 3">Next: Your Details <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 3">
+        <button type="button" class="btn-prev" (click)="currentStep = 2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="requestCancel()">Cancel</button>
+        <button type="button" class="btn-next" [disabled]="!canProceedToReview" (click)="currentStep = 4">Next: Review &amp; Confirm <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 4">
+        <button type="button" class="btn-prev" (click)="currentStep = 3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="requestCancel()">Cancel</button>
+        <button type="button" class="btn-submit" [disabled]="!canProceedToReview || isSubmitting" (click)="completeBooking()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          {{ isSubmitting ? 'Submitting...' : (isRescheduleFlow ? 'Submit Reschedule Request' : 'Submit Booking Request') }}
+        </button>
+      </ng-container>
+    </div>
+
+    <!-- SECURITY NOTE -->
+    <div class="security-note" *ngIf="!bookingConfirmed">
+      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Your information is secure and encrypted
+    </div>
+
+  </main>
+
+  <!-- SUCCESS MODAL (fixed positioned) — shown immediately after successful submission -->
+  <div class="success-modal-overlay" *ngIf="showSuccessModal">
+    <div class="success-modal-content">
+
+      <!-- Green header with checkmark -->
+      <div class="modal-header">
+        <div class="modal-success-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <h2 class="modal-title">
+          {{ wasRescheduleFlow ? 'Reschedule Request Submitted!' : 'Booking Request Submitted!' }}
+        </h2>
+        <p class="modal-subtitle">
+          Your appointment request has been received and is now pending clinic review.
+        </p>
+      </div>
+
+      <!-- Booking summary -->
+      <div class="modal-body">
+        <div class="booking-details">
+          <div class="detail-item">
+            <span class="detail-label">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Patient
+            </span>
+            <span class="detail-value">{{ confirmedBooking.fullName }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">
+              <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Date &amp; Time
+            </span>
+            <span class="detail-value">{{ confirmedBooking.date | date:'MMMM d, y' }} at {{ confirmedBooking.time }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">
+              <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Services
+            </span>
+            <span class="detail-value">{{ confirmedServiceNames }}</span>
+          </div>
+        </div>
+
+        <div class="status-badge">
+          <span class="badge-dot"></span>
+          Pending Clinic Review — we'll notify you once confirmed
+        </div>
+      </div>
+
+      <!-- Two action buttons -->
+      <div class="modal-footer">
+        <button type="button" class="btn-modal primary" (click)="goToDashboardFromModal()">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Back to Dashboard
+        </button>
+        <button type="button" class="btn-modal secondary" (click)="startNewBooking()">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Submit Another Appointment
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- DIALOGS -->
+<div class="confirm-overlay" *ngIf="showLeaveConfirm" (click)="dismissLeave()">
+  <div class="confirm-dialog" (click)="$event.stopPropagation()">
+    <div class="confirm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    <h3>Leave Booking?</h3>
+    <p>Are you sure you want to leave? Your booking progress will be lost.</p>
+    <div class="confirm-actions">
+      <button type="button" class="confirm-btn-cancel" (click)="dismissLeave()">Stay Here</button>
+      <button type="button" class="confirm-btn-leave" (click)="confirmLeave()">Yes, Leave</button>
+    </div>
+  </div>
+</div>
+<div class="confirm-overlay" *ngIf="showCancelConfirm" (click)="dismissCancel()">
+  <div class="confirm-dialog" (click)="$event.stopPropagation()">
+    <div class="confirm-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+    <h3>Cancel Booking?</h3>
+    <p>Are you sure you want to cancel? Your booking progress will be lost.</p>
+    <div class="confirm-actions">
+      <button type="button" class="confirm-btn-cancel" (click)="dismissCancel()">Keep Booking</button>
+      <button type="button" class="confirm-btn-leave" (click)="confirmCancel()">Yes, Cancel</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,89 @@
+<div class="prx-shell">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="prx-main">
+    <header class="prx-header">
+      <div>
+        <h1 class="prx-title">My Prescriptions</h1>
+        <p class="prx-subtitle">Medications prescribed by your dentist.</p>
+      </div>
+    </header>
+
+    <div class="prx-body">
+
+      <!-- Loading -->
+      <div class="prx-empty" *ngIf="isLoading">Loading…</div>
+
+      <!-- Empty -->
+      <div class="prx-empty" *ngIf="!isLoading && prescriptions.length === 0">
+        <div class="prx-empty-icon">💊</div>
+        <strong>No prescriptions yet</strong>
+        <p>Your dentist hasn't issued any prescriptions for you.</p>
+      </div>
+
+      <!-- List -->
+      <div class="prx-list" *ngIf="!isLoading && prescriptions.length > 0">
+        <button class="prx-card"
+          type="button"
+          *ngFor="let rx of prescriptions"
+          [class.active]="selected?.id === rx.id"
+          (click)="select(rx)">
+          <div class="prx-card-icon">💊</div>
+          <div class="prx-card-info">
+            <strong>{{ rx.medication }}</strong>
+            <span>{{ rx.dosage }} · {{ rx.frequency }}</span>
+            <span class="prx-card-dentist">{{ rx.dentist }}</span>
+          </div>
+          <div class="prx-card-right">
+            <span class="prx-pill" [ngClass]="statusClass(rx.status)">{{ rx.status }}</span>
+            <span class="prx-date">{{ rx.date }}</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Detail -->
+      <div class="prx-detail" *ngIf="selected">
+        <div class="prx-detail-head">
+          <div>
+            <h2>{{ selected.medication }}</h2>
+            <span>{{ selected.id }} · Issued {{ selected.date }}</span>
+          </div>
+          <span class="prx-pill" [ngClass]="statusClass(selected.status)">{{ selected.status }}</span>
+        </div>
+
+        <div class="prx-info-grid">
+          <div class="prx-info-card">
+            <span>Dosage</span>
+            <strong>{{ selected.dosage }}</strong>
+          </div>
+          <div class="prx-info-card">
+            <span>Frequency</span>
+            <strong>{{ selected.frequency }}</strong>
+          </div>
+          <div class="prx-info-card">
+            <span>Duration</span>
+            <strong>{{ selected.duration }}</strong>
+          </div>
+          <div class="prx-info-card">
+            <span>Prescribed By</span>
+            <strong>{{ selected.dentist }}</strong>
+          </div>
+          <div class="prx-info-card prx-wide">
+            <span>Diagnosis / Treatment</span>
+            <strong>{{ selected.diagnosis }}</strong>
+          </div>
+          <div class="prx-info-card prx-wide" *ngIf="selected.condition !== '—'">
+            <span>Condition / Reason</span>
+            <strong>{{ selected.condition }}</strong>
+          </div>
+        </div>
+
+        <div class="prx-instructions" *ngIf="selected.instructions">
+          <span>📋 Instructions</span>
+          <p>{{ selected.instructions }}</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>

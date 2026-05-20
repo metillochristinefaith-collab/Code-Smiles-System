@@ -1,0 +1,365 @@
+:host {
+  display: block;
+  background: transparent;
+}
+
+.contact-section {
+  margin-top: 0;
+  padding: 36px 8% 100px;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+}
+
+.contact-section::before {
+  content: "";
+  display: none;
+  height: 40px;
+  margin-top: -40px;
+  background: linear-gradient(
+    to bottom,
+    rgba(237, 245, 252, 0) 0%,
+    rgba(237, 245, 252, 1) 100%
+  );
+}
+
+.contact-section::after {
+  display: none;
+}
+
+.contact-container {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 120px;
+  align-items: flex-start;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* HEADERS */
+.label {
+  color: #007bff;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.title {
+  font-size: 3.5rem;
+  font-weight: 950;
+  color: #1a1a1a;
+  margin: 15px 0 45px;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+}
+
+.title span { color: #007bff; }
+
+/* BIG THREE STYLING */
+.big-three { 
+  margin: 40px 0; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 30px; 
+}
+
+.contact-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 22px; 
+}
+
+.icon-box {
+  width: 60px;
+  height: 60px;
+  background: rgba(0, 123, 255, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  font-size: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.contact-item:hover .icon-box {
+  background: #007bff;
+  color: white;
+  transform: scale(1.1) rotate(-5deg);
+  box-shadow: 0 10px 20px rgba(0, 123, 255, 0.2);
+}
+
+.details span {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #a0a0a0;
+  letter-spacing: 1.5px;
+  margin-bottom: 4px;
+}
+
+.contact-link, .details p { 
+  font-size: 1.2rem; 
+  font-weight: 800; 
+  color: #1a1a1a; 
+  text-decoration: none; 
+  margin: 0;
+  transition: color 0.3s;
+}
+
+.contact-link:hover { color: #007bff; }
+
+/* FORM STYLING - FIXED GAP AND BOX MODEL */
+.form-row { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 25px; /* Fixed gap from image_ac5ed7.png */
+  margin: 30px 0 20px; 
+}
+
+input, textarea {
+  width: 100%; 
+  box-sizing: border-box; /* Fixed touching inputs from image_ac5ed7.png */
+  padding: 20px; 
+  border-radius: 16px; 
+  border: 1px solid #f0f0f0;
+  background: #f8f9fa; 
+  font-family: inherit; 
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+input:focus, textarea:focus { 
+  outline: none; 
+  border-color: #007bff; 
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(0, 123, 255, 0.06);
+  transform: translateY(-2px);
+}
+
+.send-btn {
+  background: linear-gradient(
+    180deg,
+    #1e3a5f 0%,
+    #1b3554 40%,
+    #162c47 100%
+  );
+
+  color: #fff;
+  border: none;
+  padding: 18px 46px;
+  border-radius: 50px;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 25px rgba(18, 34, 56, 0.28);
+}
+
+.send-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(18, 34, 56, 0.4);
+
+  background: linear-gradient(
+    180deg,
+    #243f66 0%,
+    #1f3a5c 40%,
+    #1a304f 100%
+  );
+}
+/* EMERGENCY BOX */
+.emergency-box {
+  background: linear-gradient(135deg, rgba(0, 123, 255, 0.08) 0%, rgba(0, 123, 255, 0.02) 100%);
+  border-left: 6px solid #007bff;
+  padding: 30px; 
+  border-radius: 0 24px 24px 0;
+  margin-top: 50px;
+}
+
+.emergency-box p { font-size: 1rem; color: #333; margin: 0; }
+
+/* MAP & HOURS CARD - SEPARATED VERSION */
+.map-wrapper { 
+  height: 480px; 
+  border-radius: 40px; 
+  overflow: hidden; 
+  box-shadow: 0 20px 50px rgba(0,0,0,0.08); 
+  margin-bottom: 30px; /* Separated from map as requested */
+  background: #f0f0f0;
+}
+
+.map-wrapper iframe {
+  filter: grayscale(0.2) contrast(1.1);
+  transition: filter 0.6s ease;
+}
+
+.map-wrapper:hover iframe {
+  filter: grayscale(0) contrast(1);
+}
+
+.hours-card {
+  position: relative; 
+  z-index: 2; 
+  width: 100%; 
+  margin: 0 auto; 
+  background: #ffffff; 
+  padding: 35px; 
+  border-radius: 30px; 
+  border: 1px solid #f0f0f0; 
+  box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+}
+
+
+.hours-card h5 {
+  font-size: 1.2rem;   /* bigger */
+  font-weight: 900;
+  color: #1a1a1a;
+  margin: 0 0 12px;
+}
+
+.hours-row {
+  display: flex; 
+  justify-content: space-between; /* Fixed weird clumping from image_acc759.png */
+  align-items: center;
+  padding: 18px 0; 
+  border-bottom: 1px solid rgba(0,0,0,0.03); 
+}
+
+.hours-row:last-child { border-bottom: none; }
+
+/* Typography Polish */
+.hours-row span:first-child {
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+}
+
+.hours-row span:last-child {
+  font-weight: 800;
+  color: #1a1a1a;
+  font-size: 1rem;
+}
+
+.status-dot {
+  height: 8px; width: 8px; background: #28a745; border-radius: 50%;
+  display: inline-block; margin-right: 8px;
+  box-shadow: 0 0 8px rgba(40, 167, 69, 0.4);
+}
+
+/* Dashboard Theme Alignment */
+:host {
+  --page-bg: #edf4fb;
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-strong: rgba(255, 255, 255, 0.95);
+  --line: rgba(27, 55, 89, 0.1);
+  --text: #1b2c43;
+  --muted: #6d7f96;
+  --navy: #11233b;
+  --navy-2: #1b3657;
+  --blue: #4e8fd8;
+  --blue-strong: #2f6daf;
+  --blue-soft: #dcecff;
+  --shadow-lg: 0 20px 36px rgba(18, 34, 56, 0.1);
+  --shadow-md: 0 12px 24px rgba(18, 34, 56, 0.07);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background: #edf5fc;
+}
+
+
+.title,
+.hours-card h5 {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--navy);
+}
+
+.label,
+.title span,
+.contact-link:hover {
+  color: var(--blue-strong);
+}
+
+.details span,
+.hours-row span:first-child {
+  color: #70839a;
+}
+
+.details p,
+.contact-link,
+.hours-row span:last-child,
+.emergency-box p {
+  color: var(--text);
+}
+
+.icon-box,
+input,
+textarea,
+.hours-card,
+.emergency-box,
+.map-wrapper {
+  border: 1px solid var(--line);
+}
+
+.icon-box {
+  background: rgba(220, 236, 255, 0.72);
+  color: var(--blue-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.contact-item:hover .icon-box {
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-strong) 100%);
+  box-shadow: 0 16px 30px rgba(34, 102, 177, 0.2);
+}
+
+input,
+textarea {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(243, 249, 255, 0.92));
+  color: var(--navy);
+}
+
+input:focus,
+textarea:focus {
+  border-color: rgba(47, 109, 175, 0.28);
+  box-shadow: 0 14px 28px rgba(47, 109, 175, 0.12);
+}
+
+.send-btn {
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-strong) 100%);
+  box-shadow: 0 18px 34px rgba(34, 102, 177, 0.22);
+}
+
+.send-btn:hover {
+  background: linear-gradient(135deg, var(--navy-2) 0%, var(--navy) 100%);
+}
+
+.emergency-box,
+.hours-card {
+  background:
+    radial-gradient(circle at top right, rgba(123, 183, 247, 0.08), transparent 26%),
+    linear-gradient(180deg, var(--surface-strong), var(--surface));
+  box-shadow: var(--shadow-lg);
+}
+
+.emergency-box {
+  border-left: 4px solid var(--blue-strong);
+  border-radius: 22px;
+}
+
+.map-wrapper {
+  box-shadow: var(--shadow-lg);
+}
+
+.hours-row {
+  border-bottom: 1px solid rgba(27, 55, 89, 0.06);
+}
+
+.about-philosophy,
+.innovation-section,
+.dentist-grid,
+.contact-section {
+  background: transparent;
+}

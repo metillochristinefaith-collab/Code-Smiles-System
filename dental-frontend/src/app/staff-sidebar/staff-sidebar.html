@@ -1,0 +1,154 @@
+<!-- Mobile top bar -->
+<div class="sidebar-mobile-bar">
+  <button class="sidebar-hamburger" (click)="openSidebar()" aria-label="Open navigation">
+    <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="sidebar-mobile-brand">
+    <span>Staff Portal</span>
+  </div>
+  <div style="width:40px"></div>
+</div>
+
+<!-- Overlay backdrop -->
+<div class="sidebar-overlay" [class.overlay-visible]="sidebarOpen" (click)="closeSidebar()"></div>
+
+<aside class="staff-sidebar" [class.sidebar-open]="sidebarOpen">
+  <div class="staff-sidebar-shell">
+    <div class="staff-brand">
+      <div class="staff-brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 19c-2.2 0-3.7-1.7-4.1-4.1-.1-.7-.4-1.2-.9-1.7A4.4 4.4 0 0 1 5.5 10C5.5 6.4 8.4 3.5 12 3.5s6.5 2.9 6.5 6.5c0 1.2-.4 2.3-1.1 3.2-.5.6-.8 1.1-.9 1.8C16 17.4 14.4 19 12 19Z" />
+          <path d="M9.2 9.8c0 1.4 1.2 2.6 2.8 2.6s2.8-1.2 2.8-2.6" />
+        </svg>
+      </div>
+
+      <div class="staff-brand-copy">
+        <span class="staff-eyebrow">Code Smiles</span>
+        <h1>Staff Portal</h1>
+      </div>
+    </div>
+
+    <section class="staff-panel">
+      <span class="staff-panel-label">Navigation</span>
+
+      <nav class="staff-sidebar-nav" aria-label="Staff portal navigation">
+        <a class="staff-nav-link" routerLink="/staff-dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeSidebar()">
+          <span class="staff-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <rect x="4.5" y="4.5" width="6" height="6" rx="1.2" />
+              <rect x="13.5" y="4.5" width="6" height="6" rx="1.2" />
+              <rect x="4.5" y="13.5" width="6" height="6" rx="1.2" />
+              <rect x="13.5" y="13.5" width="6" height="6" rx="1.2" />
+            </svg>
+          </span>
+          <span class="staff-nav-label">Dashboard</span>
+        </a>
+
+        <a class="staff-nav-link" routerLink="/staff-appointments" routerLinkActive="active" (click)="closeSidebar()">
+          <span class="staff-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <rect x="4" y="5.5" width="16" height="14.5" rx="2.2" />
+              <path d="M8 3.5v4M16 3.5v4M4 9.5h16" />
+            </svg>
+          </span>
+          <span class="staff-nav-label">Appointments</span>
+        </a>
+
+        <a class="staff-nav-link" routerLink="/staff-patients" routerLinkActive="active" (click)="closeSidebar()">
+          <span class="staff-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 12a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 12 12Z" />
+              <path d="M5.5 19.5a6.8 6.8 0 0 1 13 0" />
+            </svg>
+          </span>
+          <span class="staff-nav-label">Patients</span>
+        </a>
+
+        <a class="staff-nav-link" routerLink="/staff-calendar" routerLinkActive="active" (click)="closeSidebar()">
+          <span class="staff-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <rect x="4" y="5.5" width="16" height="14.5" rx="2.2" />
+              <path d="M8 3.5v4M16 3.5v4M4 9.5h16" />
+            </svg>
+          </span>
+          <span class="staff-nav-label">Calendar</span>
+        </a>
+
+        <a class="staff-nav-link" routerLink="/staff-requests" routerLinkActive="active" (click)="closeSidebar()">
+          <span class="staff-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3.5 5.5 7v5c0 4.2 2.7 7.5 6.5 8.5 3.8-1 6.5-4.3 6.5-8.5V7L12 3.5Z" />
+              <path d="M9.5 11.5h5" />
+            </svg>
+          </span>
+          <span class="staff-nav-label">Requests</span>
+          <span class="staff-nav-badge" *ngIf="pendingCount > 0">{{ pendingCount > 99 ? '99+' : pendingCount }}</span>
+        </a>
+
+        <a class="staff-nav-link" routerLink="/staff-notifications" routerLinkActive="active" (click)="closeSidebar()">
+          <span class="staff-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6.5 16.5h11l-1.5-2.2V10a4 4 0 1 0-8 0v4.3Z" />
+              <path d="M10 18.5a2 2 0 0 0 4 0" />
+            </svg>
+          </span>
+          <span class="staff-nav-label">Notifications</span>
+        </a>
+
+        <a class="staff-nav-link" routerLink="/staff-profile" routerLinkActive="active" (click)="closeSidebar()">
+          <span class="staff-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 12a3.5 3.5 0 1 0-3.5-3.5A3.5 3.5 0 0 0 12 12Z" />
+              <path d="M5.5 19.5a6.8 6.8 0 0 1 13 0" />
+            </svg>
+          </span>
+          <span class="staff-nav-label">Profile</span>
+        </a>
+      </nav>
+    </section>
+
+    <div class="staff-cta-wrap">
+      <a class="staff-cta-btn" routerLink="/staff-booking" (click)="closeSidebar()">
+        <span class="staff-nav-icon staff-cta-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M11 5h2v14h-2z" />
+            <path d="M5 11h14v2H5z" />
+          </svg>
+        </span>
+        <span>New Appointment</span>
+      </a>
+    </div>
+
+    <section class="staff-panel staff-support-panel">
+      <span class="staff-panel-label">Support</span>
+
+      <nav class="staff-sidebar-nav" aria-label="Staff support navigation">
+        <a class="staff-nav-link" routerLink="/staff-help-center" routerLinkActive="active" (click)="closeSidebar()">
+          <span class="staff-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="7.5" />
+              <path d="M9.7 9.6a2.5 2.5 0 1 1 4.2 1.8c-.8.7-1.4 1.2-1.4 2.3M12 16.9h.01" />
+            </svg>
+          </span>
+          <span class="staff-nav-label">Help Center</span>
+        </a>
+
+        <button class="staff-nav-link staff-logout-link" type="button" (click)="logout()">
+          <span class="staff-nav-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M10 6H6.5A1.5 1.5 0 0 0 5 7.5v9A1.5 1.5 0 0 0 6.5 18H10" />
+              <path d="M13 8.5 17 12l-4 3.5M9 12h8" />
+            </svg>
+          </span>
+          <span class="staff-nav-label">Log Out</span>
+        </button>
+      </nav>
+    </section>
+
+    <footer class="staff-footer">
+      <a routerLink="/staff-help-center" fragment="privacy-policy">Privacy Policy</a>
+      <span>&middot;</span>
+      <a routerLink="/staff-help-center" fragment="terms-of-use">Terms</a>
+    </footer>
+  </div>
+</aside>

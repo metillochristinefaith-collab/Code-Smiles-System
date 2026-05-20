@@ -1,0 +1,333 @@
+<div class="patient-appointments-page">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="appointments-main">
+    <section class="appointments-shell">
+      <!-- Header:
+           Rebuilt to mirror the dashboard-style header from the reference with a calm title block and compact profile cluster. -->
+      <header class="appointments-header">
+        <div class="page-copy">
+          <h1>My Appointments</h1>
+          <p>View your visits, track their status, and stay prepared.</p>
+        </div>
+
+        <div class="header-profile">
+          <button
+            type="button"
+            class="header-icon-btn"
+            aria-label="Notifications"
+            routerLink="/patient-notifications">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3a5 5 0 0 0-5 5v2.4c0 .7-.2 1.4-.6 2L5 15h14l-1.4-2.6c-.4-.6-.6-1.3-.6-2V8a5 5 0 0 0-5-5" />
+              <path d="M10 18a2 2 0 0 0 4 0" />
+            </svg>
+            <span class="header-icon-dot"></span>
+          </button>
+
+          <a class="header-user" routerLink="/patient-profile">
+            <div class="header-avatar" aria-hidden="true">
+              <img *ngIf="avatarUrl" [src]="avatarUrl" alt="Profile photo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />
+              <span *ngIf="!avatarUrl">{{ initial }}</span>
+            </div>
+            <div class="header-user-copy">
+              <strong>{{ patientProfile.name }}</strong>
+              <span>Patient ID: {{ patientProfile.id }}</span>
+            </div>
+          </a>
+        </div>
+      </header>
+
+      <!-- Controls:
+           Tabs and the booking action are placed on one row to match the sample composition. -->
+      <section class="appointments-controls">
+        <div class="appointment-tabs" role="tablist" aria-label="Appointment sections">
+          <button
+            *ngFor="let tab of appointmentTabs"
+            type="button"
+            class="tab-btn"
+            [class.active]="selectedTab === tab.key"
+            (click)="setTab(tab.key)">
+            <span class="tab-icon" aria-hidden="true">
+              <svg [attr.viewBox]="tab.iconViewBox">
+                <path *ngFor="let path of tab.iconPaths" [attr.d]="path"></path>
+              </svg>
+            </span>
+            <span>{{ tab.label }}</span>
+          </button>
+        </div>
+
+        <a routerLink="/patient-booking" class="book-appointment-btn">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M7 3v3M17 3v3M4 8h16" />
+              <rect x="4" y="5" width="16" height="15" rx="3" ry="3" />
+              <path d="M12 11v6M9 14h6" />
+            </svg>
+          </span>
+          <span>Book Appointment</span>
+        </a>
+      </section>
+
+      <section class="info-strip">
+        <span class="info-strip-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="8.5" />
+            <path d="M12 10.2v5.1M12 7.6h.01" />
+          </svg>
+        </span>
+        <p>Appointments are reviewed and confirmed by the clinic. You&rsquo;ll get a notification once there&rsquo;s an update.</p>
+      </section>
+
+      <section class="appointments-content">
+        <!-- Main appointments panel:
+             Matches the sample's soft bordered list with compact status pills and stacked action buttons. -->
+        <section class="appointments-card" [class.appointments-card-scrollable]="shouldConstrainAppointmentsList">
+          <div class="section-head">
+            <div>
+              <h2>{{ panelTitle }}</h2>
+              <p>{{ panelSubtitle }}</p>
+            </div>
+
+            <a routerLink="/my-appointments" class="section-link">View All Appointments</a>
+          </div>
+
+          <div
+            class="appointments-list"
+            [class.appointments-list-scrollable]="shouldConstrainAppointmentsList"
+            *ngIf="filteredAppointments.length > 0; else emptyState">
+            <article class="appointment-item" *ngFor="let appointment of filteredAppointments">
+              <div class="appointment-date-card" [ngClass]="'accent-' + (appointment.accent || 'blue')">
+                <span class="date-month">{{ appointment.dateMonth }}</span>
+                <strong class="date-day">{{ appointment.dateDay }}</strong>
+                <span class="date-weekday">{{ appointment.weekday }}</span>
+              </div>
+
+              <div class="appointment-main">
+                <div class="appointment-copy">
+                  <div class="appointment-title-row">
+                    <h3>{{ appointment.service }}</h3>
+                    <span class="status-chip" [ngClass]="getStatusClass(appointment.status)">
+                      {{ appointment.status }}
+                    </span>
+                    <span *ngIf="appointment.rescheduledBy === 'Staff'" class="reschedule-chip">
+                      <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                      </svg>
+                      Rescheduled by Clinic
+                    </span>
+                  </div>
+
+                  <div class="appointment-meta">
+                    <p class="meta-line">
+                      <span class="meta-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="8" />
+                          <path d="M12 8v5l3 2" />
+                        </svg>
+                      </span>
+                      <span>{{ appointment.time }}</span>
+                    </p>
+
+                    <p class="meta-line">
+                      <span class="meta-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <circle cx="12" cy="8" r="3" />
+                          <path d="M6 19c1.5-3 4-4.5 6-4.5S16.5 16 18 19" />
+                        </svg>
+                      </span>
+                      <span>{{ appointment.dentist }}</span>
+                    </p>
+
+                    <p class="meta-line">
+                      <span class="meta-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M12 3c-2.7 0-4.9 1.8-5.5 4.2-.4 1.6-.1 3.2.8 4.5l4 6.3a.8.8 0 0 0 1.4 0l4-6.3c.9-1.3 1.2-2.9.8-4.5C16.9 4.8 14.7 3 12 3Z" />
+                          <path d="M10 8.8c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2Z" />
+                        </svg>
+                      </span>
+                      <span>{{ appointment.description }}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div class="appointment-actions">
+                  <button
+                    type="button"
+                    class="primary-action-btn"
+                    (click)="viewDetails(appointment.id)">
+                    View Details
+                  </button>
+
+                  <!-- Confirm Attendance — shown for Approved upcoming appointments not yet confirmed -->
+                  <button
+                    *ngIf="appointment.status === 'Approved' && appointment.tab === 'upcoming' && appointment.confirmationStatus !== 'Confirmed'"
+                    type="button"
+                    class="confirm-action-btn"
+                    (click)="confirmAttendance(appointment.id)">
+                    <span class="action-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    </span>
+                    Confirm Attendance
+                  </button>
+
+                  <!-- Confirmed badge — shown once patient confirmed -->
+                  <span
+                    *ngIf="appointment.status === 'Approved' && appointment.tab === 'upcoming' && appointment.confirmationStatus === 'Confirmed'"
+                    class="confirmed-badge">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    Attendance Confirmed
+                  </span>
+
+                  <button
+                    *ngIf="appointment.status !== 'Completed' && appointment.status !== 'Cancelled by You' && appointment.status !== 'Cancelled by Clinic' && appointment.status !== 'Cancelled by Dentist' && appointment.status !== 'No-show'"
+                    type="button"
+                    class="ghost-action-btn"
+                    (click)="requestReschedule(appointment.id)">
+                    <span class="action-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M7 3v3M17 3v3M4 8h16" />
+                        <rect x="4" y="5" width="16" height="15" rx="3" ry="3" />
+                        <path d="M12 11v6M9 14h6" />
+                      </svg>
+                    </span>
+                    Request Reschedule
+                  </button>
+
+                  <button
+                    *ngIf="appointment.status !== 'Completed' && appointment.status !== 'Cancelled by You' && appointment.status !== 'Cancelled by Clinic' && appointment.status !== 'Cancelled by Dentist' && appointment.status !== 'No-show'"
+                    type="button"
+                    class="ghost-action-btn"
+                    (click)="cancelAppointment(appointment.id)">
+                    <span class="action-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="8" />
+                        <path d="M9.5 9.5 14.5 14.5M14.5 9.5l-5 5" />
+                      </svg>
+                    </span>
+                    Cancel Appointment
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <ng-template #emptyState>
+            <div class="empty-state">
+              <div class="empty-icon-wrap" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="4" y="5.5" width="16" height="14.5" rx="2.2" />
+                  <path d="M8 3.5v4M16 3.5v4M4 9.5h16" />
+                </svg>
+              </div>
+              <h3>No appointments here yet</h3>
+              <p>Once you have records in this section, they will appear here.</p>
+            </div>
+          </ng-template>
+
+          <a routerLink="/my-appointments" class="panel-footer-link">View All Appointments</a>
+        </section>
+
+        <!-- Right reminders panel:
+             Matches the screenshot's simpler reminders card and contact callout. -->
+        <aside class="reminders-card">
+          <div class="section-head section-head-compact">
+            <div>
+              <h2>Visit Reminders</h2>
+              <p>A few things to keep in mind:</p>
+            </div>
+          </div>
+
+          <div class="reminders-list">
+            <article class="reminder-item" *ngFor="let tip of appointmentTips">
+              <div class="reminder-icon" aria-hidden="true">
+                <svg [attr.viewBox]="tip.iconViewBox">
+                  <path *ngFor="let path of tip.iconPaths" [attr.d]="path"></path>
+                </svg>
+              </div>
+
+              <div class="reminder-copy">
+                <h3>{{ tip.title }}</h3>
+                <p>{{ tip.description }}</p>
+              </div>
+            </article>
+          </div>
+
+          <section class="reminder-callout">
+            <div class="callout-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M10 18a8 8 0 1 1 5.3-14" />
+                <path d="M20 5v6h-6" />
+                <path d="M18.5 19.5a2 2 0 0 1-2-2V16a2 2 0 0 0-2-2h-5a2 2 0 0 0-2 2v1.5a2 2 0 0 1-2 2" />
+              </svg>
+            </div>
+
+            <div class="callout-copy">
+              <strong>Need Help?</strong>
+              <p>Contact our clinic and we&rsquo;ll be happy to assist you.</p>
+              <a routerLink="/patient-contact">{{ clinicPhone }}</a>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+    </section>
+  </main>
+</div>
+
+<!-- ══ CANCEL APPOINTMENT MODAL ══════════════════════════════════ -->
+<div class="cancel-modal-overlay" *ngIf="showCancelModal" (click)="dismissCancel()">
+  <div class="cancel-modal" (click)="$event.stopPropagation()">
+
+    <div class="cancel-modal-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="15" y1="9" x2="9" y2="15"/>
+        <line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+    </div>
+
+    <h2>Cancel Appointment</h2>
+    <p class="cancel-modal-subtitle">Are you sure you want to cancel this appointment?</p>
+
+    <div class="cancel-appt-summary" *ngIf="cancelTarget">
+      <div class="cancel-appt-row">
+        <span>Service</span>
+        <strong>{{ cancelTarget.service }}</strong>
+      </div>
+      <div class="cancel-appt-row">
+        <span>Date & Time</span>
+        <strong>{{ cancelTarget.dateMonth }} {{ cancelTarget.dateDay }} · {{ cancelTarget.time }}</strong>
+      </div>
+      <div class="cancel-appt-row">
+        <span>Dentist</span>
+        <strong>{{ cancelTarget.dentist }}</strong>
+      </div>
+    </div>
+
+    <div class="cancel-reason-field">
+      <label>Reason for Cancellation <span class="req">*</span></label>
+      <textarea
+        [(ngModel)]="cancelReason"
+        rows="3"
+        placeholder="Please tell us why you're cancelling (e.g. schedule conflict, feeling better, etc.)"
+      ></textarea>
+      <p class="cancel-hint">This helps the clinic manage their schedule and improve service.</p>
+    </div>
+
+    <div class="cancel-modal-actions">
+      <button class="cancel-modal-keep" (click)="dismissCancel()">Keep Appointment</button>
+      <button
+        class="cancel-modal-confirm"
+        (click)="confirmCancel()"
+        [disabled]="!cancelReason.trim()">
+        Confirm Cancellation
+      </button>
+    </div>
+
+  </div>
+</div>

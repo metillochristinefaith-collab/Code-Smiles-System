@@ -1,0 +1,64 @@
+<h1>🦷 Dental Clinic Admin</h1>
+
+<h3>Patient Management</h3>
+<table border="1" style="width: 100%; border-collapse: collapse;">
+  <tr style="background-color: #3498db; color: white;">
+    <th>ID</th><th>First Name</th><th>Last Name</th><th>Phone</th><th>Action</th>
+  </tr>
+  <tr *ngFor="let p of patients">
+    <td>{{ p.patient_id }}</td>
+    <td>{{ p.first_name }}</td>
+    <td>{{ p.last_name }}</td>
+    <td>{{ p.phone }}</td>
+    <td><button class="btn-delete" (click)="deletePatient(p.patient_id)">Delete</button></td>
+  </tr>
+</table>
+
+<div style="margin: 20px 0;">
+  <input [(ngModel)]="newPatient.first_name" placeholder="First Name">
+  <input [(ngModel)]="newPatient.last_name" placeholder="Last Name">
+  <input [(ngModel)]="newPatient.phone" placeholder="Phone">
+  <button (click)="savePatient()">Add Patient</button>
+</div>
+
+<hr>
+
+<h3>{{ editingAppointmentId ? '✏️ Edit Appointment' : '📅 Book Appointment' }}</h3>
+<div class="booking-form">
+  <select [(ngModel)]="newAppointment.patient_id">
+    <option value="" disabled>-- Select Patient --</option>
+    <option *ngFor="let p of patients" [value]="p.patient_id">{{ p.first_name }} {{ p.last_name }}</option>
+  </select>
+  <input type="date" [(ngModel)]="newAppointment.appointment_date">
+  <input [(ngModel)]="newAppointment.treatment" list="treatments" placeholder="Treatment">
+  
+  <button (click)="saveAppointment()" [style.background-color]="editingAppointmentId ? '#f39c12' : '#2ecc71'" style="color: white; padding: 10px;">
+    {{ editingAppointmentId ? 'Save Changes' : 'Confirm Booking' }}
+  </button>
+  
+  <button *ngIf="editingAppointmentId" (click)="resetAppointmentForm()" style="margin-left: 10px;">Cancel Edit</button>
+</div>
+
+<datalist id="treatments">
+  <option value="Cleaning"><option value="Extraction"><option value="Root Canal"><option value="Braces">
+</datalist>
+
+<hr>
+
+<h3>📅 Upcoming Schedule</h3>
+<table border="1" style="width: 100%; border-collapse: collapse;">
+  <tr style="background-color: #2c3e50; color: white;">
+    <th>Date</th><th>Time</th><th>Patient</th><th>Treatment</th><th>Action</th>
+  </tr>
+  <tr *ngFor="let appt of appointments">
+    <td>{{ appt.appointment_date }}</td> <td>{{ appt.appointment_time }}</td>
+    <td>{{ appt.first_name }} {{ appt.last_name }}</td>
+    <td>{{ appt.treatment }}</td>
+    <td>
+      <button (click)="editAppointment(appt)" style="background-color: #f39c12; color: white; cursor: pointer;">Edit</button>
+      <button (click)="deleteAppointment(appt.appointment_id)" style="background-color: #e74c3c; color: white; cursor: pointer;">Cancel</button>
+    </td>
+  </tr>
+</table>
+
+<p *ngIf="appointments.length === 0" style="color: gray; font-style: italic;">No appointments found.</p>

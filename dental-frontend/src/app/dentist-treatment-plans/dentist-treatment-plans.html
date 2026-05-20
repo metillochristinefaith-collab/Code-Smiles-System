@@ -1,0 +1,192 @@
+<div class="dentist-shell tp-shell">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="tp-main">
+    <header class="tp-header">
+      <div>
+        <h1 class="tp-title">Treatment Plans</h1>
+        <p class="tp-subtitle">Review active treatment plans, track procedure progress, and manage sessions.</p>
+      </div>
+      <a class="tp-back-btn" routerLink="/dentist-dashboard">← Dashboard</a>
+    </header>
+
+    <section class="tp-card">
+      <div class="tp-toolbar">
+        <div class="tp-search-wrap">
+          <span>🔍</span>
+          <input class="tp-search" type="text" placeholder="Search by patient name or plan ID..." [(ngModel)]="searchQuery" />
+        </div>
+        <select class="tp-select" [(ngModel)]="filterStatus">
+          <option *ngFor="let s of statusOptions" [value]="s">{{ s === 'All' ? 'All Status' : s }}</option>
+        </select>
+      </div>
+
+      <div class="tp-card-head">
+        <div>
+          <p class="tp-kicker">TREATMENT PROGRESS</p>
+          <h2>{{ filtered.length }} Active Plans</h2>
+        </div>
+        <span class="tp-count-chip">{{ filterStatus }}</span>
+      </div>
+
+      <div class="tp-list-empty" *ngIf="!isLoading && filtered.length === 0">
+        No treatment plans found.
+      </div>
+
+      <div class="tp-patient-grid" *ngIf="filtered.length > 0">
+        <button class="tp-patient-card"
+                type="button"
+                *ngFor="let p of filtered"
+                [class.active]="selectedPlan?.id === p.id"
+                (click)="selectPlan(p)">
+          <div class="tp-avatar">{{ p.initials }}</div>
+          <div class="tp-item-info">
+            <strong>{{ p.patient }}</strong>
+            <span>{{ p.id }} · {{ p.treatmentType }}</span>
+            <div class="tp-progress-bar-wrap">
+              <div class="tp-progress-bar" [style.width]="progressWidth(p.progress)"></div>
+            </div>
+          </div>
+          <span class="tp-status-pill" [attr.data-status]="statusTone(p.status)">{{ p.status }}</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="tp-card tp-detail-card" *ngIf="selectedPlan; else selectPlanState">
+      <div class="tp-detail-head">
+        <div class="tp-banner-left">
+          <div class="tp-avatar tp-avatar-lg">{{ selectedPlan.initials }}</div>
+          <div class="tp-banner-info">
+            <h2>{{ selectedPlan.patient }}</h2>
+            <span>{{ selectedPlan.id }} · {{ selectedPlan.treatmentType }}</span>
+            <div class="tp-banner-tags">
+              <span class="tp-tag">Progress: {{ selectedPlan.progress }}%</span>
+              <span class="tp-tag">Sessions: {{ selectedPlan.completedSessions }}/{{ selectedPlan.estimatedSessions }}</span>
+            </div>
+          </div>
+        </div>
+        <span class="tp-status-pill" [attr.data-status]="statusTone(selectedPlan.status)">{{ selectedPlan.status }}</span>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tp-tabs">
+        <button *ngFor="let tab of tabs" type="button"
+                [class.active]="activeTab === tab.key"
+                (click)="setTab(tab.key)">{{ tab.label }}</button>
+      </div>
+
+      <div class="tp-tab-content">
+        <!-- DIAGNOSIS -->
+        <div *ngIf="activeTab === 'diagnosis'" class="tp-pane">
+          <div class="tp-section-title">Treatment Overview</div>
+          <div class="tp-info-grid">
+            <div class="tp-info-card wide">
+              <span>Treatment / Diagnosis</span>
+              <strong>{{ selectedPlan.diagnosis }}</strong>
+            </div>
+            <div class="tp-info-card wide">
+              <span>Services</span>
+              <strong>{{ selectedPlan.procedures[0]?.name || '—' }}</strong>
+            </div>
+            <div class="tp-info-card">
+              <span>Appointment Date</span>
+              <strong>{{ selectedPlan.startDate }}</strong>
+            </div>
+            <div class="tp-info-card">
+              <span>Assigned Dentist</span>
+              <strong>{{ selectedPlan.assignedDentist }}</strong>
+            </div>
+            <div class="tp-info-card">
+              <span>Progress</span>
+              <strong>{{ selectedPlan.progress }}%</strong>
+            </div>
+            <div class="tp-info-card">
+              <span>Status</span>
+              <strong>{{ selectedPlan.status }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROCEDURES -->
+        <div *ngIf="activeTab === 'procedures'" class="tp-pane">
+          <div class="tp-section-title">Planned Procedures</div>
+          <div class="tp-list-empty" *ngIf="selectedPlan.procedures.length === 0">No procedures.</div>
+          <div class="tp-history-list">
+            <div class="tp-history-card" *ngFor="let proc of selectedPlan.procedures">
+              <div class="tp-history-head">
+                <div>
+                  <strong>{{ proc.name }}</strong>
+                  <span class="tp-history-tooth">Priority: {{ proc.priority }}</span>
+                </div>
+                <span class="tp-status-pill" [attr.data-status]="proc.status === 'done' ? 'completed' : 'pending'">{{ proc.status }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROGRESS -->
+        <div *ngIf="activeTab === 'progress'" class="tp-pane">
+          <div class="tp-section-title">Treatment Sessions</div>
+          <div class="tp-progress-summary">
+            <div class="tp-progress-bar-wrap tp-progress-bar-lg">
+              <div class="tp-progress-bar" [style.width]="progressWidth(selectedPlan.progress)"></div>
+            </div>
+            <span class="tp-progress-label">{{ selectedPlan.progress }}% complete · {{ selectedPlan.completedSessions }}/{{ selectedPlan.estimatedSessions }} session(s)</span>
+          </div>
+          <div class="tp-history-list">
+            <ng-container *ngFor="let proc of selectedPlan.procedures">
+              <div class="tp-history-card" *ngFor="let step of proc.steps">
+                <div class="tp-history-head">
+                  <div>
+                    <strong>Session {{ step.session }}: {{ step.title }}</strong>
+                    <span class="tp-history-date">{{ step.date }}</span>
+                  </div>
+                  <span class="tp-status-pill"
+                    [attr.data-status]="step.status === 'done' ? 'completed' : step.status === 'ongoing' ? 'active' : 'pending'">
+                    {{ step.status === 'done' ? 'Completed' : step.status === 'ongoing' ? 'In Progress' : 'Pending' }}
+                  </span>
+                </div>
+                <p *ngIf="step.notes">{{ step.notes }}</p>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- CLINICAL NOTES -->
+        <div *ngIf="activeTab === 'notes'" class="tp-pane">
+          <div class="tp-section-title">Clinical Notes</div>
+          <div class="tp-list-empty" *ngIf="selectedPlan.clinicalNotes.length === 0">No clinical notes.</div>
+          <div class="tp-history-list">
+             <div class="tp-history-card" *ngFor="let n of selectedPlan.clinicalNotes">
+               <div class="tp-history-head">
+                 <strong>{{ n.type }}</strong>
+                 <span class="tp-history-date">{{ n.date }}</span>
+               </div>
+               <p>{{ n.note }}</p>
+             </div>
+          </div>
+        </div>
+
+        <!-- PRESCRIPTIONS -->
+        <div *ngIf="activeTab === 'prescriptions'" class="tp-pane">
+          <div class="tp-section-title">Prescriptions</div>
+          <div class="tp-list-empty" *ngIf="selectedPlan.prescriptions.length === 0">No prescriptions.</div>
+        </div>
+
+        <!-- ATTACHMENTS -->
+        <div *ngIf="activeTab === 'attachments'" class="tp-pane">
+          <div class="tp-section-title">Attachments</div>
+          <div class="tp-list-empty" *ngIf="selectedPlan.attachments.length === 0">No attachments.</div>
+        </div>
+      </div>
+    </section>
+
+    <ng-template #selectPlanState>
+      <section class="tp-card tp-simple-empty">
+        <div class="tp-empty-icon">📈</div>
+        <strong>Select a treatment plan</strong>
+        <p>Choose a plan card above to view procedures, sessions, and progress.</p>
+      </section>
+    </ng-template>
+  </main>
+</div>

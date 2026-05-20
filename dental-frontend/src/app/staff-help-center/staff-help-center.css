@@ -1,0 +1,183 @@
+/* ── SHELL ───────────────────────────────────────────────────────── */
+:host { display: block; min-height: 100dvh; font-family: "Segoe UI","Helvetica Neue",Arial,sans-serif; color: #1e3a5f; background: #f4f7fb; }
+*, *::before, *::after { box-sizing: border-box; }
+
+.help-page { --sidebar-w: 270px; min-height: 100dvh; margin-left: var(--sidebar-w); }
+.help-main  { padding: 36px 48px 64px; display: flex; flex-direction: column; gap: 0; width: 100%; }
+
+/* ── HEADER ──────────────────────────────────────────────────────── */
+.help-header { padding-bottom: 24px; }
+.help-header-copy h1 { margin: 0; font-size: clamp(1.7rem, 2.2vw, 2.2rem); font-weight: 900; color: #1e3a5f; }
+.help-header-copy p  { margin: 8px 0 0; font-size: 0.95rem; color: #6b7c93; line-height: 1.5; }
+
+/* ── TABS ────────────────────────────────────────────────────────── */
+.help-tabs { display: flex; gap: 4px; border-bottom: 2px solid #dde6f4; margin-bottom: 32px; }
+
+.help-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 20px; border: none; background: none;
+  font: inherit; font-size: 0.9rem; font-weight: 700;
+  color: #6b7c93; cursor: pointer; border-bottom: 2.5px solid transparent;
+  margin-bottom: -2px; transition: all 0.18s; border-radius: 8px 8px 0 0;
+}
+.help-tab svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.help-tab:hover  { color: #1a56db; background: #f0f6ff; }
+.help-tab.active { color: #1a56db; border-bottom-color: #1a56db; background: #f0f6ff; }
+
+/* ── TAB PANEL ───────────────────────────────────────────────────── */
+.tab-panel { animation: fadeIn 0.2s ease; width: 100%; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── FAQ LAYOUT — two columns ────────────────────────────────────── */
+.faq-layout { display: grid; grid-template-columns: 1fr 320px; gap: 28px; align-items: start; }
+.faq-main   { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.faq-aside  { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 24px; }
+
+/* ── FAQ SEARCH ──────────────────────────────────────────────────── */
+.faq-search-wrap {
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border: 1.5px solid #dde6f4; border-radius: 14px;
+  padding: 0 18px; height: 52px; margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(26,86,219,0.06);
+}
+.faq-search-wrap svg { width: 18px; height: 18px; stroke: #94a3b8; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.faq-search-wrap input { flex: 1; border: none; outline: none; font: inherit; font-size: 0.95rem; color: #1e3a5f; background: none; }
+.faq-search-wrap input::placeholder { color: #b0bec5; }
+.search-clear { background: none; border: none; color: #94a3b8; font-size: 1rem; cursor: pointer; padding: 0 4px; }
+.search-clear:hover { color: #1e3a5f; }
+
+/* ── CATEGORY PILLS ──────────────────────────────────────────────── */
+.category-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.pill { height: 34px; padding: 0 16px; border-radius: 999px; border: 1.5px solid #dde6f4; background: #fff; color: #4f6787; font: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.18s; }
+.pill:hover  { border-color: #1a56db; color: #1a56db; }
+.pill.active { background: #1a56db; border-color: #1a56db; color: #fff; }
+
+/* ── STATE BOXES ─────────────────────────────────────────────────── */
+.state-box { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 20px; border: 1.5px dashed #dde6f4; border-radius: 16px; text-align: center; color: #6b7c93; background: #fff; }
+.state-box svg { width: 36px; height: 36px; stroke: #94a3b8; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.state-box p { margin: 0; font-size: 0.9rem; }
+.state-error { border-color: #fecaca; background: #fff5f5; color: #e53e3e; }
+.state-error svg { stroke: #e53e3e; }
+.btn-retry { display: inline-flex; align-items: center; gap: 7px; padding: 8px 18px; border-radius: 10px; border: 1.5px solid currentColor; background: none; font: inherit; font-size: 0.84rem; font-weight: 700; cursor: pointer; color: inherit; transition: all 0.18s; }
+.btn-retry svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.btn-retry:hover { background: rgba(0,0,0,0.05); }
+.spinner { width: 24px; height: 24px; border: 2.5px solid #dde6f4; border-top-color: #1a56db; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── FAQ ACCORDION ───────────────────────────────────────────────── */
+.faq-list { display: flex; flex-direction: column; gap: 10px; }
+
+.faq-item { border: 1.5px solid #dde6f4; border-radius: 14px; background: #fff; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
+.faq-item.open { border-color: #1a56db; box-shadow: 0 4px 16px rgba(26,86,219,0.1); }
+
+.faq-question { width: 100%; display: flex; align-items: center; gap: 14px; padding: 18px 20px; background: none; border: none; cursor: pointer; font: inherit; text-align: left; }
+.faq-q-text   { flex: 1; font-size: 0.94rem; font-weight: 700; color: #1e3a5f; line-height: 1.45; }
+.faq-cat-tag  { padding: 4px 12px; border-radius: 999px; background: #eff6ff; color: #1a56db; font-size: 0.72rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
+.faq-chevron  { width: 18px; height: 18px; stroke: #94a3b8; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; transition: transform 0.25s; }
+.faq-item.open .faq-chevron { transform: rotate(180deg); stroke: #1a56db; }
+
+.faq-answer { padding: 0 20px 18px; border-top: 1px solid #eef2f8; }
+.faq-answer p { margin: 14px 0 0; font-size: 0.92rem; color: #4f6787; line-height: 1.7; }
+
+.faq-footer-cta { display: flex; align-items: center; gap: 16px; margin-top: 28px; padding: 22px 26px; background: #f0f6ff; border: 1.5px solid #c3d9f7; border-radius: 14px; }
+.faq-footer-cta p { margin: 0; flex: 1; font-size: 0.92rem; color: #4f6787; }
+
+/* ── CONTACT LAYOUT ──────────────────────────────────────────────── */
+.contact-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+
+.contact-form-card { background: #fff; border: 1.5px solid #dde6f4; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+.contact-form-card h2 { margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e3a5f; }
+.contact-desc { margin: 0; font-size: 0.88rem; color: #6b7c93; line-height: 1.5; }
+
+.form-field { display: flex; flex-direction: column; gap: 6px; }
+.form-field label { font-size: 0.74rem; font-weight: 700; color: #4f6787; text-transform: uppercase; letter-spacing: 0.4px; }
+.req { color: #e53e3e; margin-left: 2px; }
+.form-field input, .form-field textarea { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1.5px solid #dde6f4; background: #f8fafc; font: inherit; font-size: 0.9rem; color: #1e3a5f; outline: none; transition: border-color 0.2s; resize: none; }
+.form-field input:focus, .form-field textarea:focus { border-color: #1a56db; background: #fff; box-shadow: 0 0 0 3px rgba(26,86,219,0.08); }
+.char-count { font-size: 0.72rem; color: #94a3b8; text-align: right; }
+
+.form-error { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; background: #fff5f5; border: 1px solid #fecaca; color: #e53e3e; font-size: 0.84rem; font-weight: 600; }
+.form-error svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+.btn-submit-full { width: 100%; }
+
+.contact-info-card { background: #fff; border: 1.5px solid #dde6f4; border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.contact-info-card h3 { margin: 0; font-size: 1rem; font-weight: 800; color: #1e3a5f; }
+
+.contact-channel { display: flex; align-items: flex-start; gap: 12px; }
+.channel-icon { width: 38px; height: 38px; border-radius: 10px; background: #eff6ff; display: grid; place-items: center; flex-shrink: 0; }
+.channel-icon svg { width: 18px; height: 18px; stroke: #1a56db; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.contact-channel strong { display: block; font-size: 0.88rem; color: #1e3a5f; }
+.contact-channel span   { display: block; font-size: 0.76rem; color: #6b7c93; margin-top: 2px; }
+
+.contact-hours { border-top: 1px solid #eef2f8; padding-top: 14px; }
+.contact-hours h4 { margin: 0 0 10px; font-size: 0.78rem; font-weight: 800; color: #4f6787; text-transform: uppercase; letter-spacing: 0.4px; }
+.hours-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 4px 0; border-bottom: 1px solid #f0f4f8; }
+.hours-row:last-child { border-bottom: none; }
+.hours-row span  { color: #6b7c93; }
+.hours-row strong { color: #1e3a5f; }
+
+/* Contact success */
+.contact-success { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 60px 20px; text-align: center; background: #fff; border: 1.5px solid #dde6f4; border-radius: 18px; }
+.success-icon { width: 68px; height: 68px; border-radius: 50%; background: #ecfdf5; display: grid; place-items: center; color: #16a34a; }
+.success-icon svg { width: 34px; height: 34px; stroke: currentColor; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.contact-success h2 { margin: 0; font-size: 1.4rem; font-weight: 800; color: #1e3a5f; }
+.contact-success p  { margin: 0; font-size: 0.9rem; color: #6b7c93; max-width: 36ch; line-height: 1.5; }
+
+/* ── LEGAL PANEL ─────────────────────────────────────────────────── */
+.legal-panel { background: #fff; border: 1.5px solid #dde6f4; border-radius: 18px; padding: 32px 36px; }
+
+.legal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #eef2f8; }
+.legal-icon { width: 52px; height: 52px; border-radius: 14px; background: #eff6ff; display: grid; place-items: center; flex-shrink: 0; }
+.legal-icon svg { width: 26px; height: 26px; stroke: #1a56db; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.legal-icon-amber { background: #fff7ed; }
+.legal-icon-amber svg { stroke: #d97706; }
+.legal-header h2 { margin: 0; font-size: 1.3rem; font-weight: 900; color: #1e3a5f; }
+.legal-header p  { margin: 4px 0 0; font-size: 0.8rem; color: #94a3b8; }
+
+.legal-body { display: flex; flex-direction: column; gap: 24px; }
+
+.legal-section h3 { margin: 0 0 10px; font-size: 0.96rem; font-weight: 800; color: #1e3a5f; }
+.legal-section p  { margin: 0 0 8px; font-size: 0.9rem; color: #4f6787; line-height: 1.7; }
+.legal-section p:last-child { margin-bottom: 0; }
+.legal-section ul { margin: 8px 0 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+.legal-section li { font-size: 0.88rem; color: #4f6787; line-height: 1.6; }
+
+.legal-footer { display: flex; gap: 12px; margin-top: 28px; padding-top: 20px; border-top: 1px solid #eef2f8; }
+
+/* ── BUTTONS ─────────────────────────────────────────────────────── */
+.btn-primary, .btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 42px; padding: 0 22px; border-radius: 10px;
+  font: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer; transition: all 0.18s;
+}
+.btn-primary  { border: none; background: #1a56db; color: #fff; box-shadow: 0 4px 12px rgba(26,86,219,0.22); }
+.btn-primary:hover:not(:disabled)  { background: #1e40af; transform: translateY(-1px); }
+.btn-primary:disabled { background: #dde6f4; color: #94a3b8; cursor: not-allowed; box-shadow: none; }
+.btn-secondary { border: 1.5px solid #dde6f4; background: #fff; color: #4f6787; }
+.btn-secondary:hover { background: #f4f7fb; border-color: #1a56db; color: #1a56db; }
+.btn-primary svg, .btn-secondary svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.spin-icon { animation: spin 0.8s linear infinite; }
+
+/* ── FAQ ASIDE CARD ──────────────────────────────────────────────── */
+.aside-card { background: #fff; border: 1.5px solid #dde6f4; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.aside-card h3 { margin: 0; font-size: 0.92rem; font-weight: 800; color: #1e3a5f; }
+.aside-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #eef2f8; background: #f8fafc; text-decoration: none; color: #1e3a5f; font-size: 0.84rem; font-weight: 600; transition: all 0.18s; cursor: pointer; }
+.aside-link:hover { border-color: #1a56db; background: #eff6ff; color: #1a56db; }
+.aside-link svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.aside-link span { flex: 1; }
+.aside-contact { background: linear-gradient(135deg, #1a56db, #1e3a5f); border-radius: 16px; padding: 22px; color: #fff; display: flex; flex-direction: column; gap: 12px; }
+.aside-contact h3 { margin: 0; font-size: 0.92rem; font-weight: 800; }
+.aside-contact p  { margin: 0; font-size: 0.82rem; opacity: 0.82; line-height: 1.5; }
+.aside-contact .btn-white { height: 38px; padding: 0 18px; border-radius: 10px; border: none; background: #fff; color: #1a56db; font: inherit; font-size: 0.84rem; font-weight: 800; cursor: pointer; transition: all 0.18s; }
+.aside-contact .btn-white:hover { background: #eff6ff; }
+
+/* ── RESPONSIVE ──────────────────────────────────────────────────── */
+@media (max-width: 1080px) { .help-page { margin-left: 0; } }
+@media (max-width: 900px)  { .faq-layout { grid-template-columns: 1fr; } .faq-aside { position: static; } .contact-layout { grid-template-columns: 1fr; } .help-main { padding: 20px 24px; } }
+@media (max-width: 640px)  {
+  .help-tabs { overflow-x: auto; gap: 0; }
+  .help-tab  { padding: 10px 12px; font-size: 0.8rem; white-space: nowrap; }
+  .legal-panel { padding: 20px; }
+  .legal-footer { flex-direction: column; }
+}

@@ -1,0 +1,295 @@
+<div class="staff-requests-page">
+  <app-staff-sidebar></app-staff-sidebar>
+
+  <main class="requests-main">
+    <section class="requests-shell">
+
+      <header class="page-header">
+        <div>
+          <h1>Requests</h1>
+          <p>Review pending bookings and make approval decisions.</p>
+        </div>
+      </header>
+
+      <section class="content-layout">
+        <!-- Stats Row -->
+        <section class="stats-row">
+          <article class="stat-card">
+            <div class="stat-icon orange"></div>
+            <div class="stat-content">
+              <span class="stat-label">Pending</span>
+              <strong class="stat-value">{{ pendingCount }}</strong>
+            </div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-icon green"></div>
+            <div class="stat-content">
+              <span class="stat-label">Approved</span>
+              <strong class="stat-value">{{ approvedCount }}</strong>
+            </div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-icon red"></div>
+            <div class="stat-content">
+              <span class="stat-label">Changed</span>
+              <strong class="stat-value">{{ changedCount }}</strong>
+            </div>
+          </article>
+        </section>
+
+        <!-- Requests List -->
+        <div class="requests-section">
+          <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #f0f4fa;">
+            <h2 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #1a2e47;">Approval Queue <span class="badge" style="background: #eaf2ff; color: #4d8fe1; padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; margin-left: 8px;">{{ filteredRequests.length }}</span></h2>
+            
+            <div class="filter-bar" style="margin: 0;">
+              <div class="search-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" [(ngModel)]="searchTerm" placeholder="Search requests..." class="search-input" />
+                <button *ngIf="searchTerm" (click)="searchTerm=''" class="clear-btn">✕</button>
+              </div>
+              <select [(ngModel)]="sortBy" class="filter-select">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="az">Patient A → Z</option>
+                <option value="za">Patient Z → A</option>
+                <option value="date_asc">Appt Date ↑</option>
+                <option value="date_desc">Appt Date ↓</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Loading -->
+          <div class="loading-state" *ngIf="isLoading">Loading requests...</div>
+
+          <!-- Error -->
+          <div class="empty-state" *ngIf="!isLoading && loadError" style="color:#e53e3e; padding:16px;">
+            ⚠️ {{ loadError }}
+          </div>
+
+          <!-- Empty -->
+          <div class="empty-state" *ngIf="!isLoading && !loadError && filteredRequests.length === 0 && pendingRequests.length > 0">
+            <p>No results match your search.</p>
+          </div>
+          <div class="empty-state" *ngIf="!isLoading && !loadError && pendingRequests.length === 0">
+            <p>No pending requests right now.</p>
+          </div>
+
+          <div class="requests-list" *ngIf="!isLoading && !loadError">
+            <article class="request-card" *ngFor="let req of filteredRequests">
+              <div class="request-top">
+                <div class="request-info">
+                  <h3>#{{ req.id }} — {{ req.patient_name }}</h3>
+                  <p>{{ req.treatment }}</p>
+                  <small *ngIf="req.services && req.services.length">{{ req.services.join(', ') }}</small>
+                </div>
+                <span class="urgency-badge standard">Standard</span>
+              </div>
+
+              <div class="request-details">
+                <div class="detail-item">
+                  <span class="detail-label">Date</span>
+                  <strong class="detail-value">{{ formatDate(req.appointment_date) }}</strong>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Time</span>
+                  <strong class="detail-value">{{ formatTime(req.appointment_time) }}</strong>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Duration</span>
+                  <strong class="detail-value">{{ req.duration_minutes }} min</strong>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Status</span>
+                  <strong class="detail-value">{{ req.status }}</strong>
+                </div>
+              </div>
+
+              <div class="validation-note" *ngIf="req.notes">
+                <strong>Notes</strong>
+                <p>{{ req.notes }}</p>
+              </div>
+
+              <div class="request-actions">
+                <button class="btn-approve" (click)="openDetails(req)">Review & Approve</button>
+                <button class="btn-secondary" (click)="reschedule(req)">Reschedule</button>
+                <button class="btn-secondary" (click)="reject(req)">Reject</button>
+              </div>
+            </article>
+          </div>
+        </div>
+
+      </section>
+    </section>
+  </main>
+
+  <!-- Approve Modal — with editable dentist assignment -->
+  <div class="modal-overlay" *ngIf="selectedRequest && !showRescheduleForm && !showRejectForm" (click)="closeDetails()">
+    <div class="modal-content details-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Review Request #{{ selectedRequest.id }}</h2>
+        <button class="btn-close" (click)="closeDetails()">✕</button>
+      </div>
+
+      <div class="modal-section">
+        <h3>Patient</h3>
+        <div class="modal-grid">
+          <div class="detail-item">
+            <span class="detail-label">Name</span>
+            <strong>{{ selectedRequest.patient_name }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Email</span>
+            <strong>{{ selectedRequest.email || '—' }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Phone</span>
+            <strong>{{ selectedRequest.phone || '—' }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <h3>Appointment</h3>
+        <div class="modal-grid">
+          <div class="detail-item">
+            <span class="detail-label">Treatment</span>
+            <strong>{{ selectedRequest.treatment }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Services</span>
+            <strong>{{ (selectedRequest.services && selectedRequest.services.length) ? selectedRequest.services.join(', ') : '—' }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Date</span>
+            <strong>{{ formatDate(selectedRequest.appointment_date) }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Time</span>
+            <strong>{{ formatTime(selectedRequest.appointment_time) }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Duration</span>
+            <strong>{{ selectedRequest.duration_minutes }} minutes</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dentist assignment — auto-assigned -->
+      <div class="modal-section">
+        <h3>Assigned Dentist</h3>
+        <div class="dentist-display">
+          <div class="dentist-info">
+            <strong>{{ assignedDentist }}</strong>
+            <span class="auto-badge">Auto-assigned</span>
+          </div>
+        </div>
+        <p class="assign-note">Automatically assigned based on treatment specialty.</p>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" (click)="closeDetails()">Cancel</button>
+        <button class="btn-approve" (click)="requestApprove(selectedRequest)">
+          Approve Appointment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Approve Dialog -->
+  <div class="modal-overlay confirm-overlay" *ngIf="showConfirmApprove && pendingApproveReq" (click)="dismissConfirmApprove()">
+    <div class="modal-content confirm-dialog" (click)="$event.stopPropagation()">
+      <div class="confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <h3>Confirm Approval?</h3>
+      <p>Approve <strong>{{ pendingApproveReq.patient_name }}</strong>'s appointment and assign to <strong>{{ assignedDentist }}</strong>?</p>
+      <p class="confirm-note">The patient will be notified immediately.</p>
+      <div class="confirm-actions">
+        <button class="btn-secondary" (click)="dismissConfirmApprove()" [disabled]="isApproving">Cancel</button>
+        <button class="btn-approve" (click)="confirmApprove()" [disabled]="isApproving">
+          {{ isApproving ? 'Approving…' : 'Yes, Approve' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reschedule Modal -->
+  <div class="modal-overlay" *ngIf="showRescheduleForm && selectedRequest" (click)="closeDetails()">
+    <div class="modal-content reschedule-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Reschedule — {{ selectedRequest.patient_name }}</h2>
+        <button class="btn-close" (click)="closeDetails()">✕</button>
+      </div>
+      <div class="form-section">
+        <div class="form-group">
+          <label>New Date</label>
+          <input type="date" [(ngModel)]="newDate" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label>New Time</label>
+          <select [(ngModel)]="newTime" class="form-input">
+            <option value="08:00">8:00 AM</option>
+            <option value="09:00">9:00 AM</option>
+            <option value="10:00">10:00 AM</option>
+            <option value="11:00">11:00 AM</option>
+            <option value="13:00">1:00 PM</option>
+            <option value="14:00">2:00 PM</option>
+            <option value="15:00">3:00 PM</option>
+            <option value="16:00">4:00 PM</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Reason</label>
+          <textarea [(ngModel)]="rescheduleReason" class="form-textarea" rows="3"
+            placeholder="Reason for rescheduling..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" (click)="closeDetails()">Cancel</button>
+        <button class="btn-approve" (click)="submitReschedule()" [disabled]="!newDate || !newTime || isRescheduling">
+          {{ isRescheduling ? 'Rescheduling…' : 'Confirm Reschedule' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div class="modal-overlay" *ngIf="showRejectForm && selectedRequest" (click)="closeDetails()">
+    <div class="modal-content reject-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Reject — {{ selectedRequest.patient_name }}</h2>
+        <button class="btn-close" (click)="closeDetails()">✕</button>
+      </div>
+      <div class="form-section">
+        <div class="form-group">
+          <label>Reason for Rejection <span class="required">*</span></label>
+          <textarea [(ngModel)]="rejectReason" class="form-textarea" rows="4"
+            placeholder="Provide a clear reason..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" (click)="closeDetails()">Cancel</button>
+        <button class="btn-reject" (click)="submitReject()" [disabled]="!rejectReason.trim() || isRejecting">
+          {{ isRejecting ? 'Rejecting…' : 'Confirm Rejection' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="requests-toast" *ngIf="toastMessage" [attr.data-type]="toastType">
+  <svg viewBox="0 0 20 20" fill="none" *ngIf="toastType === 'success'">
+    <circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M6.5 10l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <svg viewBox="0 0 20 20" fill="none" *ngIf="toastType === 'error'">
+    <circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M10 6v5M10 14h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>
+  {{ toastMessage }}
+</div>

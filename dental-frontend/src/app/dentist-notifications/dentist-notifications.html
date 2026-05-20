@@ -1,0 +1,123 @@
+<div class="dentist-shell dn-shell">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="dn-main">
+
+    <!-- ── Header ──────────────────────────────────────── -->
+    <header class="dn-header">
+      <div class="dn-header-left">
+        <h1 class="dn-title">Notifications</h1>
+        <p class="dn-subtitle">Stay updated on patient care activities, treatment progress, and appointment reminders.</p>
+      </div>
+      <div class="dn-header-right">
+        <div class="dn-search-wrap">
+          <span>🔍</span>
+          <input class="dn-search" type="text" placeholder="Search notifications…" [(ngModel)]="searchQuery" />
+        </div>
+        <button class="dn-mark-all-btn" type="button" (click)="markAllRead()" *ngIf="unreadCount > 0">
+          ✓ Mark all as read
+        </button>
+        <a class="dn-back-btn" routerLink="/dentist-dashboard">← Dashboard</a>
+      </div>
+    </header>
+
+    <!-- ── Stats bar ────────────────────────────────────── -->
+    <div class="dn-stats-bar">
+      <div class="dn-stat">
+        <strong>{{ notifications.length }}</strong>
+        <span>Total</span>
+      </div>
+      <div class="dn-stat unread">
+        <strong>{{ unreadCount }}</strong>
+        <span>Unread</span>
+      </div>
+      <div class="dn-stat read">
+        <strong>{{ notifications.length - unreadCount }}</strong>
+        <span>Read</span>
+      </div>
+    </div>
+
+    <!-- ── Filter tabs ───────────────────────────────────── -->
+    <div class="dn-filters">
+      <button *ngFor="let f of filters" type="button"
+              [class.active]="activeFilter === f"
+              (click)="setFilter(f)">
+        {{ f }}
+        <span class="dn-filter-badge" *ngIf="countByFilter(f) > 0">{{ countByFilter(f) }}</span>
+      </button>
+    </div>
+
+    <!-- ── Notification list ─────────────────────────────── -->
+    <div class="dn-list-wrap">
+
+      <div class="dn-empty" *ngIf="filtered.length === 0">
+        <span>🔔</span>
+        <strong>No notifications</strong>
+        <p>No notifications match your current filter.</p>
+      </div>
+
+      <!-- Group: Unread -->
+      <div *ngIf="unreadFiltered > 0">
+        <div class="dn-group-label">
+          <span class="dn-group-dot unread"></span>
+          Unread · {{ unreadFiltered }}
+        </div>
+        <div class="dn-notif-card"
+             *ngFor="let n of filtered"
+             [class.unread]="n.status === 'Unread'"
+             [style.display]="n.status === 'Unread' ? 'flex' : 'none'">
+          <div class="dn-notif-icon" [attr.data-tone]="typeTone(n.type)">{{ typeIcon(n.type) }}</div>
+          <div class="dn-notif-body">
+            <div class="dn-notif-top">
+              <div class="dn-notif-title-row">
+                <span class="dn-unread-dot"></span>
+                <strong class="dn-notif-title">{{ n.title }}</strong>
+              </div>
+              <div class="dn-notif-meta">
+                <span class="dn-type-badge" [attr.data-tone]="typeTone(n.type)">{{ n.type }}</span>
+                <span class="dn-time">{{ n.date }} · {{ n.time }}</span>
+              </div>
+            </div>
+            <p class="dn-notif-detail">{{ n.detail }}</p>
+            <div class="dn-notif-footer">
+              <span class="dn-patient-chip">👤 {{ n.patient }}</span>
+              <div class="dn-notif-actions">
+                <a class="dn-action-link" [routerLink]="n.actionRoute" *ngIf="n.actionRoute">{{ n.actionLabel }} →</a>
+                <button class="dn-read-btn" type="button" (click)="markRead(n)">Mark as read</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group: Read -->
+      <div *ngIf="filtered.length - unreadFiltered > 0">
+        <div class="dn-group-label">
+          <span class="dn-group-dot read"></span>
+          Read · {{ filtered.length - unreadFiltered }}
+        </div>
+        <div class="dn-notif-card read"
+             *ngFor="let n of filtered"
+             [style.display]="n.status === 'Read' ? 'flex' : 'none'">
+          <div class="dn-notif-icon" [attr.data-tone]="typeTone(n.type)">{{ typeIcon(n.type) }}</div>
+          <div class="dn-notif-body">
+            <div class="dn-notif-top">
+              <strong class="dn-notif-title muted">{{ n.title }}</strong>
+              <div class="dn-notif-meta">
+                <span class="dn-type-badge" [attr.data-tone]="typeTone(n.type)">{{ n.type }}</span>
+                <span class="dn-time">{{ n.date }} · {{ n.time }}</span>
+              </div>
+            </div>
+            <p class="dn-notif-detail muted">{{ n.detail }}</p>
+            <div class="dn-notif-footer">
+              <span class="dn-patient-chip muted">👤 {{ n.patient }}</span>
+              <a class="dn-action-link muted" [routerLink]="n.actionRoute" *ngIf="n.actionRoute">{{ n.actionLabel }} →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>

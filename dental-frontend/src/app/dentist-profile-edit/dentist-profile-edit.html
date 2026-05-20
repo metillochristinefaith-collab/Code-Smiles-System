@@ -1,0 +1,150 @@
+<div class="profile-edit-page">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="edit-main">
+    <section class="edit-shell">
+      <header class="page-topbar">
+        <div class="page-copy">
+          <a routerLink="/dentist-profile" class="back-link">← Back to My Profile</a>
+          <h1>Edit Profile</h1>
+          <p>Update your dentist profile, contact details, and professional information.</p>
+        </div>
+      </header>
+
+      <section class="hero-strip">
+        <div class="hero-avatar-wrap">
+          <div class="hero-avatar" *ngIf="!avatarUrl">{{ initials }}</div>
+          <img *ngIf="avatarUrl" class="hero-avatar preview-avatar" [src]="avatarUrl" alt="Profile photo" />
+          <label class="avatar-action" [class.uploading]="isUploadingAvatar">
+            <input type="file" accept="image/*" (change)="onAvatarSelected($event)" [disabled]="isUploadingAvatar" />
+            {{ isUploadingAvatar ? 'Uploading...' : 'Change Photo' }}
+          </label>
+        </div>
+        <div class="hero-copy">
+          <strong>Dr. {{ form.firstName }} {{ form.lastName }}</strong>
+          <span>Dentist ID: {{ dentistId }}</span>
+          <p>Keep your professional profile accurate for patients, staff, and clinic records.</p>
+        </div>
+      </section>
+
+      <section class="form-layout">
+        <article class="form-card">
+          <div class="card-head"><h2>Personal Information</h2></div>
+          <div class="form-grid">
+            <label>
+              <span>First Name</span>
+              <input type="text" [(ngModel)]="form.firstName" />
+            </label>
+            <label>
+              <span>Last Name</span>
+              <input type="text" [(ngModel)]="form.lastName" />
+            </label>
+            <label>
+              <span>Gender</span>
+              <select [(ngModel)]="form.gender">
+                <option>—</option>
+                <option>Female</option>
+                <option>Male</option>
+                <option>Non-binary</option>
+                <option>Prefer not to say</option>
+              </select>
+            </label>
+            <label>
+              <span>Phone Number</span>
+              <input type="text" [(ngModel)]="form.phone" placeholder="09XXXXXXXXX" />
+            </label>
+          </div>
+        </article>
+
+        <article class="form-card form-card-wide">
+          <div class="card-head"><h2>Professional Information</h2></div>
+          <div class="form-grid">
+            <label>
+              <span>Email Address</span>
+              <input type="email" [(ngModel)]="form.email" readonly />
+            </label>
+            <label>
+              <span>PRC License</span>
+              <input type="text" [(ngModel)]="form.licenseNumber" />
+            </label>
+            <label>
+              <span>Specialization</span>
+              <input type="text" [(ngModel)]="form.specialization" />
+            </label>
+            <label>
+              <span>Department</span>
+              <input type="text" [(ngModel)]="form.department" />
+            </label>
+            <label class="full-width">
+              <span>Assigned Clinic</span>
+              <input type="text" [(ngModel)]="form.clinic" />
+            </label>
+            <label class="full-width">
+              <span>Education</span>
+              <textarea rows="2" [(ngModel)]="form.education"></textarea>
+            </label>
+          </div>
+        </article>
+
+        <article class="form-card">
+          <div class="card-head"><h2>Preferences & Settings</h2></div>
+          <div class="form-grid">
+
+            
+            <div class="toggle-group full-width" style="margin-top: 12px; display: flex; flex-direction: column; gap: 12px;">
+              <label style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f8fbff; border: 1px solid #e4edf6; border-radius: 8px;">
+                <div style="display:flex; flex-direction: column;">
+                  <strong style="font-size: 0.9rem; color: #0f2540;">In-App Notifications</strong>
+                  <span style="font-size: 0.8rem; color: #6a8099; font-weight: normal;">Receive alerts inside the dentist portal.</span>
+                </div>
+                <input type="checkbox" [(ngModel)]="form.inAppNotif" style="width: 20px; height: 20px;" />
+              </label>
+
+              <label style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f8fbff; border: 1px solid #e4edf6; border-radius: 8px;">
+                <div style="display:flex; flex-direction: column;">
+                  <strong style="font-size: 0.9rem; color: #0f2540;">Email Notifications</strong>
+                  <span style="font-size: 0.8rem; color: #6a8099; font-weight: normal;">Receive alerts to your registered email address.</span>
+                </div>
+                <input type="checkbox" [(ngModel)]="form.emailNotif" style="width: 20px; height: 20px;" />
+              </label>
+
+              <label style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f8fbff; border: 1px solid #e4edf6; border-radius: 8px;">
+                <div style="display:flex; flex-direction: column;">
+                  <strong style="font-size: 0.9rem; color: #0f2540;">Show Contact to Patients</strong>
+                  <span style="font-size: 0.8rem; color: #6a8099; font-weight: normal;">Allow patients to see your phone number and email.</span>
+                </div>
+                <input type="checkbox" [(ngModel)]="form.showContactToPatients" style="width: 20px; height: 20px;" />
+              </label>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <div class="save-error" *ngIf="saveError">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+        {{ saveError }}
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="primary-action" [disabled]="isSaving" (click)="saveProfile()">
+          {{ isSaving ? 'Saving...' : 'Save Changes' }}
+        </button>
+        <button type="button" class="secondary-action" (click)="cancel()">Cancel</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-overlay" *ngIf="showSuccessModal" (click)="closeSuccessModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    </div>
+    <h2>Profile Updated</h2>
+    <p>Your dentist profile has been successfully saved.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" (click)="stayOnPage()">Continue Editing</button>
+      <button class="btn-primary" (click)="closeSuccessModal()">View My Profile</button>
+    </div>
+  </div>
+</div>

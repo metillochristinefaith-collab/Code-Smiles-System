@@ -1,0 +1,220 @@
+<div class="auth-page register-page login-page">
+
+  <!-- Back to Website button -->
+  <a routerLink="/" class="back-to-site-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5M12 5l-7 7 7 7"/>
+    </svg>
+    Back to Website
+  </a>
+
+  <div class="register-decor login-decor" aria-hidden="true">
+    <span class="decor decor-tooth-left">&#129463;</span>
+    <span class="decor decor-spark-top">&#10024;</span>
+    <span class="decor decor-spark-right">&#10022;</span>
+    <span class="decor decor-diamond-bottom">&#128142;</span>
+    <span class="decor decor-brush-left">&#129701;</span>
+  </div>
+
+  <div class="register-content login-content">
+    <section class="register-left login-left">
+      <div class="brand-badge">
+        <span class="badge-dot"></span>
+        Code Smiles Dental Portal
+      </div>
+
+      <div class="hero-copy">
+        <h1>Healthy<br /><em>smiles</em><br />start here.</h1>
+        <p>
+          Sign in to book appointments, track requests, and stay connected
+          with your dental care journey in one calm, familiar portal.
+        </p>
+      </div>
+
+      <div class="hero-features">
+        <div class="feature-item">
+          <div class="feature-icon">&#128197;</div>
+          <span>Book and manage appointments anytime</span>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">&#128276;</div>
+          <span>Track requests and real-time updates</span>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-icon">&#128274;</div>
+          <span>Secure and organized dental portal access</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="register-card login-card">
+      <div class="card-stripe"></div>
+
+      <div class="card-header">
+        <div class="mini-badge">Code Smiles</div>
+        <h2 class="card-title">Welcome Back</h2>
+        <p class="card-subtitle">
+          Sign in to manage your appointments and access your patient portal.
+        </p>
+      </div>
+
+      <div class="role-tabs">
+        <button
+          type="button"
+          class="role-tab"
+          [class.active]="selectedRole === 'Patient'"
+          (click)="selectRole('Patient')"
+        >
+          <span class="tab-icon">&#128100;</span>
+          <span>Patient</span>
+        </button>
+
+        <button
+          type="button"
+          class="role-tab"
+          [class.active]="selectedRole === 'Staff'"
+          (click)="selectRole('Staff')"
+        >
+          <span class="tab-icon">&#128188;</span>
+          <span>Staff</span>
+        </button>
+
+        <button
+          type="button"
+          class="role-tab"
+          [class.active]="selectedRole === 'Admin'"
+          (click)="selectRole('Admin')"
+        >
+          <span class="tab-icon">&#129463;</span>
+          <span>Dentist</span>
+        </button>
+      </div>
+
+      <p class="role-hint">{{ roleDescription }}</p>
+
+      <!-- Booking redirect notice -->
+      <div class="booking-notice" *ngIf="bookingRedirect">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+        </svg>
+        <span>Please log in or create an account to book an appointment.</span>
+      </div>
+
+      <form class="login-form" (ngSubmit)="login()" novalidate>
+        <div class="form-main">
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-wrap" [class.invalid]="submitted && !isEmailValid">
+              <span class="input-icon">&#9993;</span>
+              <input
+                id="email"
+                type="email"
+                name="email"
+                [(ngModel)]="loginData.email"
+                placeholder="Enter your email"
+                autocomplete="email"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+              />
+            </div>
+            <small class="error-text">
+              {{ submitted && !isEmailValid ? 'Please enter a valid email address.' : '' }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-wrap" [class.invalid]="submitted && !isPasswordValid">
+              <span class="input-icon">&#128274;</span>
+              <input
+                id="password"
+                [type]="showPassword ? 'text' : 'password'"
+                name="password"
+                [(ngModel)]="loginData.password"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+              />
+              <button
+                type="button"
+                class="toggle-password"
+                (click)="togglePassword()"
+              >
+                {{ showPassword ? 'Hide' : 'Show' }}
+              </button>
+            </div>
+            <small class="error-text">
+              {{ submitted && !isPasswordValid ? 'Password must be at least 6 characters.' : '' }}
+            </small>
+          </div>
+
+          <div class="form-options login-options">
+            <label class="remember-me">
+              <input
+                type="checkbox"
+                name="rememberMe"
+                [(ngModel)]="loginData.rememberMe"
+              />
+              <span>Remember me</span>
+            </label>
+
+            <a routerLink="/forgot-password" class="forgot-link">Forgot password?</a>
+          </div>
+
+          <!-- Backend error message -->
+          <div class="error-banner" *ngIf="errorMessage" role="alert" aria-live="polite">
+            {{ errorMessage }}
+          </div>
+
+          <button type="submit" class="sign-in-btn" [disabled]="isLoading">
+            {{ loginButtonText }} &rarr;
+          </button>
+        </div>
+
+        <div class="form-bottom auth-bottom-shell">
+          <div class="bottom-panel bottom-panel-patient" [class.panel-hidden]="selectedRole !== 'Patient'">
+            <div class="divider"><span>or</span></div>
+
+            <div class="auth-alt-slot">
+
+              <!-- Our custom Google button — full control over text and design -->
+              <button
+                type="button"
+                class="google-btn"
+                [disabled]="isGoogleLoading"
+                (click)="signInWithGoogle()"
+                *ngIf="!isGoogleLoading">
+                <img
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  class="google-icon"
+                  alt="Google"
+                />
+                Sign in with Google
+              </button>
+
+              <!-- Loading state while Google is processing -->
+              <div class="google-btn-loading" *ngIf="isGoogleLoading">
+                <svg class="google-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                Signing in with Google…
+              </div>
+
+            </div>
+
+            <p class="signup-text">
+              Don't have an account? <a routerLink="/register">Create one</a>
+            </p>
+          </div>
+
+          <div class="bottom-panel bottom-panel-staff" [class.panel-hidden]="selectedRole === 'Patient'">
+            <p class="auth-note">
+              Staff and dentist accounts are provided by the clinic administration.
+            </p>
+          </div>
+        </div>

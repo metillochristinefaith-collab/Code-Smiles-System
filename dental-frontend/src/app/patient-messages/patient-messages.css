@@ -1,0 +1,92 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at top left, rgba(131, 175, 233, 0.18), transparent 20%),
+    linear-gradient(180deg, #f3f7fd 0%, #f7fbff 52%, #eff5fd 100%);
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.messages-page,
+.messages-page * {
+  box-sizing: border-box;
+}
+
+.messages-page {
+  --patient-sidebar-width: 270px;
+  min-height: 100dvh;
+  margin-left: var(--patient-sidebar-width);
+  color: #1d3551;
+}
+
+.messages-main {
+  min-height: 100dvh;
+  padding: 18px 20px 22px;
+}
+
+.messages-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.page-copy h1,
+.message-card h2 {
+  margin: 0;
+  color: #203a59;
+}
+
+.page-copy p,
+.message-body,
+.message-meta {
+  margin: 8px 0 0;
+  color: #6f8096;
+  line-height: 1.5;
+}
+
+.message-card {
+  max-width: 820px;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(27, 55, 89, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 251, 255, 0.98));
+  box-shadow: 0 18px 34px rgba(16, 40, 66, 0.07);
+}
+
+.section-kicker {
+  display: inline-block;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #5f7fa3;
+}
+
+.message-card h2 {
+  margin-top: 8px;
+  font-size: 1.4rem;
+}
+
+.message-body {
+  color: #23415f;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  margin-top: 18px;
+  border-radius: 999px;
+  border: 1px solid #d6e2f5;
+  background: #fff;
+  color: #347fd6;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+@media (max-width: 1080px) {
+  .messages-page {
+    margin-left: 0;
+  }
+}

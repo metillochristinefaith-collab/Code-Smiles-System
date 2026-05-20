@@ -1,0 +1,143 @@
+<div class="mr-shell">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="mr-main">
+
+    <!-- Header -->
+    <header class="mr-header">
+      <div>
+        <h1 class="mr-title">Medical Records</h1>
+        <p class="mr-subtitle">View and manage patient dental records.</p>
+      </div>
+    </header>
+
+    <!-- Patient List Card -->
+    <section class="mr-card">
+      <div class="mr-toolbar">
+        <div class="mr-search-wrap">
+          <span>🔍</span>
+          <input class="mr-search" type="text" placeholder="Search by patient name or ID..." [(ngModel)]="searchQuery" />
+        </div>
+        <select class="mr-select" [(ngModel)]="filterStatus">
+          <option *ngFor="let s of statusOptions" [value]="s">{{ s === 'All' ? 'All Status' : s }}</option>
+        </select>
+      </div>
+
+      <div class="mr-card-head">
+        <div>
+          <p class="mr-kicker">MEDICAL VAULT</p>
+          <h2>{{ filtered.length }} Records</h2>
+        </div>
+        <span class="mr-count-chip">{{ filterStatus }}</span>
+      </div>
+
+      <div class="mr-list-empty" *ngIf="!isLoading && filtered.length === 0">No records found.</div>
+      <div class="mr-list-empty" *ngIf="isLoading">Loading…</div>
+
+      <div class="mr-patient-grid" *ngIf="!isLoading && filtered.length > 0">
+        <button class="mr-patient-card"
+          type="button"
+          *ngFor="let r of filtered"
+          [class.active]="selectedRecord?.id === r.id"
+          (click)="selectRecord(r)">
+          <div class="mr-avatar">{{ r.initials }}</div>
+          <div class="mr-item-info">
+            <strong>{{ r.patient }}</strong>
+            <span>{{ r.id }} · {{ r.age }} yrs</span>
+            <span class="mr-item-treatment">{{ r.diagnosis }}</span>
+          </div>
+          <span class="mr-status-pill" [attr.data-status]="statusTone(r.treatmentStatus)">{{ r.treatmentStatus }}</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Detail Card -->
+    <section class="mr-card mr-detail-card" *ngIf="selectedRecord; else selectRecordState">
+
+      <!-- Banner -->
+      <div class="mr-detail-head">
+        <div class="mr-banner-left">
+          <div class="mr-avatar mr-avatar-lg">{{ selectedRecord.initials }}</div>
+          <div class="mr-banner-info">
+            <h2>{{ selectedRecord.patient }}</h2>
+            <span>{{ selectedRecord.id }} · {{ selectedRecord.age }} yrs · {{ selectedRecord.gender }}</span>
+          </div>
+        </div>
+        <span class="mr-status-pill" [attr.data-status]="statusTone(selectedRecord.treatmentStatus)">
+          {{ selectedRecord.treatmentStatus }}
+        </span>
+      </div>
+
+      <!-- Tabs -->
+      <div class="mr-tabs">
+        <button *ngFor="let tab of tabs" type="button"
+          [class.active]="activeTab === tab.key"
+          (click)="setTab(tab.key)">{{ tab.label }}</button>
+      </div>
+
+      <div class="mr-tab-content">
+
+        <!-- Overview -->
+        <div *ngIf="activeTab === 'overview'" class="mr-pane">
+          <div class="mr-info-grid">
+            <div class="mr-info-card">
+              <span>Diagnosis</span>
+              <strong>{{ selectedRecord.diagnosis }}</strong>
+            </div>
+            <div class="mr-info-card">
+              <span>Last Visit</span>
+              <strong>{{ selectedRecord.lastTreatmentDate }}</strong>
+            </div>
+            <div class="mr-info-card">
+              <span>Assigned Dentist</span>
+              <strong>{{ selectedRecord.assignedDentist }}</strong>
+            </div>
+            <div class="mr-info-card">
+              <span>Blood Type</span>
+              <strong>{{ selectedRecord.bloodType }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dental History -->
+        <div *ngIf="activeTab === 'dental'" class="mr-pane">
+          <div class="mr-list-empty" *ngIf="selectedRecord.dentalHistory.length === 0">No dental history recorded.</div>
+          <div class="mr-history-list">
+            <div class="mr-history-card" *ngFor="let h of selectedRecord.dentalHistory">
+              <div class="mr-history-head">
+                <strong>{{ h.procedure }}</strong>
+                <span class="mr-history-date">{{ h.date }}</span>
+              </div>
+              <p *ngIf="h.notes && h.notes !== '—'">{{ h.notes }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Treatment Plan -->
+        <div *ngIf="activeTab === 'shared'" class="mr-pane">
+          <div class="mr-list-empty" *ngIf="selectedRecord.attachments.length === 0">No shared files yet.</div>
+          <div class="mr-attachments-list">
+            <div class="mr-attachment-item" *ngFor="let att of selectedRecord.attachments">
+              <span class="mr-attachment-icon">{{ attachIcon(att.type) }}</span>
+              <div class="mr-attachment-info">
+                <strong>{{ att.name }}</strong>
+                <span class="mr-attachment-meta">{{ att.type }} · {{ att.date }} · {{ att.size }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <ng-template #selectRecordState>
+      <section class="mr-card mr-simple-empty">
+        <div class="mr-empty-icon">📋</div>
+        <strong>Select a record</strong>
+        <p>Choose a record card above to view detailed medical and dental history.</p>
+      </section>
+    </ng-template>
+
+  </main>
+</div>

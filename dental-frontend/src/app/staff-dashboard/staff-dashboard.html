@@ -1,0 +1,161 @@
+<div class="staff-dashboard-shell">
+  <app-staff-sidebar></app-staff-sidebar>
+
+  <main class="sd-main">
+
+    <!-- ── Topbar ──────────────────────────────────────── -->
+    <header class="sd-topbar">
+      <div>
+        <p class="sd-greeting">{{ greeting }}! Here's what's happening at Code Smiles today.</p>
+        <h1 class="sd-name">{{ fullName }}</h1>
+        <span class="sd-role">{{ role }}</span>
+      </div>
+      <div class="sd-topbar-right">
+        <div class="sd-date-chip">
+          <span>📅</span>
+          <span>{{ today }}</span>
+        </div>
+        <div class="sd-profile-chip">
+          <div class="sd-profile-avatar">
+            <img *ngIf="avatarUrl" [src]="avatarUrl" alt="Profile" class="sd-avatar-img" />
+            <span *ngIf="!avatarUrl">{{ initial }}</span>
+          </div>
+          <div class="sd-profile-copy">
+            <strong>{{ fullName }}</strong>
+            <span>{{ role }}</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Stats ───────────────────────────────────────── -->
+    <section class="sd-stats">
+      <article class="sd-stat" *ngFor="let card of statCards" [attr.data-tone]="card.tone">
+        <div class="sd-stat-icon">{{ card.emoji }}</div>
+        <div class="sd-stat-copy">
+          <span>{{ card.label }}</span>
+          <strong>{{ card.value }}</strong>
+          <small>{{ card.delta }}</small>
+        </div>
+        <div class="sd-stat-bar"></div>
+      </article>
+    </section>
+
+    <!-- ── Main grid ───────────────────────────────────── -->
+    <div class="sd-grid">
+
+      <!-- LEFT COLUMN -->
+      <div class="sd-col-left">
+
+        <!-- Today's Schedule -->
+        <section class="sd-card sd-card-schedule">
+          <div class="sd-card-head">
+            <div class="sd-card-title-group">
+              <span class="sd-card-dot blue"></span>
+              <h2 class="sd-card-title">Today's Schedule</h2>
+            </div>
+            <a class="sd-link" routerLink="/staff-calendar">View Calendar →</a>
+          </div>
+          <div class="sd-schedule-list">
+            <!-- Loading skeleton -->
+            <div class="sd-schedule-skeleton" *ngIf="isLoading">
+              <div class="sd-skeleton-row" *ngFor="let i of [1,2,3]"></div>
+            </div>
+            <!-- Empty state -->
+            <div class="sd-empty-state" *ngIf="!isLoading && todaySchedule.length === 0">
+              <span>📭</span>
+              <p>No appointments scheduled for today.</p>
+            </div>
+            <!-- Real data -->
+            <div class="sd-schedule-row" *ngFor="let item of todaySchedule">
+              <span class="sd-schedule-time">{{ item.time }}</span>
+              <div class="sd-avatar">{{ item.initials }}</div>
+              <div class="sd-schedule-copy">
+                <strong>{{ item.patient }}</strong>
+                <span>{{ item.service }}</span>
+              </div>
+              <span class="sd-pill" [attr.data-status]="getScheduleStatusClass(item.status)">{{ item.status }}</span>
+            </div>
+          </div>
+          <a class="sd-footer-link" routerLink="/staff-appointments">View All Appointments →</a>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="sd-card sd-card-actions">
+          <div class="sd-card-head">
+            <div class="sd-card-title-group">
+              <span class="sd-card-dot green"></span>
+              <h2 class="sd-card-title">Quick Actions</h2>
+            </div>
+          </div>
+          <div class="sd-actions-grid">
+            <a class="sd-action-btn" *ngFor="let action of quickActions"
+               [routerLink]="action.route" [attr.data-tone]="action.tone">
+              <div class="sd-action-icon-wrap" [attr.data-tone]="action.tone">
+                <span class="sd-action-icon">{{ action.emoji }}</span>
+              </div>
+              <span class="sd-action-label">{{ action.title }}</span>
+              <span class="sd-action-arrow">→</span>
+            </a>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="sd-col-right">
+
+        <!-- Approval Queue -->
+        <section class="sd-card sd-card-queue">
+          <div class="sd-card-head">
+            <div class="sd-card-title-group">
+              <span class="sd-card-dot amber"></span>
+              <h2 class="sd-card-title">Approval Queue</h2>
+            </div>
+            <a class="sd-link" routerLink="/staff-requests">View all →</a>
+          </div>
+          <div class="sd-queue-list">
+            <div class="sd-empty-state" *ngIf="!isLoading && requests.length === 0">
+              <span>✅</span>
+              <p>No pending requests right now.</p>
+            </div>
+            <div class="sd-queue-row" *ngFor="let req of requests">
+              <div class="sd-avatar">{{ req.initials }}</div>
+              <div class="sd-queue-copy">
+                <strong>{{ req.patient }}</strong>
+                <span>{{ req.service }}</span>
+              </div>
+              <div class="sd-queue-meta">
+                <span>{{ req.shortDate }}</span>
+                <span class="sd-urgency" [attr.data-urgency]="getUrgencyClass(req.urgency)">{{ req.urgency }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Recent Updates -->
+        <section class="sd-card sd-card-updates">
+          <div class="sd-card-head">
+            <div class="sd-card-title-group">
+              <span class="sd-card-dot violet"></span>
+              <h2 class="sd-card-title">Recent Updates</h2>
+            </div>
+            <a class="sd-link" routerLink="/staff-notifications">View activity →</a>
+          </div>
+          <div class="sd-updates-list">
+            <div class="sd-update-row" *ngFor="let item of activityFeed">
+              <span class="sd-update-dot"></span>
+              <div class="sd-update-copy">
+                <strong>{{ item.title }}</strong>
+                <span>{{ item.detail }}</span>
+              </div>
+              <small>{{ item.time }}</small>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+  </main>
+</div>

@@ -1,0 +1,49 @@
+<div class="patient-clinic-page">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="clinic-main">
+    <section class="services-section">
+      <div class="services-header">
+        <span class="sub-label">Our Services</span>
+        <h2 class="services-title">Advanced Dental Care, Designed for Confidence</h2>
+        <p class="services-description">
+          From preventive treatments to aesthetic transformations, explore care tailored to your smile.
+        </p>
+      </div>
+
+      <input type="radio" name="service-accordion" id="svc-none" class="service-reset" checked>
+
+      <div class="services-grid">
+        <div class="service-card" *ngFor="let svc of allServices">
+          <div class="card-image">
+            <img [src]="svc.img" [alt]="svc.title">
+          </div>
+
+          <div class="card-content">
+            <span class="service-number">{{ svc.id }}</span>
+            <h3>{{ svc.title }}</h3>
+            <p>{{ svc.desc }}</p>
+
+            <input class="service-toggle" type="radio" name="service-accordion" [id]="'svc-' + svc.id">
+
+            <label class="action-btn service-toggle-btn" [for]="'svc-' + svc.id">
+              View Details <span class="chev"></span>
+            </label>
+
+            <div class="service-details">
+              <ul class="detail-list">
+                <li *ngFor="let sub of svc.subServices">{{ sub }}</li>
+              </ul>
+
+              <a routerLink="/patient-booking" class="action-btn booking-cta">
+                Book {{ svc.title }} Visit
+              </a>
+
+              <label class="service-x" for="svc-none">&times;</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

@@ -1,0 +1,191 @@
+<div class="profile-edit-page">
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <main class="edit-main">
+    <section class="edit-shell">
+
+      <header class="page-topbar">
+        <div class="page-copy">
+          <a routerLink="/patient-profile" class="back-link">← Back to My Profile</a>
+          <h1>Edit Profile</h1>
+          <p>Update your personal details, contact information, and emergency contact.</p>
+        </div>
+      </header>
+
+      <!-- Loading state -->
+      <div class="loading-state" *ngIf="isLoading">
+        <div class="loading-spinner"></div>
+        <span>Loading your profile...</span>
+      </div>
+
+      <ng-container *ngIf="!isLoading">
+
+        <section class="hero-strip">
+          <div class="hero-avatar-wrap">
+            <div class="hero-avatar" *ngIf="!avatarUrl">{{ initials }}</div>
+            <img *ngIf="avatarUrl" class="hero-avatar preview-avatar" [src]="avatarUrl" alt="Profile photo" />
+            <label class="avatar-action" [class.uploading]="isUploadingAvatar">
+              <input type="file" accept="image/*" (change)="onAvatarSelected($event)" [disabled]="isUploadingAvatar"/>
+              {{ isUploadingAvatar ? 'Uploading...' : 'Change Photo' }}
+            </label>
+          </div>
+          <div class="hero-copy">
+            <strong>{{ form.fullName }}</strong>
+            <span>{{ form.patientId }}</span>
+            <p>Keep your personal details current so the clinic can reach you and manage your records correctly.</p>
+          </div>
+        </section>
+
+        <section class="form-layout">
+
+          <!-- Personal Information -->
+          <article class="form-card">
+            <div class="card-head"><h2>Personal Information</h2></div>
+            <div class="form-grid">
+
+              <label>
+                <span>Full Name</span>
+                <input type="text" [(ngModel)]="form.fullName" placeholder="Your full name" />
+              </label>
+
+              <label>
+                <span>Date of Birth</span>
+                <input type="date" [(ngModel)]="form.dateOfBirth" />
+              </label>
+
+              <label>
+                <span>Gender</span>
+                <select [(ngModel)]="form.gender">
+                  <option value="">— Select —</option>
+                  <option>Female</option>
+                  <option>Male</option>
+                  <option>Non-binary</option>
+                  <option>Prefer not to say</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Blood Type</span>
+                <select [(ngModel)]="form.bloodType">
+                  <option value="">— Select —</option>
+                  <option *ngFor="let bt of bloodTypes.slice(1)" [value]="bt">{{ bt }}</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Preferred Language</span>
+                <select [(ngModel)]="form.preferredLanguage">
+                  <option>English</option>
+                  <option>Filipino</option>
+                  <option>Spanish</option>
+                  <option>Mandarin</option>
+                  <option>Japanese</option>
+                </select>
+              </label>
+
+            </div>
+          </article>
+
+          <!-- Contact Details -->
+          <article class="form-card form-card-wide">
+            <div class="card-head"><h2>Contact Details</h2></div>
+            <div class="form-grid">
+
+              <label>
+                <span>Phone Number</span>
+                <input type="text" [(ngModel)]="form.phoneNumber" placeholder="09XXXXXXXXX" />
+              </label>
+
+              <label>
+                <span>Email Address</span>
+                <input type="email" [(ngModel)]="form.email" placeholder="name@email.com" />
+              </label>
+
+              <label class="full-width">
+                <span>Home Address</span>
+                <textarea rows="2" [(ngModel)]="form.homeAddress" placeholder="Street, City, Province"></textarea>
+              </label>
+
+              <label>
+                <span>Preferred Contact Method</span>
+                <select [(ngModel)]="form.preferredContactMethod">
+                  <option>Email</option>
+                  <option>SMS</option>
+                  <option>Email & SMS</option>
+                  <option>Phone Call</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Primary Dentist</span>
+                <select [(ngModel)]="form.primaryDentist">
+                  <option value="">— Select Dentist —</option>
+                  <option>Dr. Raphoncel Eduria</option>
+                  <option>Dr. Christine Faith Metillo</option>
+                  <option>Dr. Nico Bongolto</option>
+                  <option>Dr. Derence Acojedo</option>
+                </select>
+              </label>
+
+            </div>
+          </article>
+
+          <!-- Emergency Contact -->
+          <article class="form-card">
+            <div class="card-head"><h2>Emergency Contact</h2></div>
+            <div class="form-grid">
+
+              <label>
+                <span>Name</span>
+                <input type="text" [(ngModel)]="form.emergencyContact.name" placeholder="Full name" />
+              </label>
+
+              <label>
+                <span>Relationship</span>
+                <input type="text" [(ngModel)]="form.emergencyContact.relationship" placeholder="e.g. Parent, Spouse" />
+              </label>
+
+              <label>
+                <span>Phone Number</span>
+                <input type="text" [(ngModel)]="form.emergencyContact.phoneNumber" placeholder="09XXXXXXXXX" />
+              </label>
+
+            </div>
+          </article>
+
+        </section>
+
+        <!-- Error banner -->
+        <div class="save-error" *ngIf="saveError">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          {{ saveError }}
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="primary-action" [disabled]="isSaving" (click)="saveProfile()">
+            <svg *ngIf="isSaving" class="spin-icon" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            {{ isSaving ? 'Saving...' : 'Save Changes' }}
+          </button>
+          <button type="button" class="secondary-action" (click)="cancel()">Cancel</button>
+        </div>
+
+      </ng-container>
+
+    </section>
+  </main>
+</div>
+
+<!-- ── SUCCESS MODAL ──────────────────────────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="showSuccessModal" (click)="closeSuccessModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    </div>
+    <h2>Profile Updated</h2>
+    <p>Your information has been successfully saved and will appear the next time you view your profile.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" (click)="stayOnPage()">Continue Editing</button>
+      <button class="btn-primary" (click)="closeSuccessModal()">View My Profile</button>
+    </div>
+  </div>
+</div>
