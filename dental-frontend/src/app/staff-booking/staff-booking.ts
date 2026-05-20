@@ -278,16 +278,17 @@ export class StaffBookingComponent implements OnInit {
       const dateObj = new Date(year, month, day);
       dateObj.setHours(0, 0, 0, 0);
 
+      const dayOfWeek = dateObj.getDay();
       const isPast = dateObj < today;
-      const isFullyBooked = day % 4 === 0;
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
       this.calendarDays.push({
         number: day,
         date: this.formatDateLocal(dateObj),
         isToday: dateObj.getTime() === today.getTime(),
         isPast,
-        isFullyBooked,
-        isAvailable: !isPast && !isFullyBooked,
+        isFullyBooked: false, // Will be determined by API call
+        isAvailable: !isPast && !isWeekend,
       });
     }
   }

@@ -1503,7 +1503,7 @@ app.post('/add-appointment', async (req, res) => {
 
     // ── DYNAMIC DURATION CALCULATION ───────────────────────────────────────
     // Import scheduling engine helpers
-    const { getServiceDuration } = require('./scheduling-engine');
+    const { getServiceDuration, findDentistForService, timeToMinutes, minutesToTime } = require('./scheduling-engine');
     
     // Calculate duration: service duration + 10 min buffer
     let calculatedDuration = duration_minutes;
@@ -1519,13 +1519,73 @@ app.post('/add-appointment', async (req, res) => {
     let assignedDentistName = null;
 
     if (normalizedBookingType === 'Walk-in' && treatment) {
-      const { findDentistForService } = require('./scheduling-engine');
       const dentist = findDentistForService(treatment);
       if (dentist) {
         assignedDentistId = dentist.dbId;
         assignedDentistName = dentist.name;
         console.log(`Walk-in: Assigned to ${assignedDentistName} (ID: ${assignedDentistId})`);
       }
+    }
+
+    // ── OVERLAP CHECKING ───────────────────────────────────────────────────
+    // Check if this appointment overlaps with existing appointments (Pending or Approved)
+    // This prevents double-booking the same slot
+    if (assignedDentistId) {
+      console.log(`[OVERLAP CHECK] Checking for conflicts with dentist ${assignedDentistId}...`);
+      
+      // Parse the appointment time
+      const [hours, minutes] = appointment_time.split(':').map(Number);
+      const appointmentStartMin = hours * 60 + minutes;
+      const appointmentEndMin = appointmentStartMin + calculatedDuration;
+      
+      console.log(`[OVERLAP CHECK] Proposed appointment: ${appointment_time} - ${minutesToTime(appointmentEndMin)} (${calculatedDuration} min)`);
+
+      // Query existing appointments for this dentist on this date (Pending or Approved)
+      const existingAppointments = await client.query(
+        `SELECT id, appointment_time, duration_minutes, treatment, status
+         FROM appointments
+         WHERE appointment_date = $1
+           AND dentist_id = $2
+           AND status IN ('Pending', 'Approved')
+         ORDER BY appointment_time ASC`,
+        [appointment_date, assignedDentistId]
+      );
+
+      console.log(`[OVERLAP CHECK] Found ${existingAppointments.rows.length} existing appointments for this dentist on this date`);
+
+      // Check for overlaps
+      for (const existing of existingAppointments.rows) {
+        const [existHours, existMinutes] = existing.appointment_time.split(':').map(Number);
+        const existStartMin = existHours * 60 + existMinutes;
+        const existEndMin = existStartMin + existing.duration_minutes;
+
+        // Overlap rule: start1 < end2 AND end1 > start2
+        if (appointmentStartMin < existEndMin && appointmentEndMin > existStartMin) {
+          const existStart = minutesToTime(existStartMin);
+          const existEnd = minutesToTime(existEndMin);
+          const proposedStart = appointment_time;
+          const proposedEnd = minutesToTime(appointmentEndMin);
+          
+          console.log(`[OVERLAP CHECK] ❌ CONFLICT DETECTED!`);
+          console.log(`  Existing: ${existStart} - ${existEnd} (${existing.treatment}, ${existing.status})`);
+          console.log(`  Proposed: ${proposedStart} - ${proposedEnd}`);
+          
+          await client.query('ROLLBACK');
+          return res.status(409).json({ 
+            message: `Time slot conflict! This dentist already has an appointment from ${existStart} to ${existEnd} on this date.`,
+            conflict: {
+              existing_time: existStart,
+              existing_end: existEnd,
+              existing_treatment: existing.treatment,
+              existing_status: existing.status,
+              proposed_time: proposedStart,
+              proposed_end: proposedEnd
+            }
+          });
+        }
+      }
+
+      console.log(`[OVERLAP CHECK] ✓ No conflicts found. Proceeding with booking.`);
     }
 
     console.log('Inserting appointment into database...');

@@ -120,19 +120,20 @@ router.get('/available-times', async (req, res) => {
     const totalBlockedDuration = serviceDuration + 10; // +10 min buffer
     console.log(`[DYNAMIC TIMELINE] Service duration: ${serviceDuration} min + 10 min buffer = ${totalBlockedDuration} min total`);
 
-    // Step 3: Query APPROVED appointments for this dentist on this date
+    // Step 3: Query APPROVED and PENDING appointments for this dentist on this date
+    // Both statuses block slots to prevent double-booking
     const result = await pool.query(
       `SELECT id, appointment_time, duration_minutes, treatment, status
        FROM appointments
        WHERE appointment_date = $1
          AND dentist_id = $2
-         AND status = 'Approved'
+         AND status IN ('Approved', 'Pending')
        ORDER BY appointment_time ASC`,
       [date, dentist.dbId]
     );
 
     const approvedAppointments = result.rows;
-    console.log(`[DYNAMIC TIMELINE] Found ${approvedAppointments.length} approved appointments for ${dentist.name} on ${date}`);
+    console.log(`[DYNAMIC TIMELINE] Found ${approvedAppointments.length} approved/pending appointments for ${dentist.name} on ${date}`);
 
     // Convert approved appointments to time windows (in minutes since midnight)
     const bookedWindows = approvedAppointments.map(apt => {
@@ -404,19 +405,20 @@ router.post('/book', async (req, res) => {
     }
     const endMin = startMin + totalDuration;
 
-    // Step 4: Query approved appointments for this dentist on this date
+    // Step 4: Query approved and pending appointments for this dentist on this date
+    // Both statuses block slots to prevent double-booking
     const result = await pool.query(
       `SELECT id, appointment_time, duration_minutes, treatment
        FROM appointments
        WHERE appointment_date = $1
          AND dentist_id = $2
-         AND status = 'Approved'
+         AND status IN ('Approved', 'Pending')
        ORDER BY appointment_time ASC`,
       [date, dentist.dbId]
     );
 
     const approvedAppointments = result.rows;
-    console.log(`[DYNAMIC BOOK] Found ${approvedAppointments.length} approved appointments for ${dentist.name}`);
+    console.log(`[DYNAMIC BOOK] Found ${approvedAppointments.length} approved/pending appointments for ${dentist.name}`);
 
     // Step 5: Check for overlaps
     let hasOverlap = false;
