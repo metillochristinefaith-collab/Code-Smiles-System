@@ -1530,8 +1530,22 @@ app.post('/add-appointment', async (req, res) => {
     // ── OVERLAP CHECKING ───────────────────────────────────────────────────
     // Check if this appointment overlaps with existing appointments (Pending or Approved)
     // This prevents double-booking the same slot
-    if (assignedDentistId) {
-      console.log(`[OVERLAP CHECK] Checking for conflicts with dentist ${assignedDentistId}...`);
+    // NOTE: For registered patient appointments, we need to check if a dentist was specified
+    // If no dentist specified, we'll check all dentists for this service
+    
+    let dentistToCheck = assignedDentistId;
+    
+    // If no dentist assigned (registered patient), find one based on treatment
+    if (!dentistToCheck && treatment) {
+      const dentist = findDentistForService(treatment);
+      if (dentist) {
+        dentistToCheck = dentist.dbId;
+        console.log(`Registered patient: Will check availability for ${dentist.name} (ID: ${dentist.dbId})`);
+      }
+    }
+
+    if (dentistToCheck) {
+      console.log(`[OVERLAP CHECK] Checking for conflicts with dentist ${dentistToCheck}...`);
       
       // Parse the appointment time
       const [hours, minutes] = appointment_time.split(':').map(Number);
@@ -1548,7 +1562,7 @@ app.post('/add-appointment', async (req, res) => {
            AND dentist_id = $2
            AND status IN ('Pending', 'Approved')
          ORDER BY appointment_time ASC`,
-        [appointment_date, assignedDentistId]
+        [appointment_date, dentistToCheck]
       );
 
       console.log(`[OVERLAP CHECK] Found ${existingAppointments.rows.length} existing appointments for this dentist on this date`);
@@ -1586,9 +1600,17 @@ app.post('/add-appointment', async (req, res) => {
       }
 
       console.log(`[OVERLAP CHECK] ✓ No conflicts found. Proceeding with booking.`);
+    } else {
+      console.log(`[OVERLAP CHECK] ⚠️ Warning: Could not determine dentist for overlap checking`);
     }
 
     console.log('Inserting appointment into database...');
+    
+    // Use the dentist that was checked for overlaps
+    const finalDentistId = assignedDentistId || dentistToCheck;
+    const finalDentistName = assignedDentistName || (dentistToCheck ? 
+      Object.values(require('./scheduling-engine').DENTISTS).find(d => d.dbId === dentistToCheck)?.name : null);
+    
     const result = await client.query(
       `INSERT INTO appointments
          (patient_id, patient_name, phone, email, treatment, services,
@@ -1599,7 +1621,7 @@ app.post('/add-appointment', async (req, res) => {
       [patient_id || null, full_name, phone, email, treatment,
        services || [], appointment_date, appointment_time,
        calculatedDuration || 60, notes || '', status, confirmation_status,
-       assignedDentistId, assignedDentistName]
+       finalDentistId, finalDentistName]
     );
     const appointmentId = result.rows[0].id;
     console.log('Appointment created with ID:', appointmentId);
