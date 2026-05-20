@@ -103,7 +103,9 @@ export class StaffBookingComponent implements OnInit {
       { name: 'Pediatric Check-up', duration: 20 },
       { name: 'Pediatric Cleaning', duration: 30 },
       { name: 'Fluoride for Kids', duration: 15 },
+      { name: 'Dental Sealants', duration: 30 },
       { name: 'Baby Tooth Extraction', duration: 30 },
+      { name: 'Space Maintainers', duration: 45 },
     ],
   };
 
