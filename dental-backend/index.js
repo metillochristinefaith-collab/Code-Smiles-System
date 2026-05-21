@@ -47,6 +47,18 @@ const verifyEmailLimiter = rateLimit({
   message: { message: 'Too many verification attempts. Please try again later.' },
 });
 
+const bookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Max 10 bookings per hour per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many booking attempts. Please try again in 1 hour.' },
+  skip: (req) => {
+    // Skip rate limiting for staff/admin creating appointments
+    return req.user?.role === 'Staff' || req.user?.role === 'Admin';
+  }
+});
+
 // ─── EMAIL TRANSPORTER ────────────────────────────────────────────────────────
 // Auto-creates a free Ethereal test account if no real SMTP is configured.
 // Ethereal emails are NOT delivered — they appear in a web inbox you can view.
@@ -418,7 +430,7 @@ app.post('/patient-vault-records/:recordId/share', authMiddleware, async (req, r
 });
 
 // GET vault records shared with a specific dentist
-app.get('/dentist/vault-records', async (req, res) => {
+app.get('/dentist/vault-records', authMiddleware, async (req, res) => {
   console.log('\n=== GET /dentist/vault-records ===');
   console.log('Headers:', req.headers);
   
@@ -854,7 +866,7 @@ app.get('/staff/dashboard-stats', async (req, res) => {
 });
 
 // Dentist dashboard stats
-app.get('/dentist/dashboard-stats', async (req, res) => {
+app.get('/dentist/dashboard-stats', authMiddleware, async (req, res) => {
   try {
     const { dentist } = req.query;
     const today = new Date().toISOString().split('T')[0];
@@ -1474,16 +1486,96 @@ app.get('/list-appointments', async (req, res) => {
 
 // Patient submits a booking
 // ACID: Atomicity — appointment insert + staff notifications committed together or rolled back
-app.post('/add-appointment', async (req, res) => {
+app.post('/add-appointment', bookingLimiter, async (req, res) => {
   console.log('=== BOOKING REQUEST RECEIVED ===');
   console.log('Request body:', JSON.stringify(req.body, null, 2));
 
   const { full_name, phone, email, treatment, appointment_date, appointment_time,
           services, duration_minutes, notes, patient_id, booking_type } = req.body;
 
-  if (!appointment_date || !appointment_time) {
-    console.log('ERROR: Missing date or time');
-    return res.status(400).json({ message: 'Date and time are required.' });
+  // ── INPUT VALIDATION ───────────────────────────────────────────────────────
+  // Validate required fields
+  if (!full_name || !full_name.trim()) {
+    console.log('ERROR: Missing patient name');
+    return res.status(400).json({ message: 'Patient name is required.' });
+  }
+
+  if (!phone || !phone.trim()) {
+    console.log('ERROR: Missing phone');
+    return res.status(400).json({ message: 'Phone number is required.' });
+  }
+
+  if (!email || !email.trim()) {
+    console.log('ERROR: Missing email');
+    return res.status(400).json({ message: 'Email is required.' });
+  }
+
+  if (!treatment || !treatment.trim()) {
+    console.log('ERROR: Missing treatment');
+    return res.status(400).json({ message: 'Treatment/service is required.' });
+  }
+
+  if (!appointment_date || !appointment_date.trim()) {
+    console.log('ERROR: Missing appointment date');
+    return res.status(400).json({ message: 'Appointment date is required.' });
+  }
+
+  if (!appointment_time || !appointment_time.trim()) {
+    console.log('ERROR: Missing appointment time');
+    return res.status(400).json({ message: 'Appointment time is required.' });
+  }
+
+  // Validate format of date (YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(appointment_date.trim())) {
+    console.log('ERROR: Invalid date format');
+    return res.status(400).json({ message: 'Date must be in YYYY-MM-DD format.' });
+  }
+
+  // Validate format of time (HH:MM)
+  if (!/^\d{2}:\d{2}$/.test(appointment_time.trim())) {
+    console.log('ERROR: Invalid time format');
+    return res.status(400).json({ message: 'Time must be in HH:MM format.' });
+  }
+
+  // Validate email format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    console.log('ERROR: Invalid email format');
+    return res.status(400).json({ message: 'Invalid email format.' });
+  }
+
+  // Validate phone format (basic check for digits)
+  if (!/^\d{10,}$/.test(phone.trim().replace(/\D/g, ''))) {
+    console.log('ERROR: Invalid phone format');
+    return res.status(400).json({ message: 'Phone number must contain at least 10 digits.' });
+  }
+
+  // Validate date is not in the past
+  const bookingDate = new Date(appointment_date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (bookingDate < today) {
+    console.log('ERROR: Appointment date is in the past');
+    return res.status(400).json({ message: 'Appointment date cannot be in the past.' });
+  }
+
+  // Validate time is within operating hours (9 AM - 9 PM)
+  const [hours, minutes] = appointment_time.split(':').map(Number);
+  if (hours < 9 || hours >= 21 || (hours === 21 && minutes > 0)) {
+    console.log('ERROR: Appointment time outside operating hours');
+    return res.status(400).json({ message: 'Appointments must be between 9:00 AM and 9:00 PM.' });
+  }
+
+  // Validate not during lunch break (12:00 PM - 1:00 PM)
+  if (hours === 12) {
+    console.log('ERROR: Appointment during lunch break');
+    return res.status(400).json({ message: 'Appointments cannot be scheduled during lunch break (12:00 PM - 1:00 PM).' });
+  }
+
+  // Validate date is not a weekend
+  const dayOfWeek = bookingDate.getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    console.log('ERROR: Appointment on weekend');
+    return res.status(400).json({ message: 'Appointments cannot be scheduled on weekends.' });
   }
 
   // Determine status based on booking type
@@ -1546,13 +1638,23 @@ app.post('/add-appointment', async (req, res) => {
 
     if (dentistToCheck) {
       console.log(`[OVERLAP CHECK] Checking for conflicts with dentist ${dentistToCheck}...`);
+      console.log(`[OVERLAP CHECK] Date: ${appointment_date}, Time: ${appointment_time}, Duration: ${calculatedDuration} min`);
       
-      // Parse the appointment time
-      const [hours, minutes] = appointment_time.split(':').map(Number);
-      const appointmentStartMin = hours * 60 + minutes;
+      // Parse the appointment time - ensure it's in HH:MM format
+      const timeStr = appointment_time.trim();
+      const timeParts = timeStr.split(':');
+      if (timeParts.length !== 2) {
+        console.error(`[OVERLAP CHECK] ERROR: Invalid time format: ${timeStr}`);
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'Invalid time format' });
+      }
+      
+      const appointmentHours = parseInt(timeParts[0], 10);
+      const appointmentMinutes = parseInt(timeParts[1], 10);
+      const appointmentStartMin = appointmentHours * 60 + appointmentMinutes;
       const appointmentEndMin = appointmentStartMin + calculatedDuration;
       
-      console.log(`[OVERLAP CHECK] Proposed appointment: ${appointment_time} - ${minutesToTime(appointmentEndMin)} (${calculatedDuration} min)`);
+      console.log(`[OVERLAP CHECK] Proposed: ${appointmentHours}:${String(appointmentMinutes).padStart(2, '0')} (${appointmentStartMin} - ${appointmentEndMin} min)`);
 
       // Query existing appointments for this dentist on this date (Pending or Approved)
       const existingAppointments = await client.query(
@@ -1565,35 +1667,41 @@ app.post('/add-appointment', async (req, res) => {
         [appointment_date, dentistToCheck]
       );
 
-      console.log(`[OVERLAP CHECK] Found ${existingAppointments.rows.length} existing appointments for this dentist on this date`);
+      console.log(`[OVERLAP CHECK] Found ${existingAppointments.rows.length} existing appointments`);
 
       // Check for overlaps
       for (const existing of existingAppointments.rows) {
-        const [existHours, existMinutes] = existing.appointment_time.split(':').map(Number);
+        const existTimeStr = existing.appointment_time.trim();
+        const existTimeParts = existTimeStr.split(':');
+        
+        if (existTimeParts.length !== 2) {
+          console.error(`[OVERLAP CHECK] ERROR: Invalid existing time format: ${existTimeStr}`);
+          continue;
+        }
+        
+        const existHours = parseInt(existTimeParts[0], 10);
+        const existMinutes = parseInt(existTimeParts[1], 10);
         const existStartMin = existHours * 60 + existMinutes;
         const existEndMin = existStartMin + existing.duration_minutes;
 
+        console.log(`[OVERLAP CHECK] Existing: ${existHours}:${String(existMinutes).padStart(2, '0')} (${existStartMin} - ${existEndMin} min, ${existing.treatment}, ${existing.status})`);
+
         // Overlap rule: start1 < end2 AND end1 > start2
         if (appointmentStartMin < existEndMin && appointmentEndMin > existStartMin) {
-          const existStart = minutesToTime(existStartMin);
-          const existEnd = minutesToTime(existEndMin);
-          const proposedStart = appointment_time;
-          const proposedEnd = minutesToTime(appointmentEndMin);
-          
           console.log(`[OVERLAP CHECK] ❌ CONFLICT DETECTED!`);
-          console.log(`  Existing: ${existStart} - ${existEnd} (${existing.treatment}, ${existing.status})`);
-          console.log(`  Proposed: ${proposedStart} - ${proposedEnd}`);
+          console.log(`  Proposed: ${appointmentStartMin}-${appointmentEndMin}`);
+          console.log(`  Existing: ${existStartMin}-${existEndMin}`);
           
           await client.query('ROLLBACK');
           return res.status(409).json({ 
-            message: `Time slot conflict! This dentist already has an appointment from ${existStart} to ${existEnd} on this date.`,
+            message: `Time slot conflict! This dentist already has an appointment from ${existHours}:${String(existMinutes).padStart(2, '0')} to ${Math.floor(existEndMin / 60)}:${String(existEndMin % 60).padStart(2, '0')} on this date.`,
             conflict: {
-              existing_time: existStart,
-              existing_end: existEnd,
+              existing_time: `${existHours}:${String(existMinutes).padStart(2, '0')}`,
+              existing_end: `${Math.floor(existEndMin / 60)}:${String(existEndMin % 60).padStart(2, '0')}`,
               existing_treatment: existing.treatment,
               existing_status: existing.status,
-              proposed_time: proposedStart,
-              proposed_end: proposedEnd
+              proposed_time: timeStr,
+              proposed_end: `${Math.floor(appointmentEndMin / 60)}:${String(appointmentEndMin % 60).padStart(2, '0')}`
             }
           });
         }
@@ -1694,7 +1802,7 @@ app.get('/my-appointments/:patientId', async (req, res) => {
 });
 
 // Dentist: get their own appointments
-app.get('/dentist/appointments', async (req, res) => {
+app.get('/dentist/appointments', authMiddleware, async (req, res) => {
   try {
     const { dentist } = req.query;
     let query = `
@@ -2251,7 +2359,7 @@ app.put('/patient-profile/:userId', authMiddleware, async (req, res) => {
 // ─── DENTIST PATIENTS ────────────────────────────────────────────────────────
 
 // GET patients who have appointments with this dentist
-app.get('/dentist/patients', async (req, res) => {
+app.get('/dentist/patients', authMiddleware, async (req, res) => {
   try {
     const { dentist } = req.query;
     const filter = dentist ? `WHERE a.dentist_name = $1` : '';
@@ -2282,7 +2390,7 @@ app.get('/dentist/patients', async (req, res) => {
 });
 
 // GET single patient's appointment history
-app.get('/dentist/patients/:patientId/history', async (req, res) => {
+app.get('/dentist/patients/:patientId/history', authMiddleware, async (req, res) => {
   try {
     const result = await db.query(`
       SELECT id, treatment, services,
@@ -2327,7 +2435,7 @@ db.query(`
 }).catch(err => console.error('Prescriptions table error:', err.message));
 
 // GET prescriptions for dentist
-app.get('/dentist/prescriptions', async (req, res) => {
+app.get('/dentist/prescriptions', authMiddleware, async (req, res) => {
   try {
     const { dentist } = req.query;
     const filter = dentist ? `WHERE p.dentist_name = $1` : '';
@@ -2377,7 +2485,7 @@ app.put('/dentist/prescriptions/:id/status', authMiddleware, async (req, res) =>
 // ─── DENTIST TREATMENT PLANS ──────────────────────────────────────────────────
 
 // GET treatment plans for dentist
-app.get('/dentist/treatment-plans', async (req, res) => {
+app.get('/dentist/treatment-plans', authMiddleware, async (req, res) => {
   try {
     const { dentist } = req.query;
     const filter = dentist ? `WHERE tp.dentist_id IN (SELECT id FROM users WHERE CONCAT('Dr. ', first_name, ' ', last_name) = $1)` : '';
@@ -2428,7 +2536,7 @@ app.put('/dentist/treatment-sessions/:id/status', authMiddleware, async (req, re
 // ─── DENTIST NOTIFICATIONS ────────────────────────────────────────────────────
 
 // GET notifications for dentist (from appointments assigned to them)
-app.get('/dentist/notifications', async (req, res) => {
+app.get('/dentist/notifications', authMiddleware, async (req, res) => {
   try {
     const { dentist } = req.query;
     const filter = dentist ? `AND a.dentist_name = $1` : '';
@@ -2498,7 +2606,7 @@ app.get('/staff/calendar', async (req, res) => {
 });
 
 // GET appointments for a date range filtered by dentist (dentist calendar view)
-app.get('/dentist/calendar', async (req, res) => {
+app.get('/dentist/calendar', authMiddleware, async (req, res) => {
   try {
     const { startDate, endDate, dentist } = req.query;
     if (!dentist) {
