@@ -655,6 +655,238 @@
 .utw-detail strong { font-weight: 700; }
 
 /* ═══════════════════════════════════════════════════════════════
+   DAY VIEW — MONTH STYLE EVENTS LIST
+═══════════════════════════════════════════════════════════════ */
+.day-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   WEEK VIEW — MONTH STYLE LAYOUT (OLD STYLES - REMOVED)
+═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   MONTH VIEW
+═══════════════════════════════════════════════════════════════ */
+.month-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e8edf4;
+}
+
+.month-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1a2e47;
+  min-width: 140px;
+  text-align: center;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-left: 1px solid #e8edf4;
+  border-top: 1px solid #e8edf4;
+}
+
+.month-weekday {
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #8fa3bc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #f8fbff;
+  border-right: 1px solid #e8edf4;
+  border-bottom: 1px solid #e8edf4;
+}
+
+.month-day {
+  min-height: 100px;
+  padding: 6px;
+  border-right: 1px solid #e8edf4;
+  border-bottom: 1px solid #e8edf4;
+  background: #fff;
+  vertical-align: top;
+  overflow: hidden;
+  transition: background 0.15s;
+}
+
+.month-day:hover:not(.month-day-empty) {
+  background: #f8fbff;
+}
+
+.month-day-empty {
+  background: #fafbfc;
+}
+
+.month-day-today {
+  background: #eef5ff;
+}
+
+.month-day-today .month-day-num {
+  background: #4d8fe1;
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.month-day-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1a2e47;
+  margin-bottom: 4px;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+}
+
+.month-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.month-event {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.month-event:hover {
+  filter: brightness(0.95);
+}
+
+.month-event-more {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #8fa3bc;
+  padding: 1px 4px;
+  cursor: pointer;
+}
+
+.month-event-more:hover {
+  color: #4d8fe1;
+}
+
+.month-day-empty-text {
+  font-size: 0.65rem;
+  color: #8fa3bc;
+  font-style: italic;
+  padding: 2px 0;
+}
+
+/* Reuse status colours for month events */
+.month-event.status-confirmed   { background: #edfaf4; color: #27a96c; }
+.month-event.status-in-progress { background: #eaf2ff; color: #4d8fe1; }
+.month-event.status-pending     { background: #fdf3e7; color: #e09a2a; }
+.month-event.status-cancelled   { background: #fdeef0; color: #e05c6e; }
+.month-event.status-no-show     { background: #f3f4f6; color: #6b7280; }
+
+/* ═══════════════════════════════════════════════════════════════
+   DAY VIEW
+═══════════════════════════════════════════════════════════════ */
+.day-view-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.day-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e8edf4;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a2e47;
+}
+
+.day-event-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f0f4fa;
+  transition: background 0.15s;
+}
+
+.day-event-row:hover {
+  background: #f8fbff;
+}
+
+.day-ev-time {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #4d8fe1;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.day-ev-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+
+.day-ev-body strong {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1a2e47;
+}
+
+.day-ev-body span {
+  font-size: 0.72rem;
+  color: #8fa3bc;
+}
+
+.day-ev-body small {
+  font-size: 0.68rem;
+  color: #4d8fe1;
+  font-weight: 600;
+}
+
+.day-ev-body.status-confirmed   { background: #edfaf4; border-left-color: #27a96c; }
+.day-ev-body.status-in-progress { background: #eaf2ff; border-left-color: #4d8fe1; }
+.day-ev-body.status-pending     { background: #fdf3e7; border-left-color: #e09a2a; }
+.day-ev-body.status-cancelled   { background: #fdeef0; border-left-color: #e05c6e; }
+
+/* Status badges */
+.status-badge.badge-confirmed   { background: #d1fae5; color: #059669; }
+.status-badge.badge-approved    { background: #d1fae5; color: #059669; }
+.status-badge.badge-pending     { background: #fef3c7; color: #d97706; }
+.status-badge.badge-cancelled   { background: #fee2e2; color: #dc2626; }
+.status-badge.badge-no-show     { background: #f3f4f6; color: #6b7280; }
+.status-badge.badge-progress    { background: #dbeafe; color: #2563eb; }
+.status-badge.badge-in-progress { background: #dbeafe; color: #2563eb; }
+.status-badge.badge-rescheduled { background: #ede9fe; color: #7c3aed; }
+
+/* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 1280px) { .page-layout { grid-template-columns: 260px 1fr; } }

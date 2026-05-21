@@ -1636,29 +1636,29 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
       }
     }
 
+    // Parse the appointment time - handle both HH:MM and HH:MM:SS formats
+    const timeStr = appointment_time.trim();
+    const timeParts = timeStr.split(':');
+    if (timeParts.length < 2) {
+      console.error(`[OVERLAP CHECK] ERROR: Invalid time format: ${timeStr}`);
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: 'Invalid time format' });
+    }
+    
+    const appointmentHours = parseInt(timeParts[0], 10);
+    const appointmentMinutes = parseInt(timeParts[1], 10);
+    const appointmentStartMin = appointmentHours * 60 + appointmentMinutes;
+    const appointmentEndMin = appointmentStartMin + calculatedDuration;
+    
+    console.log(`[OVERLAP CHECK] Proposed: ${appointmentHours}:${String(appointmentMinutes).padStart(2, '0')} (${appointmentStartMin} - ${appointmentEndMin} min)`);
+
     if (dentistToCheck) {
       console.log(`[OVERLAP CHECK] Checking for conflicts with dentist ${dentistToCheck}...`);
       console.log(`[OVERLAP CHECK] Date: ${appointment_date}, Time: ${appointment_time}, Duration: ${calculatedDuration} min`);
-      
-      // Parse the appointment time - ensure it's in HH:MM format
-      const timeStr = appointment_time.trim();
-      const timeParts = timeStr.split(':');
-      if (timeParts.length !== 2) {
-        console.error(`[OVERLAP CHECK] ERROR: Invalid time format: ${timeStr}`);
-        await client.query('ROLLBACK');
-        return res.status(400).json({ message: 'Invalid time format' });
-      }
-      
-      const appointmentHours = parseInt(timeParts[0], 10);
-      const appointmentMinutes = parseInt(timeParts[1], 10);
-      const appointmentStartMin = appointmentHours * 60 + appointmentMinutes;
-      const appointmentEndMin = appointmentStartMin + calculatedDuration;
-      
-      console.log(`[OVERLAP CHECK] Proposed: ${appointmentHours}:${String(appointmentMinutes).padStart(2, '0')} (${appointmentStartMin} - ${appointmentEndMin} min)`);
 
       // Query existing appointments for this dentist on this date (Pending or Approved)
       const existingAppointments = await client.query(
-        `SELECT id, appointment_time, duration_minutes, treatment, status
+        `SELECT id, appointment_time, duration_minutes, treatment, status, dentist_id, dentist_name
          FROM appointments
          WHERE appointment_date = $1
            AND dentist_id = $2
@@ -1667,14 +1667,14 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
         [appointment_date, dentistToCheck]
       );
 
-      console.log(`[OVERLAP CHECK] Found ${existingAppointments.rows.length} existing appointments`);
+      console.log(`[OVERLAP CHECK] Found ${existingAppointments.rows.length} existing appointments for dentist ${dentistToCheck}`);
 
       // Check for overlaps
       for (const existing of existingAppointments.rows) {
         const existTimeStr = existing.appointment_time.trim();
         const existTimeParts = existTimeStr.split(':');
         
-        if (existTimeParts.length !== 2) {
+        if (existTimeParts.length < 2) {
           console.error(`[OVERLAP CHECK] ERROR: Invalid existing time format: ${existTimeStr}`);
           continue;
         }
@@ -1707,9 +1707,63 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
         }
       }
 
-      console.log(`[OVERLAP CHECK] ✓ No conflicts found. Proceeding with booking.`);
+      console.log(`[OVERLAP CHECK] ✓ No conflicts found for dentist ${dentistToCheck}. Proceeding with booking.`);
     } else {
-      console.log(`[OVERLAP CHECK] ⚠️ Warning: Could not determine dentist for overlap checking`);
+      // FALLBACK: If we can't determine a specific dentist, check ALL appointments on this date/time
+      // This prevents double-booking even when dentist assignment fails
+      console.log(`[OVERLAP CHECK] ⚠️ Could not determine specific dentist. Checking ALL appointments on this date/time...`);
+      
+      const allAppointments = await client.query(
+        `SELECT id, appointment_time, duration_minutes, treatment, status, dentist_id, dentist_name
+         FROM appointments
+         WHERE appointment_date = $1
+           AND status IN ('Pending', 'Approved')
+         ORDER BY appointment_time ASC`,
+        [appointment_date]
+      );
+
+      console.log(`[OVERLAP CHECK] Found ${allAppointments.rows.length} total appointments on ${appointment_date}`);
+
+      // Check for overlaps with ANY appointment on this date
+      for (const existing of allAppointments.rows) {
+        const existTimeStr = existing.appointment_time.trim();
+        const existTimeParts = existTimeStr.split(':');
+        
+        if (existTimeParts.length < 2) {
+          console.error(`[OVERLAP CHECK] ERROR: Invalid existing time format: ${existTimeStr}`);
+          continue;
+        }
+        
+        const existHours = parseInt(existTimeParts[0], 10);
+        const existMinutes = parseInt(existTimeParts[1], 10);
+        const existStartMin = existHours * 60 + existMinutes;
+        const existEndMin = existStartMin + existing.duration_minutes;
+
+        console.log(`[OVERLAP CHECK] Existing: ${existHours}:${String(existMinutes).padStart(2, '0')} (${existStartMin} - ${existEndMin} min, ${existing.treatment}, ${existing.status}, Dentist: ${existing.dentist_name || 'Unknown'})`);
+
+        // Overlap rule: start1 < end2 AND end1 > start2
+        if (appointmentStartMin < existEndMin && appointmentEndMin > existStartMin) {
+          console.log(`[OVERLAP CHECK] ❌ CONFLICT DETECTED!`);
+          console.log(`  Proposed: ${appointmentStartMin}-${appointmentEndMin}`);
+          console.log(`  Existing: ${existStartMin}-${existEndMin}`);
+          
+          await client.query('ROLLBACK');
+          return res.status(409).json({ 
+            message: `Time slot conflict! There is already an appointment from ${existHours}:${String(existMinutes).padStart(2, '0')} to ${Math.floor(existEndMin / 60)}:${String(existEndMin % 60).padStart(2, '0')} on this date.`,
+            conflict: {
+              existing_time: `${existHours}:${String(existMinutes).padStart(2, '0')}`,
+              existing_end: `${Math.floor(existEndMin / 60)}:${String(existEndMin % 60).padStart(2, '0')}`,
+              existing_treatment: existing.treatment,
+              existing_status: existing.status,
+              existing_dentist: existing.dentist_name,
+              proposed_time: timeStr,
+              proposed_end: `${Math.floor(appointmentEndMin / 60)}:${String(appointmentEndMin % 60).padStart(2, '0')}`
+            }
+          });
+        }
+      }
+
+      console.log(`[OVERLAP CHECK] ✓ No conflicts found. Proceeding with booking.`);
     }
 
     console.log('Inserting appointment into database...');

@@ -1,23 +1,25 @@
 /* ═══════════════════════════════════════════════════════════════
    SHELL
 ═══════════════════════════════════════════════════════════════ */
-:host { display: block; height: 100vh; background: #f5f7fa; overflow: hidden; }
+:host { display: block; height: auto; min-height: 100vh; background: #f5f7fa; overflow: visible; }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 .dentist-calendar-page {
   --nav-w: 270px;
-  height: 100vh;
+  height: auto;
+  min-height: 100vh;
   margin-left: var(--nav-w);
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   color: #1d3551;
   background: #f5f7fa;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .calendar-main { 
   padding: 20px;
-  height: 100vh;
-  overflow-y: auto;
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
   scrollbar-width: thin;
   scrollbar-color: #c5d5e8 transparent;
 }
@@ -43,7 +45,8 @@
   grid-template-columns: 1fr 300px;
   gap: 20px;
   align-items: start;
-  height: calc(100vh - 40px);
+  height: auto;
+  min-height: auto;
 }
 
 .page-left { 
@@ -51,15 +54,15 @@
   flex-direction: column; 
   gap: 16px; 
   min-width: 0;
-  height: 100%;
+  height: auto;
 }
 
 .page-right { 
   display: flex; 
   flex-direction: column; 
   gap: 16px;
-  height: 100%;
-  overflow-y: auto;
+  height: auto;
+  overflow: visible;
   scrollbar-width: thin;
   scrollbar-color: #c5d5e8 transparent;
   padding-right: 4px;
@@ -132,54 +135,8 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   TOP BAR
+   BUTTONS AND CONTROLS
 ═══════════════════════════════════════════════════════════════ */
-.page-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  background: #fff;
-  padding: 16px 20px;
-  border-radius: 12px;
-  border: 1px solid #e0e8f2;
-  box-shadow: 0 2px 8px rgba(16,40,66,.04);
-  flex-shrink: 0;
-}
-
-.topbar-title-block { 
-  flex: 0 0 auto;
-}
-.topbar-title { 
-  font-size: 1.4rem; 
-  font-weight: 800; 
-  color: #1a2e47; 
-  line-height: 1.1; 
-  margin-bottom: 2px;
-}
-.topbar-sub { 
-  font-size: 0.75rem; 
-  color: #8fa3bc; 
-  font-weight: 500; 
-}
-
-.topbar-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  justify-content: center;
-}
-
-/* Bell + profile */
-.topbar-right { 
-  display: flex; 
-  align-items: center; 
-  gap: 12px; 
-  flex-shrink: 0; 
-}
-
-/* Today — outlined */
 .btn-today {
   padding: 8px 16px;
   background: #fff; color: #1a2e47;
@@ -200,34 +157,6 @@
   box-shadow: 0 4px 12px rgba(77,143,225,.15);
 }
 
-/* New Appointment — primary blue */
-.btn-new-appointment {
-  padding: 10px 16px;
-  background: linear-gradient(135deg, #4d8fe1 0%, #3a7fd4 100%);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.84rem;
-  cursor: pointer;
-  transition: all .2s;
-  box-shadow: 0 2px 8px rgba(77,143,225,.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-}
-.btn-new-appointment:hover {
-  background: linear-gradient(135deg, #3a7fd4 0%, #2d6ec4 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(77,143,225,.35);
-}
-.btn-new-appointment:active {
-  transform: translateY(0);
-}
-
-/* < > nav */
 .week-nav { 
   display: flex; gap: 0; 
   border: 2px solid #d0daea; 
@@ -255,15 +184,12 @@
   transform: scale(0.95);
 }
 
-/* Date range */
 .week-range {
   display: flex; align-items: center; gap: 4px;
   font-size: 0.88rem; font-weight: 700; color: #1a2e47;
   white-space: nowrap; cursor: pointer;
 }
-.week-range svg { color: #8fa3bc; }
 
-/* Day / Week / Month toggle */
 .view-toggle {
   display: flex;
   border: 2px solid #d0daea; border-radius: 10px;
@@ -290,209 +216,22 @@
   color: #4d8fe1; 
 }
 
-/* Bell + profile */
-.topbar-user-section { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-
-.alert-btn {
-  position: relative; width: 36px; height: 36px;
-  border-radius: 50%; border: 1px solid #d0daea;
-  background: #fff; color: #4d6e96;
-  cursor: pointer; display: grid; place-items: center;
-  transition: background .15s;
-}
-.alert-btn:hover { background: #f0f5fd; }
-.alert-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.alert-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: #e05c6e; border: 2px solid #fff; }
-
-.profile-chip { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.profile-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #7eb3f3, #4d8fe1); color: #fff; font-weight: 700; font-size: 0.88rem; display: grid; place-items: center; }
-.profile-copy { display: flex; flex-direction: column; }
-.profile-copy strong { font-size: 0.86rem; font-weight: 700; color: #1a2e47; }
-.profile-copy span   { font-size: 0.72rem; color: #8fa3bc; font-weight: 500; }
-.profile-caret { width: 12px; height: 12px; color: #8fa3bc; }
-
 /* ═══════════════════════════════════════════════════════════════
-   UPCOMING APPOINTMENTS STRIP
-═══════════════════════════════════════════════════════════════ */
-.upcoming-strip {
-  background: #fff;
-  border: 1px solid #e0e8f2;
-  border-radius: 16px;
-  padding: 20px 24px;
-  box-shadow: 0 4px 16px rgba(16,40,66,.08);
-  transition: box-shadow .3s;
-}
-
-.upcoming-strip:hover {
-  box-shadow: 0 8px 24px rgba(16,40,66,.12);
-}
-
-.upcoming-strip-head {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 14px;
-}
-.upcoming-strip-head strong { font-size: 0.9rem; font-weight: 700; color: #1a2e47; }
-
-.view-all-link {
-  display: flex; align-items: center; gap: 2px;
-  font-size: 0.78rem; font-weight: 600; color: #4d8fe1; text-decoration: none;
-  cursor: pointer;
-  pointer-events: auto;
-  position: relative;
-  z-index: 10;
-}
-.view-all-link:hover { text-decoration: underline; }
-
-/* Three cards with dividers */
-.upcoming-cards { display: flex; align-items: stretch; }
-
-.upcoming-card-wrap { display: flex; flex: 1; min-width: 0; }
-
-.upcoming-card {
-  flex: 1;
-  padding: 4px 16px 4px 0;
-  display: flex; flex-direction: column; gap: 3px;
-}
-.upcoming-card-wrap:first-child .upcoming-card { padding-left: 0; }
-.upcoming-card-wrap:last-child  .upcoming-card { padding-right: 0; }
-
-.uc-divider { width: 1px; background: #e0e8f2; flex-shrink: 0; align-self: stretch; margin: 0 4px; }
-
-.uc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-.uc-time { font-size: 0.8rem; font-weight: 700; color: #4d8fe1; }
-
-.uc-icon {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: #f0f5fd; display: grid; place-items: center; color: #8fa3bc; flex-shrink: 0;
-}
-.uc-icon svg { width: 14px; height: 14px; }
-
-.uc-name    { font-size: 0.9rem; font-weight: 700; color: #1a2e47; }
-.uc-service { font-size: 0.76rem; color: #8fa3bc; font-weight: 500; }
-
-.status-badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  width: fit-content;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-.badge-confirmed { background: #d1fae5; color: #059669; }
-.badge-pending   { background: #fef3c7; color: #d97706; }
-.badge-progress  { background: #dbeafe; color: #2563eb; }
-.badge-cancelled { background: #fee2e2; color: #dc2626; }
-
-/* ═══════════════════════════════════════════════════════════════
-   WEEKLY BOARD
+   BOARD CARD
 ═══════════════════════════════════════════════════════════════ */
 .board-card {
   background: #fff;
   border: 1px solid #e0e8f2;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(16,40,66,.04);
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: auto;
   display: flex;
   flex-direction: column;
 }
 
-/* Scroll wrapper — contains the grid, clips it cleanly */
-.grid-scroll {
-  overflow-x: auto;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-  border-radius: 12px;
-  flex: 1;
-  min-height: 0;
-}
-
-/* Custom scrollbar — thin and unobtrusive */
-.grid-scroll::-webkit-scrollbar        { height: 6px; }
-.grid-scroll::-webkit-scrollbar-track  { background: #f0f2f5; border-radius: 3px; }
-.grid-scroll::-webkit-scrollbar-thumb  { background: #c8d4e3; border-radius: 3px; }
-.grid-scroll::-webkit-scrollbar-thumb:hover { background: #a0b4c8; }
-
-.week-grid {
-  display: grid;
-  grid-template-columns: 68px repeat(7, minmax(100px, 1fr));
-  min-width: 780px;   /* never collapse below this — triggers scroll instead */
-}
-
-/* Header cells */
-.grid-corner {
-  padding: 10px 6px;
-  background: #fff; border-right: 1px solid #e8edf4; border-bottom: 1px solid #e8edf4;
-  font-size: 0.68rem; font-weight: 700; color: #b0bfcf;
-  text-transform: uppercase; letter-spacing: .5px; text-align: center;
-}
-
-.day-head {
-  padding: 10px 4px;
-  background: #fff; border-right: 1px solid #e8edf4; border-bottom: 1px solid #e8edf4;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-}
-.day-label { font-size: 0.72rem; font-weight: 700; color: #1a2e47; text-transform: uppercase; letter-spacing: .4px; }
-.day-date  { font-size: 0.7rem; color: #8fa3bc; font-weight: 500; }
-
-/* Active day — solid blue header */
-.day-head.active { background: #4d8fe1; }
-.day-head.active .day-label,
-.day-head.active .day-date { color: #fff; }
-
-/* Time rows */
-.time-label {
-  padding: 6px 8px 0; height: 72px;
-  background: #fff; border-right: 1px solid #e8edf4; border-bottom: 1px solid #e8edf4;
-  font-size: 0.68rem; font-weight: 600; color: #b0bfcf; text-align: right;
-}
-
-.time-cell {
-  height: 72px; position: relative;
-  background: #fff; border-right: 1px solid #e8edf4; border-bottom: 1px solid #e8edf4;
-}
-
-/* After-hours shading */
-.time-cell.after-hours {
-  background: repeating-linear-gradient(-45deg, #f5f7fb, #f5f7fb 5px, #eceef4 5px, #eceef4 10px);
-}
-.closed-label {
-  display: block;
-  font-size: 0.62rem; font-weight: 600; color: #b0bfcf;
-  text-align: center; padding-top: 6px; letter-spacing: .3px;
-}
-
-/* Event cards — soft fill + left accent border, NO status text */
-.event-card {
-  margin: 3px 4px; padding: 5px 7px;
-  border-radius: 6px; border-left: 3px solid transparent;
-  font-size: 0.73rem; line-height: 1.3;
-  cursor: pointer; overflow: hidden;
-  transition: filter .15s;
-}
-.event-card:hover { filter: brightness(.96); }
-
-.ev-time    { display: block; font-weight: 700; font-size: 0.7rem; margin-bottom: 1px; }
-.ev-name    { display: block; font-weight: 700; font-size: 0.76rem; color: #1a2e47; }
-.ev-service { display: block; font-size: 0.68rem; color: #8fa3bc; margin-top: 1px; }
-
-/* Status colours */
-.status-confirmed   { background: #edfaf4; border-left-color: #27a96c; }
-.status-confirmed   .ev-time { color: #27a96c; }
-
-.status-in-progress { background: #eaf2ff; border-left-color: #4d8fe1; }
-.status-in-progress .ev-time { color: #4d8fe1; }
-
-.status-pending     { background: #fdf3e7; border-left-color: #e09a2a; }
-.status-pending     .ev-time { color: #e09a2a; }
-
-.status-cancelled   { background: #fdeef0; border-left-color: #e05c6e; }
-.status-cancelled   .ev-time { color: #e05c6e; }
-
 /* ═══════════════════════════════════════════════════════════════
-   LEFT SIDEBAR CARDS
+   SIDEBAR CARDS
 ═══════════════════════════════════════════════════════════════ */
 .sidebar-card {
   background: #fff; 
@@ -518,6 +257,16 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+.view-all-link {
+  display: flex; align-items: center; gap: 2px;
+  font-size: 0.78rem; font-weight: 600; color: #4d8fe1; text-decoration: none;
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
+}
+.view-all-link:hover { text-decoration: underline; }
 
 /* Upcoming Appointments in Sidebar */
 .upcoming-list {
@@ -571,37 +320,20 @@
   line-height: 1.3;
 }
 
-.sidebar-head {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px;
+.status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
-.sidebar-head strong { font-size: 0.86rem; font-weight: 700; color: #1a2e47; }
-
-/* Mini calendar nav */
-.mini-nav { display: flex; gap: 2px; }
-.mini-nav-btn {
-  width: 22px; height: 22px; border: 1px solid #d0daea; border-radius: 5px;
-  background: #fff; color: #4d6e96; font-size: 0.8rem; font-weight: 700;
-  cursor: pointer; display: grid; place-items: center; transition: background .15s;
-}
-.mini-nav-btn:hover { background: #f0f5fd; }
-
-/* Mini calendar grid */
-.mini-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
-
-.mc-wd {
-  display: flex; align-items: center; justify-content: center;
-  height: 22px; font-size: 0.62rem; font-weight: 700; color: #b0bfcf; text-transform: uppercase;
-}
-
-.mc-day {
-  display: grid; place-items: center; height: 26px;
-  font-size: 0.73rem; font-weight: 600; color: #4d6e96;
-  cursor: pointer; border-radius: 50%; transition: background .15s;
-}
-.mc-day:hover:not(.mc-active) { background: #e8f1ff; }
-.mc-other  { color: #c8d4e3; }
-.mc-active { background: #4d8fe1; color: #fff; }
+.badge-confirmed { background: #d1fae5; color: #059669; }
+.badge-pending   { background: #fef3c7; color: #d97706; }
+.badge-progress  { background: #dbeafe; color: #2563eb; }
+.badge-cancelled { background: #fee2e2; color: #dc2626; }
 
 /* Schedule Legend */
 .legend-list { display: flex; flex-direction: column; gap: 8px; }
@@ -615,41 +347,162 @@
 .legend-cancelled   { background: #e05c6e; }
 .legend-unavailable { background: #c8d4e3; }
 
-/* Quick Actions */
-.qa-list { display: flex; flex-direction: column; gap: 8px; }
-.qa-btn {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; width: 100%;
-  border: 1px solid #e0e8f2; border-radius: 10px;
-  background: #fff; color: #1a2e47;
-  font-weight: 600; font-size: 0.82rem;
-  cursor: pointer; transition: all .15s; text-align: left;
-  pointer-events: auto;
-  position: relative;
-  z-index: 10;
+/* ═══════════════════════════════════════════════════════════════
+   DAY VIEW — MONTH STYLE EVENTS LIST
+═══════════════════════════════════════════════════════════════ */
+.day-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
 }
-.qa-btn:hover { background: #f0f5fd; border-color: #4d8fe1; color: #4d8fe1; }
-.qa-icon {
-  width: 30px; height: 30px; border-radius: 8px;
-  background: #f0f5fd; display: grid; place-items: center;
-  color: #4d8fe1; flex-shrink: 0;
+
+
+.month-day-empty-text {
+  font-size: 0.65rem;
+  color: #8fa3bc;
+  font-style: italic;
+  padding: 2px 0;
 }
-.qa-icon svg { width: 15px; height: 15px; }
 
-/* Upcoming This Week */
-.utw-list { display: flex; flex-direction: column; gap: 10px; }
-.utw-item { display: flex; align-items: flex-start; gap: 8px; }
-.utw-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+/* ═══════════════════════════════════════════════════════════════
+   MONTH VIEW
+═══════════════════════════════════════════════════════════════ */
+.month-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e8edf4;
+}
 
-.dot-confirmed { background: #27a96c; }
-.dot-progress  { background: #4d8fe1; }
-.dot-pending   { background: #e09a2a; }
-.dot-cancelled { background: #e05c6e; }
+.month-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1a2e47;
+  min-width: 140px;
+  text-align: center;
+}
 
-.utw-body  { display: flex; flex-direction: column; gap: 1px; }
-.utw-meta  { font-size: 0.7rem; color: #8fa3bc; font-weight: 600; }
-.utw-detail { font-size: 0.78rem; color: #1a2e47; }
-.utw-detail strong { font-weight: 700; }
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-left: 1px solid #e8edf4;
+  border-top: 1px solid #e8edf4;
+}
+
+.month-weekday {
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #8fa3bc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #f8fbff;
+  border-right: 1px solid #e8edf4;
+  border-bottom: 1px solid #e8edf4;
+}
+
+.month-day {
+  min-height: 100px;
+  padding: 6px;
+  border-right: 1px solid #e8edf4;
+  border-bottom: 1px solid #e8edf4;
+  background: #fff;
+  vertical-align: top;
+  overflow: hidden;
+  transition: background 0.15s;
+}
+
+.month-day:hover:not(.month-day-empty) {
+  background: #f8fbff;
+}
+
+.month-day-empty {
+  background: #fafbfc;
+}
+
+.month-day-today {
+  background: #eef5ff;
+}
+
+.month-day-today .month-day-num {
+  background: #4d8fe1;
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.month-day-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1a2e47;
+  margin-bottom: 4px;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+}
+
+.month-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.month-event {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.month-event:hover {
+  filter: brightness(0.95);
+}
+
+.month-event-more {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #8fa3bc;
+  padding: 1px 4px;
+  cursor: pointer;
+}
+
+.month-event-more:hover {
+  color: #4d8fe1;
+}
+
+/* Reuse status colours for month events */
+.month-event.status-confirmed   { background: #edfaf4; color: #27a96c; }
+.month-event.status-in-progress { background: #eaf2ff; color: #4d8fe1; }
+.month-event.status-pending     { background: #fdf3e7; color: #e09a2a; }
+.month-event.status-cancelled   { background: #fdeef0; color: #e05c6e; }
+.month-event.status-no-show     { background: #f3f4f6; color: #6b7280; }
+
+/* ═══════════════════════════════════════════════════════════════
+   STATUS BADGES
+═══════════════════════════════════════════════════════════════ */
+.status-badge.badge-confirmed   { background: #d1fae5; color: #059669; }
+.status-badge.badge-approved    { background: #d1fae5; color: #059669; }
+.status-badge.badge-pending     { background: #fef3c7; color: #d97706; }
+.status-badge.badge-cancelled   { background: #fee2e2; color: #dc2626; }
+.status-badge.badge-no-show     { background: #f3f4f6; color: #6b7280; }
+.status-badge.badge-progress    { background: #dbeafe; color: #2563eb; }
+.status-badge.badge-in-progress { background: #dbeafe; color: #2563eb; }
+.status-badge.badge-rescheduled { background: #ede9fe; color: #7c3aed; }
 
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
@@ -660,5 +513,4 @@
   .calendar-main { padding: 14px; }
   .page-layout { grid-template-columns: 1fr; }
   .page-left { position: static; }
-  .page-topbar { flex-wrap: wrap; }
 }

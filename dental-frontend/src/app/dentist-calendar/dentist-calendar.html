@@ -36,63 +36,51 @@
           <div class="header-right"></div>
         </header>
 
-        <!-- WEEKLY GRID -->
+        <!-- WEEKLY GRID — EXACT MONTH LAYOUT -->
         <div class="board-card" *ngIf="currentView === 'week'">
-          <div class="grid-scroll">
-          <div class="week-grid">
-
-            <!-- Header -->
-            <div class="grid-corner">TIME</div>
-            <div class="day-head" *ngFor="let day of calendarDays" [class.active]="day.active">
-              <span class="day-label">{{ day.label }}</span>
-              <span class="day-date">{{ day.date }}</span>
-            </div>
-
-            <!-- Rows -->
-            <ng-container *ngFor="let time of boardTimeLabels; let rowIndex = index">
-              <div class="time-label">{{ time }}</div>
-              <div class="time-cell"
-                *ngFor="let day of calendarDays; let colIndex = index"
-                [class.after-hours]="isAfterHours(colIndex, rowIndex)">
-                <ng-container *ngFor="let ev of boardEvents">
-                  <article *ngIf="ev.dayIndex === colIndex && ev.startSlot === rowIndex"
-                    class="event-card" [ngClass]="getEventClass(ev.status)">
-                    <span class="ev-time">{{ ev.startTime }}</span>
-                    <strong class="ev-name">{{ ev.patient }}</strong>
-                    <span class="ev-service">{{ ev.service }}</span>
-                  </article>
-                </ng-container>
-                <span *ngIf="isAfterHours(colIndex, rowIndex) && rowIndex === 13"
-                  class="closed-label">Closed · {{ getClosingTime(colIndex) }}</span>
+          <div class="month-header">
+            <button class="week-nav-btn" (click)="previousWeek()">&lt;</button>
+            <strong class="month-title">{{ getWeekRangeDisplay() }}</strong>
+            <button class="week-nav-btn" (click)="nextWeek()">&gt;</button>
+          </div>
+          <div class="month-grid">
+            <div class="month-weekday" *ngFor="let day of calendarDays">{{ day.label }}</div>
+            <div class="month-day"
+              *ngFor="let day of calendarDays"
+              [class.month-day-today]="day.active">
+              <span class="month-day-num">{{ day.date }}</span>
+              <div class="month-events">
+                <div class="month-event" *ngFor="let ev of getDayEvents(day).slice(0,3)"
+                  [ngClass]="getEventClass(ev.status)">
+                  {{ ev.startTime }} {{ ev.patient }}
+                </div>
+                <div class="month-event-more" *ngIf="getDayEvents(day).length > 3">
+                  +{{ getDayEvents(day).length - 3 }} more
+                </div>
+                <div *ngIf="!getDayEvents(day).length" class="month-day-empty-text">No appointments</div>
               </div>
-            </ng-container>
-
-          </div><!-- /week-grid -->
-          </div><!-- /grid-scroll -->
-        </div><!-- /board-card -->
-
-        <!-- DAY VIEW -->
-        <div class="board-card" *ngIf="currentView === 'day'">
-          <div class="day-view-list">
-            <div class="day-view-header">
-              <button class="week-nav-btn" (click)="previousWeek()">&lt;</button>
-              <strong>{{ getWeekRangeDisplay() }}</strong>
-              <button class="week-nav-btn" (click)="nextWeek()">&gt;</button>
-            </div>
-            <div *ngIf="allAppointments.length === 0" style="padding:40px;text-align:center;color:#8fa3bc;">
-              No appointments this day.
-            </div>
-            <div class="day-event-row" *ngFor="let ev of boardEvents">
-              <span class="day-ev-time">{{ ev.startTime }}</span>
-              <div class="day-ev-body" [ngClass]="getEventClass(ev.status)">
-                <strong>{{ ev.patient }}</strong>
-                <span>{{ ev.service }}</span>
-                <small *ngIf="ev.dentist">{{ ev.dentist }}</small>
-              </div>
-              <span class="status-badge" [ngClass]="getStatusClass(ev.status)">{{ ev.status }}</span>
             </div>
           </div>
-        </div>
+        </div><!-- /board-card -->
+
+        <!-- DAY VIEW — MONTH STYLE EVENTS LIST -->
+        <div class="board-card" *ngIf="currentView === 'day'">
+          <div class="month-header">
+            <button class="week-nav-btn" (click)="previousWeek()">&lt;</button>
+            <strong class="month-title">{{ getWeekRangeDisplay() }}</strong>
+            <button class="week-nav-btn" (click)="nextWeek()">&gt;</button>
+          </div>
+          <div class="day-events-list">
+            <div *ngIf="!boardEvents.length" class="month-day-empty-text" style="padding: 40px 20px; text-align: center;">
+              No appointments this day.
+            </div>
+            <div class="month-event" *ngFor="let ev of boardEvents"
+              [ngClass]="getEventClass(ev.status)"
+              style="margin: 8px 16px; padding: 8px 12px;">
+              {{ ev.startTime }} {{ ev.patient }}
+            </div>
+          </div>
+        </div><!-- /board-card -->
 
         <!-- MONTH VIEW -->
         <div class="board-card" *ngIf="currentView === 'month'">

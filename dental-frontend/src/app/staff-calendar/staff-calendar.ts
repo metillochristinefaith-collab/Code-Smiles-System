@@ -166,6 +166,29 @@ export class StaffCalendar implements OnInit {
     });
   }
 
+  // ── Get events for a specific day (week view) ────────────────────────────
+  getDayEvents(day: any): any[] {
+    if (!day.date) return [];
+    const dayIndex = this.calendarDays.indexOf(day);
+    if (dayIndex === -1) return [];
+    
+    // Get the date for this day
+    const dayDate = new Date(this.currentWeekStart);
+    dayDate.setDate(this.currentWeekStart.getDate() + dayIndex);
+    const dateStr = this.toDateStr(dayDate);
+    
+    // Filter appointments for this date
+    return this.allAppointments
+      .filter(a => a.appointment_date === dateStr)
+      .map(a => ({
+        startTime: this.formatTime(a.appointment_time),
+        patient:   a.patient_name,
+        service:   a.treatment,
+        status:    a.status === 'Approved' ? 'Confirmed' : a.status,
+        dentist:   a.dentist_name,
+      }));
+  }
+
   // ── Upcoming sidebar — from allUpcoming (not just current week) ──────────
   get upcomingAppointments(): any[] {
     return this.allUpcoming
@@ -228,7 +251,10 @@ export class StaffCalendar implements OnInit {
   getStatusClass(status: string): string {
     const map: Record<string, string> = {
       Confirmed: 'badge-confirmed', Approved: 'badge-confirmed',
-      Pending: 'badge-pending', 'In Progress': 'badge-progress', Cancelled: 'badge-cancelled',
+      Pending: 'badge-pending', 'In Progress': 'badge-progress',
+      Cancelled: 'badge-cancelled', 'Cancelled by Staff': 'badge-cancelled',
+      'Cancelled by Patient': 'badge-cancelled',
+      'No-Show': 'badge-no-show', 'NO-SHOW': 'badge-no-show',
     };
     return map[status] ?? 'badge-confirmed';
   }
@@ -236,7 +262,10 @@ export class StaffCalendar implements OnInit {
   getEventClass(status: string): string {
     const map: Record<string, string> = {
       Confirmed: 'status-confirmed', Approved: 'status-confirmed',
-      Pending: 'status-pending', 'In Progress': 'status-in-progress', Cancelled: 'status-cancelled',
+      Pending: 'status-pending', 'In Progress': 'status-in-progress',
+      Cancelled: 'status-cancelled', 'Cancelled by Staff': 'status-cancelled',
+      'Cancelled by Patient': 'status-cancelled',
+      'No-Show': 'status-no-show', 'NO-SHOW': 'status-no-show',
     };
     return map[status] ?? 'status-confirmed';
   }
