@@ -1,6 +1,4 @@
-﻿<!-- placeholder -->
-
-<div class="booking-portal-page">
+﻿<div class="booking-portal-page">
   <app-patient-sidebar></app-patient-sidebar>
   <main class="booking-main">
 
@@ -150,8 +148,8 @@
         </div>
       </div>
 
-      <!-- STEP 2 -->
-      <div *ngIf="currentStep === 2" class="step-body fade-in">
+      <!-- STEP 2: SINGLE SERVICE DATE & TIME -->
+      <div *ngIf="currentStep === 2 && selectedSubServices.length === 1" class="step-body fade-in">
         <div class="step-heading"><h2>Select Date &amp; Time</h2><p>Estimated session: <strong>{{ totalSelectedDuration }} minutes</strong>. Choose a date and available time slot.</p></div>
         <div class="datetime-layout">
           <div class="calendar-panel">
@@ -175,10 +173,91 @@
           <div class="timeslot-panel">
             <div class="timeslot-label">AVAILABLE SLOTS</div>
             <div *ngIf="selectedDate; else noDateSelected" class="timeslot-list">
-              <button type="button" *ngFor="let slot of availableSlots" class="timeslot-btn" [class.active]="selectedTime === slot.time" [class.full]="slot.slotsLeft === 0" [disabled]="slot.slotsLeft === 0" (click)="selectedTime = slot.time">
-                <span class="slot-time">{{ slot.time }}</span>
-                <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">{{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' slot' + (slot.slotsLeft > 1 ? 's' : '') + ' left' }}</span>
-              </button>
+              <ng-container *ngIf="!isLoadingSlots && availableSlots.length > 0; else loadingOrEmpty">
+                <button type="button" *ngFor="let slot of availableSlots" class="timeslot-btn" [class.active]="selectedTime === slot.time" [class.full]="slot.slotsLeft === 0" [disabled]="slot.slotsLeft === 0" (click)="selectedTime = slot.time">
+                  <span class="slot-time">{{ slot.time }}</span>
+                  <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">{{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' slot' + (slot.slotsLeft > 1 ? 's' : '') + ' left' }}</span>
+                </button>
+              </ng-container>
+              <ng-template #loadingOrEmpty>
+                <ng-container *ngIf="isLoadingSlots; else noSlots">
+                  <div class="timeslot-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading available times...</p>
+                  </div>
+                </ng-container>
+                <ng-template #noSlots>
+                  <div class="timeslot-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    <p>No available slots for this date</p>
+                  </div>
+                </ng-template>
+              </ng-template>
+            </div>
+            <ng-template #noDateSelected>
+              <div class="timeslot-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <p>Select a date to view available time slots</p>
+              </div>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2.5: MULTI-SERVICE INDIVIDUAL SCHEDULING -->
+      <div *ngIf="currentStep === 2.5 && getCurrentServiceSchedule()" class="step-body fade-in">
+        <div class="step-heading">
+          <h2>Schedule {{ getCurrentServiceSchedule().service.name }}</h2>
+          <p>Service {{ currentServiceIndex + 1 }} of {{ serviceSchedules.length }} • Select date and time for this service</p>
+        </div>
+        <div class="multi-service-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="((currentServiceIndex + 1) / serviceSchedules.length) * 100"></div>
+          </div>
+          <div class="progress-text">{{ currentServiceIndex + 1 }} of {{ serviceSchedules.length }} services scheduled</div>
+        </div>
+        <div class="datetime-layout">
+          <div class="calendar-panel">
+            <div class="calendar-nav">
+              <button type="button" class="cal-nav-btn" (click)="prevMonth()">&#8249;</button>
+              <h3 class="cal-month-label">{{ currentMonthName }} {{ currentYear }}</h3>
+              <button type="button" class="cal-nav-btn" (click)="nextMonth()">&#8250;</button>
+            </div>
+            <div class="cal-grid">
+              <span class="cal-day-name" *ngFor="let d of ['Su','Mo','Tu','We','Th','Fr','Sa']">{{ d }}</span>
+              <button type="button" *ngFor="let day of calendarDays" class="cal-date" [class.empty]="!day.number" [class.selected]="getCurrentServiceSchedule().selectedDate === day.date" [class.available]="day.isAvailable && !day.isPast && !day.isFullyBooked" [class.fully-booked]="day.isFullyBooked" [class.unavailable]="day.isPast || !day.isAvailable" [class.today]="day.isToday" [disabled]="day.isPast || !day.number || day.isFullyBooked || !day.isAvailable" (click)="selectDateForMultiService(day.date)">{{ day.number }}</button>
+            </div>
+            <div class="cal-legend">
+              <div class="legend-item"><span class="legend-dot available"></span><span>Available</span></div>
+              <div class="legend-item"><span class="legend-dot selected"></span><span>Selected</span></div>
+              <div class="legend-item"><span class="legend-dot booked"></span><span>Fully Booked</span></div>
+              <div class="legend-item"><span class="legend-dot unavailable"></span><span>Unavailable</span></div>
+              <div class="legend-item"><span class="legend-dot today"></span><span>Today</span></div>
+            </div>
+          </div>
+          <div class="timeslot-panel">
+            <div class="timeslot-label">AVAILABLE SLOTS</div>
+            <div *ngIf="getCurrentServiceSchedule().selectedDate; else noDateSelected" class="timeslot-list">
+              <ng-container *ngIf="!getCurrentServiceSchedule().isLoadingSlots && (getCurrentServiceSchedule().availableSlots?.length || 0) > 0; else loadingOrEmpty">
+                <button type="button" *ngFor="let slot of getCurrentServiceSchedule().availableSlots" class="timeslot-btn" [class.active]="getCurrentServiceSchedule().selectedTime === slot.time" [class.full]="slot.slotsLeft === 0" [disabled]="slot.slotsLeft === 0" (click)="selectTimeForMultiService(slot.time)">
+                  <span class="slot-time">{{ slot.time }}</span>
+                  <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">{{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' slot' + (slot.slotsLeft > 1 ? 's' : '') + ' left' }}</span>
+                </button>
+              </ng-container>
+              <ng-template #loadingOrEmpty>
+                <ng-container *ngIf="getCurrentServiceSchedule().isLoadingSlots; else noSlots">
+                  <div class="timeslot-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading available times...</p>
+                  </div>
+                </ng-container>
+                <ng-template #noSlots>
+                  <div class="timeslot-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    <p>No available slots for this date</p>
+                  </div>
+                </ng-template>
+              </ng-template>
             </div>
             <ng-template #noDateSelected>
               <div class="timeslot-placeholder">
@@ -192,7 +271,8 @@
 
       <!-- STEP 3 -->
       <div *ngIf="currentStep === 3" class="step-body fade-in">
-        <div class="step-heading"><h2>Your Details</h2><p>Booking for <strong>{{ selectedDate | date:'MMMM d, y' }}</strong> at <strong>{{ selectedTime }}</strong></p></div>
+        <!-- BUG FIX #11: Removed redundant appointment date/time display - will show on Review page -->
+        <div class="step-heading"><h2>Your Details</h2></div>
         <div class="details-form">
           <div class="form-row">
             <div class="form-field"><label>First Name <span class="req">*</span></label><input type="text" name="firstName" [(ngModel)]="patientDetails.firstName" placeholder="First name" autocomplete="off"><p class="field-error" *ngIf="!isFirstNameValid && patientDetails.firstName !== ''">Enter a valid first name</p></div>
@@ -226,8 +306,12 @@
       <!-- STEP 4 -->
       <div *ngIf="currentStep === 4" class="step-body fade-in">
         <div class="step-heading"><h2>Review &amp; Confirm</h2><p>Please review your booking details before submitting the request.</p></div>
-        <div class="error-banner" *ngIf="submitError">{{ submitError }}</div>
-        <div class="review-grid">
+        <div class="error-banner" *ngIf="submitError">
+          <div style="flex: 1;">{{ submitError }}</div>
+        </div>
+        
+        <!-- SINGLE SERVICE REVIEW -->
+        <div *ngIf="selectedSubServices.length === 1" class="review-grid">
           <div class="review-box">
             <div class="review-box-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Appointment Schedule</span></div>
             <div class="review-row"><span>Date</span><strong>{{ selectedDate | date:'MMMM d, y' }}</strong></div>
@@ -243,6 +327,45 @@
             <div class="review-row"><span>Phone</span><strong>{{ patientDetails.phone }}</strong></div>
           </div>
         </div>
+
+        <!-- MULTI-SERVICE REVIEW -->
+        <div *ngIf="selectedSubServices.length > 1" class="review-multi-service">
+          <div class="review-box">
+            <div class="review-box-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Patient Details</span></div>
+            <div class="review-row"><span>Name</span><strong>{{ patientDetails.firstName.trim() }} {{ patientDetails.lastName.trim() }}</strong></div>
+            <div class="review-row"><span>Age</span><strong>{{ patientDetails.age }} yrs old</strong></div>
+            <div class="review-row"><span>Email</span><strong>{{ patientDetails.email }}</strong></div>
+            <div class="review-row"><span>Phone</span><strong>{{ patientDetails.phone }}</strong></div>
+          </div>
+
+          <div class="review-appointments-section">
+            <div class="review-box-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Scheduled Appointments</span><span class="services-count-badge">{{ serviceSchedules.length }} appointments</span></div>
+            <div class="appointments-list">
+              <div class="appointment-card" *ngFor="let schedule of serviceSchedules; let i = index">
+                <div class="appointment-number">Appointment {{ i + 1 }}</div>
+                <div class="appointment-details">
+                  <div class="detail-row">
+                    <span class="detail-label">Service</span>
+                    <span class="detail-value">{{ schedule.service.name }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Date</span>
+                    <span class="detail-value">{{ schedule.selectedDate | date:'MMMM d, y' }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Time</span>
+                    <span class="detail-value time-highlight">{{ schedule.selectedTime }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Duration</span>
+                    <span class="detail-value">{{ schedule.service.duration }} minutes</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="review-services-box">
           <div class="review-box-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Selected Services</span><span class="services-count-badge">{{ selectedSubServices.length }} selected</span></div>
           <div class="review-chips"><span *ngFor="let s of selectedSubServices" class="review-chip"><span class="chip-dot-blue"></span>{{ s.name }}</span></div>
@@ -266,12 +389,17 @@
       <ng-container *ngIf="currentStep === 1.5">
         <button type="button" class="btn-prev" (click)="currentStep = 1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Previous</button>
         <button type="button" class="btn-cancel-link" (click)="requestCancel()">Cancel</button>
-        <button type="button" class="btn-next" [disabled]="selectedServices.length === 0" (click)="currentStep = 2">Next: Date &amp; Time <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+        <button type="button" class="btn-next" [disabled]="selectedServices.length === 0" (click)="proceedToScheduling()">Next: Date &amp; Time <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
       </ng-container>
-      <ng-container *ngIf="currentStep === 2">
+      <ng-container *ngIf="currentStep === 2 && selectedSubServices.length === 1">
         <button type="button" class="btn-prev" (click)="currentStep = 1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Previous</button>
         <button type="button" class="btn-cancel-link" (click)="requestCancel()">Cancel</button>
-        <button type="button" class="btn-next" [disabled]="!selectedDate || !selectedTime" (click)="currentStep = 3">Next: Your Details <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+        <button type="button" class="btn-next" [disabled]="!selectedDate || !selectedTime" (click)="currentStep = 3; submitError = ''">Next: Your Details <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 2.5">
+        <button type="button" class="btn-prev" (click)="goBackToServiceSelection()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="requestCancel()">Cancel</button>
+        <button type="button" class="btn-next" [disabled]="!getCurrentServiceSchedule() || !getCurrentServiceSchedule().selectedDate || !getCurrentServiceSchedule().selectedTime" (click)="proceedToNextService()">{{ currentServiceIndex < serviceSchedules.length - 1 ? 'Next Service' : 'Continue to Details' }} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
       </ng-container>
       <ng-container *ngIf="currentStep === 3">
         <button type="button" class="btn-prev" (click)="currentStep = 2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg> Previous</button>

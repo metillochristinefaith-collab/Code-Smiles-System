@@ -156,10 +156,19 @@ router.get('/available-times', async (req, res) => {
       console.log(`  - ${startTime} to ${endTime} (${w.treatment}, ${w.duration} min)`);
     });
 
-    // Step 4: Generate all possible time slots (30-minute intervals from 9:00 AM to 9:00 PM)
+    // Step 4: Generate all possible time slots (30-minute intervals from 8:00 AM to closing time)
+    // Closing times vary by day: Mon-Fri 8:30 PM, Sat 9:00 PM, Sun 9:30 PM
+    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'lowercase' });
+    const closingHour = CLINIC_CONFIG.operating_hours[dayOfWeek]?.end || 20.5 * 60;
+    
     const timeSlots = [];
-    for (let hour = 9; hour < 21; hour++) {
+    for (let hour = 8; hour < 24; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
+        const timeInMinutes = hour * 60 + minute;
+        
+        // Stop generating slots after closing time
+        if (timeInMinutes >= closingHour) break;
+        
         // Skip lunch break (12:00-13:00)
         if (hour === 12) continue;
         
@@ -169,9 +178,12 @@ router.get('/available-times', async (req, res) => {
           time24: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
         });
       }
+      
+      // Stop if we've passed closing time
+      if (hour * 60 >= closingHour) break;
     }
 
-    console.log(`[DYNAMIC TIMELINE] Generated ${timeSlots.length} time slots`);
+    console.log(`[DYNAMIC TIMELINE] Generated ${timeSlots.length} time slots (closing at ${minutesToTime(closingHour)})`);
 
     // Step 5: For each slot, check if proposed window overlaps with any approved appointment
     const slotsWithCounts = [];

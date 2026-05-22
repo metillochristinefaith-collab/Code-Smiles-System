@@ -14,7 +14,23 @@ interface TimeSlot {
 
 interface ServiceDetail {
   name: string;
+  category?: string;
   duration: number;
+  dentistId?: number;
+  dentistName?: string;
+  date?: string;
+  time?: string;
+  endTime?: string;
+}
+
+interface ServiceSchedule {
+  service: ServiceDetail;
+  selectedDate: string;
+  selectedTime: string;
+  availableSlots: TimeSlot[];
+  isLoadingSlots: boolean;
+  availableDentists: any[];
+  selectedDentist?: any;
 }
 
 @Component({
@@ -42,10 +58,17 @@ export class PatientBookingComponent implements OnInit {
 
   totalSelectedDuration: number = 0;
   readonly MAX_MINUTES = 120;
+  readonly MAX_SERVICES = 3;
 
+  // Single service booking
   selectedDate: string = '';
   selectedTime: string = '';
   availableSlots: TimeSlot[] = [];
+  isLoadingSlots: boolean = false;
+
+  // Multi-service booking
+  currentServiceIndex: number = 0;
+  serviceSchedules: ServiceSchedule[] = [];
 
   viewDate: Date = new Date();
   currentMonthName: string = '';
@@ -218,24 +241,64 @@ export class PatientBookingComponent implements OnInit {
     const index = this.selectedServices.indexOf(serviceName);
 
     if (index > -1) {
+      // Remove service
       this.selectedServices.splice(index, 1);
       this.selectedSubServices = this.selectedSubServices.filter(s => s.name !== serviceName);
       this.totalSelectedDuration -= serviceObj.duration;
     } else {
-      if (
-        this.selectedServices.length < 3 &&
-        this.totalSelectedDuration + serviceObj.duration <= this.MAX_MINUTES
-      ) {
-        this.selectedServices.push(serviceName);
-        this.selectedSubServices.push(serviceObj);
-        this.totalSelectedDuration += serviceObj.duration;
+      // Add service
+      if (this.selectedServices.length >= this.MAX_SERVICES) {
+        alert(`Maximum ${this.MAX_SERVICES} services allowed`);
+        return;
       }
+
+      const newDuration = this.totalSelectedDuration + serviceObj.duration;
+      if (newDuration > this.MAX_MINUTES) {
+        alert(`Total duration cannot exceed ${this.MAX_MINUTES} minutes`);
+        return;
+      }
+
+      this.selectedServices.push(serviceName);
+      this.selectedSubServices.push({
+        name: serviceObj.name,
+        category: this.selectedCategory,
+        duration: serviceObj.duration
+      });
+      this.totalSelectedDuration += serviceObj.duration;
     }
 
-    if (this.selectedDate) {
-      // Re-generate slots when service selection changes
+    if (this.selectedDate && this.selectedSubServices.length === 1) {
+      // Re-generate slots when service selection changes (only for single service)
       this.selectDate(this.selectedDate);
     }
+  }
+
+  proceedToScheduling() {
+    if (this.selectedSubServices.length === 0) {
+      alert('Please select at least one service');
+      return;
+    }
+
+    // DECISION POINT: Single vs Multi-service
+    if (this.selectedSubServices.length === 1) {
+      // Single service → Skip to date/time selection (original flow)
+      this.currentStep = 2;
+    } else {
+      // Multi-service → Go to individual scheduling
+      // BUG FIX #5: Use deep clone instead of shallow copy to prevent shared state
+      this.serviceSchedules = this.selectedSubServices.map(service => ({
+        service: JSON.parse(JSON.stringify(service)),
+        selectedDate: '',
+        selectedTime: '',
+        availableSlots: [],
+        isLoadingSlots: false,
+        availableDentists: []
+      }));
+      this.currentStep = 2.5; // Multi-service scheduling step
+      this.currentServiceIndex = 0;
+    }
+
+    this.cdr.detectChanges();
   }
 
   resetSelection() {
@@ -303,8 +366,9 @@ export class PatientBookingComponent implements OnInit {
       const isPast = dateObj < today;
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
       
-      // Check if date is within operating hours (not past and not weekend)
-      const isOperatingDay = !isPast && !isWeekend;
+      // Check if date is within operating hours (not past)
+      // Weekends are now allowed - clinic is open Saturday and Sunday
+      const isOperatingDay = !isPast;
 
       this.calendarDays.push({
         number: i,
@@ -329,12 +393,24 @@ export class PatientBookingComponent implements OnInit {
   }
 
   selectDate(date: string) {
+    console.log(`[BOOKING] selectDate called with date: ${date}`);
     const dayObj = this.calendarDays.find(d => d.date === date);
-    if (dayObj && dayObj.isAvailable && !dayObj.isPast && !dayObj.isWeekend) {
+    console.log(`[BOOKING] Day object:`, dayObj);
+    
+    if (dayObj && dayObj.isAvailable && !dayObj.isPast && !dayObj.isFullyBooked) {
+      console.log(`[BOOKING] Date is valid, setting selectedDate to ${date}`);
       this.selectedDate = date;
       this.selectedTime = '';
+      this.submitError = ''; // Clear any previous errors
+      this.availableSlots = []; // Clear slots immediately while loading
       this.refreshAvailableSlots(date);
     } else {
+      console.warn(`[BOOKING] Date is invalid:`, {
+        dayObjExists: !!dayObj,
+        isAvailable: dayObj?.isAvailable,
+        isPast: dayObj?.isPast,
+        isFullyBooked: dayObj?.isFullyBooked
+      });
       this.selectedDate = '';
       this.selectedTime = '';
       this.availableSlots = [];
@@ -342,36 +418,76 @@ export class PatientBookingComponent implements OnInit {
   }
 
   private refreshAvailableSlots(date: string) {
-    // Get the first selected service (or use a default)
-    const service = this.selectedSubServices.length > 0 
-      ? this.selectedSubServices[0].name 
-      : 'Dental Cleaning'; // fallback service
+    // Get the first selected service
+    if (this.selectedSubServices.length === 0) {
+      console.warn(`[BOOKING] No services selected, cannot fetch available slots`);
+      this.availableSlots = [];
+      return;
+    }
+
+    const service = this.selectedSubServices[0].name;
+    
+    console.log(`[BOOKING] Fetching available times for date: ${date}, service: ${service}`);
+    this.isLoadingSlots = true;
+    this.availableSlots = []; // Clear slots while loading
     
     // Fetch real slot counts from API
     this.api.getAvailableTimes(date, service).subscribe({
       next: (response: any) => {
+        console.log(`[BOOKING] API Response:`, response);
         if (response && response.availableTimes && Array.isArray(response.availableTimes)) {
           this.availableSlots = response.availableTimes;
-          console.log('Slots from API:', this.availableSlots);
+          console.log(`[BOOKING] Loaded ${this.availableSlots.length} available slots`);
+          if (this.availableSlots.length === 0) {
+            console.warn(`[BOOKING] WARNING: No available slots returned for ${date} and ${service}`);
+          }
         } else {
+          console.warn(`[BOOKING] Invalid response structure:`, response);
           this.availableSlots = [];
         }
+        this.isLoadingSlots = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('Error fetching available times:', err);
+        console.error(`[BOOKING] Error fetching available times:`, err);
+        this.submitError = `Failed to load available times: ${err?.error?.error || err?.message || 'Unknown error'}`;
         this.availableSlots = [];
+        this.isLoadingSlots = false;
+        this.cdr.detectChanges();
       }
     });
   }
 
   private timeStringToMinutes(timeStr: string): number {
+    // BUG FIX #2: Add validation for 12-hour format
     // Handle both "HH:MM" and "HH:MM AM/PM" formats
     const parts = timeStr.trim().split(/\s+/);
     const timePart = parts[0];
-    const modifier = parts[1] || '';
+    const modifier = (parts[1] || '').toUpperCase(); // Normalize to uppercase
     
-    const [hours, minutes] = timePart.split(':').map(Number);
+    const [hoursStr, minutesStr] = timePart.split(':');
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+
+    // Validate hours and minutes
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.error(`[BOOKING] Invalid time format: ${timeStr}`);
+      return 0;
+    }
+
+    // Validate ranges for 12-hour format
+    if (modifier && (modifier === 'AM' || modifier === 'PM')) {
+      if (hours < 1 || hours > 12) {
+        console.error(`[BOOKING] Invalid hour for 12-hour format: ${hours}`);
+        return 0;
+      }
+    }
+
+    if (minutes < 0 || minutes > 59) {
+      console.error(`[BOOKING] Invalid minutes: ${minutes}`);
+      return 0;
+    }
+
     let totalMinutes = hours * 60 + minutes;
 
     // Convert 12-hour to 24-hour if needed
@@ -399,58 +515,234 @@ export class PatientBookingComponent implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
-  completeBooking() {
-    if (this.isSubmitting) return;
-    if (!this.canProceedToReview) return;
-    if (!this.selectedDate || !this.selectedTime || this.selectedSubServices.length === 0) {
-      this.submitError = 'Please complete the service, date, and time before submitting.';
+  // ═════════════════════════════════════════════════════════════════════════════
+  // MULTI-SERVICE SCHEDULING METHODS
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  getCurrentServiceSchedule(): ServiceSchedule {
+    // BUG FIX #3: Add bounds checking to prevent undefined access
+    if (this.currentServiceIndex < 0 || this.currentServiceIndex >= this.serviceSchedules.length) {
+      console.error(`[BOOKING] Index out of bounds: ${this.currentServiceIndex} for array length ${this.serviceSchedules.length}`);
+      return null as any;
+    }
+    return this.serviceSchedules[this.currentServiceIndex];
+  }
+
+  selectDateForMultiService(date: string) {
+    const schedule = this.getCurrentServiceSchedule();
+    const dayObj = this.calendarDays.find(d => d.date === date);
+    
+    if (dayObj && dayObj.isAvailable && !dayObj.isPast && !dayObj.isFullyBooked) {
+      schedule.selectedDate = date;
+      schedule.selectedTime = '';
+      schedule.availableSlots = [];
+      this.loadAvailableSlotsForMultiService();
+    }
+  }
+
+  async loadAvailableSlotsForMultiService() {
+    const schedule = this.getCurrentServiceSchedule();
+
+    if (!schedule.selectedDate) {
+      alert('Please select a date');
       return;
+    }
+
+    schedule.isLoadingSlots = true;
+
+    try {
+      // Get available slots for this service on this date
+      const slotsResponse = await this.api.getAvailableTimes(
+        schedule.selectedDate,
+        schedule.service.name
+      ).toPromise();
+
+      schedule.availableSlots = (slotsResponse?.availableTimes || []).map((slot: any) => ({
+        time: slot.time,
+        slotsLeft: slot.slotsLeft
+      }));
+
+      if (schedule.availableSlots.length === 0) {
+        console.warn('No available slots for this date and service');
+      }
+    } catch (error) {
+      console.error('Error loading slots:', error);
+      alert('Error loading available time slots');
+      schedule.availableSlots = [];
+    } finally {
+      schedule.isLoadingSlots = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  selectTimeForMultiService(time: string) {
+    const schedule = this.getCurrentServiceSchedule();
+    schedule.selectedTime = time;
+
+    // Calculate end time
+    const [hours, minutes] = time.split(':').map(Number);
+    const endMin = hours * 60 + minutes + schedule.service.duration;
+    const endHours = Math.floor(endMin / 60);
+    const endMinutes = endMin % 60;
+    schedule.service.endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+    schedule.service.date = schedule.selectedDate;
+    schedule.service.time = time;
+  }
+
+  proceedToNextService() {
+    const schedule = this.getCurrentServiceSchedule();
+
+    if (!schedule || !schedule.selectedDate || !schedule.selectedTime) {
+      alert('Please select both date and time for this service');
+      return;
+    }
+
+    // Validate no time conflicts with previously scheduled services
+    const currentStartTime = this.timeStringToMinutes(schedule.selectedTime);
+    const currentEndTime = currentStartTime + schedule.service.duration;
+
+    for (let i = 0; i < this.currentServiceIndex; i++) {
+      const prevSchedule = this.serviceSchedules[i];
+      if (prevSchedule.selectedDate === schedule.selectedDate) {
+        const prevStartTime = this.timeStringToMinutes(prevSchedule.selectedTime);
+        const prevEndTime = prevStartTime + prevSchedule.service.duration;
+
+        // Check for overlap
+        if ((currentStartTime < prevEndTime && currentEndTime > prevStartTime)) {
+          alert(`This time slot overlaps with "${prevSchedule.service.name}" scheduled at ${prevSchedule.selectedTime}. Please choose a different time.`);
+          return;
+        }
+      }
+    }
+
+    if (this.currentServiceIndex < this.serviceSchedules.length - 1) {
+      this.currentServiceIndex++;
+      // BUG FIX #8: Don't reset calendar - keep user's current month context
+      this.generateCalendar();
+      this.cdr.detectChanges();
+    } else {
+      // BUG FIX #1: Validate ALL services are scheduled before proceeding to step 3
+      const allScheduled = this.serviceSchedules.every(s => 
+        s.selectedDate && 
+        s.selectedTime && 
+        /^\d{4}-\d{2}-\d{2}$/.test(s.selectedDate) && 
+        /^\d{2}:\d{2}/.test(s.selectedTime)
+      );
+      
+      if (!allScheduled) {
+        alert('Please schedule all services before proceeding.');
+        return;
+      }
+
+      // All services scheduled, proceed to patient details
+      this.currentStep = 3;
+      this.cdr.detectChanges();
+    }
+  }
+
+  goBackToServiceSelection() {
+    if (this.currentServiceIndex > 0) {
+      this.currentServiceIndex--;
+    } else {
+      this.currentStep = 1;
+      // BUG FIX #7: Clear all service selections when going back to step 1
+      this.selectedCategory = '';
+      this.selectedServices = [];
+      this.selectedSubServices = [];
+      this.totalSelectedDuration = 0;
+    }
+    this.cdr.detectChanges();
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // BOOKING SUBMISSION
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  completeBooking() {
+    console.log(`[BOOKING] completeBooking called`);
+    
+    if (this.isSubmitting) {
+      console.warn(`[BOOKING] Already submitting, ignoring`);
+      return;
+    }
+    if (!this.canProceedToReview) {
+      console.warn(`[BOOKING] Cannot proceed to review - validation failed`);
+      return;
+    }
+
+    // Validate based on booking type
+    if (this.selectedSubServices.length === 1) {
+      // Single service
+      if (!this.selectedDate || !this.selectedTime) {
+        this.submitError = 'Please complete the service, date, and time before submitting.';
+        return;
+      }
+    } else {
+      // Multi-service
+      const allScheduled = this.serviceSchedules.every(s => s.selectedDate && s.selectedTime);
+      if (!allScheduled) {
+        this.submitError = 'Please schedule all services before submitting.';
+        return;
+      }
     }
 
     const user = this.auth.getUser();
     const fullName = `${this.patientDetails.firstName.trim()} ${this.patientDetails.lastName.trim()}`;
     const selectedServiceNames = this.selectedSubServices.map((s) => s.name);
-    const time24Hour = this.convertTo24Hour(this.selectedTime);
 
-    const bookingData = {
-      patient_id:       user?.id ?? null,
-      full_name:        fullName,
-      phone:            this.patientDetails.phone.trim(),
-      email:            this.patientDetails.email.trim(),
-      treatment:        this.selectedCategory,
-      services:         selectedServiceNames,
-      appointment_date: this.selectedDate,
-      appointment_time: time24Hour,
-      duration_minutes: this.totalSelectedDuration,
-      notes:            this.patientDetails.notes.trim(),
-      booking_type:     'Registered patient', // Patient bookings need approval
-    };
+    console.log(`[BOOKING] Submitting booking:`, {
+      fullName,
+      serviceCount: this.selectedSubServices.length,
+      services: selectedServiceNames
+    });
+
+    // Prepare appointments based on booking type
+    let appointments: any[];
+
+    if (this.selectedSubServices.length === 1) {
+      // Single service
+      const time24Hour = this.convertTo24Hour(this.selectedTime);
+      appointments = [{
+        date: this.selectedDate,
+        time: time24Hour
+      }];
+    } else {
+      // Multi-service
+      appointments = this.serviceSchedules.map(schedule => ({
+        date: schedule.selectedDate,
+        time: schedule.selectedTime
+      }));
+    }
 
     this.isSubmitting = true;
     this.submitError = '';
 
+    const bookingData = {
+      patient_id: null,
+      full_name: `${this.patientDetails.firstName.trim()} ${this.patientDetails.lastName.trim()}`,
+      phone: this.patientDetails.phone.trim(),
+      email: this.patientDetails.email.trim(),
+      treatment: this.selectedCategory,
+      services: this.selectedSubServices.map(s => s.name),
+      appointment_date: this.selectedDate,
+      appointment_time: this.selectedSubServices.length === 1 ? this.convertTo24Hour(this.selectedTime) : this.convertTo24Hour(this.serviceSchedules[0].selectedTime),
+      duration_minutes: this.totalSelectedDuration,
+      notes: this.patientDetails.notes.trim(),
+      booking_type: 'Patient'
+    };
+
+    console.log(`[BOOKING] Submitting booking:`, bookingData);
+
     this.api.bookAppointment(bookingData).subscribe({
-      next: (res) => {
-        // Store in local appointment store for reschedule flow
-        this.appointmentStore.createAppointment({
-          service:         this.selectedCategory,
-          category:        this.selectedCategory,
-          time:            this.selectedTime,
-          date:            this.selectedDate,
-          durationMinutes: this.totalSelectedDuration,
-          patientName:     fullName,
-          patientEmail:    this.patientDetails.email.trim(),
-          patientPhone:    this.patientDetails.phone.trim(),
-          patientAge:      this.patientDetails.age.toString(),
-          notes:           this.patientDetails.notes.trim(),
-          servicesSummary: selectedServiceNames,
-        });
+      next: (res: any) => {
+        console.log(`[BOOKING] Booking successful:`, res);
+        this.submitError = '';
 
         this.confirmedBooking = {
-          appointmentId: res.id?.toString() ?? '',
-          fullName,
-          date:     this.selectedDate,
-          time:     this.selectedTime,
+          appointmentId: res.id || res.appointment_id || '',
+          fullName: `${this.patientDetails.firstName.trim()} ${this.patientDetails.lastName.trim()}`,
+          date: this.selectedDate,
+          time: this.selectedSubServices.length === 1 ? this.selectedTime : this.serviceSchedules[0].selectedTime,
           services: [...this.selectedSubServices],
         };
 
@@ -461,31 +753,50 @@ export class PatientBookingComponent implements OnInit {
         this.resetSelection();
         this.resetPatientDetails();
 
-        // Refresh available slots to show updated counts
-        this.refreshAvailableSlots(this.selectedDate);
-
-        // Show the success modal — cdr.detectChanges() ensures it renders immediately
         this.showSuccessModal = true;
         this.cdr.detectChanges();
       },
-      error: (err) => {
+      error: (err: any) => {
+        console.error(`[BOOKING] Booking failed:`, err);
         this.isSubmitting = false;
-        this.submitError = err?.error?.message
-          || 'Booking failed. Please make sure the server is running and try again.';
+        this.submitError = err?.error?.error || 'Booking failed. Please try again.';
         this.cdr.detectChanges();
       }
     });
   }
 
   convertTo24Hour(time12h: string): string {
+    // BUG FIX #6: Add comprehensive validation for time format
     if (!time12h) {
+      console.error('[BOOKING] Empty time string');
       return '';
     }
 
-    const [time, modifier] = time12h.split(' ');
-    let [hours, minutes] = time.split(':');
+    // Validate format: "HH:MM AM/PM"
+    const timeRegex = /^(\d{1,2}):(\d{2})\s+(AM|PM)$/i;
+    const match = time12h.trim().match(timeRegex);
     
-    let hour = parseInt(hours, 10);
+    if (!match) {
+      console.error(`[BOOKING] Invalid time format: ${time12h}`);
+      return '';
+    }
+
+    let hour = parseInt(match[1], 10);
+    const minutes = match[2];
+    const modifier = match[3].toUpperCase();
+
+    // Validate hour range for 12-hour format
+    if (hour < 1 || hour > 12) {
+      console.error(`[BOOKING] Invalid hour for 12-hour format: ${hour}`);
+      return '';
+    }
+
+    // Validate minutes range
+    const minutesNum = parseInt(minutes, 10);
+    if (minutesNum < 0 || minutesNum > 59) {
+      console.error(`[BOOKING] Invalid minutes: ${minutesNum}`);
+      return '';
+    }
     
     // Convert 12-hour to 24-hour format
     if (modifier === 'AM') {
@@ -513,6 +824,9 @@ export class PatientBookingComponent implements OnInit {
     this.selectedCategory = '';
     this.isRescheduleFlow = false;
     this.rescheduleAppointmentId = null;
+    // BUG FIX #4: Reset multi-service state for new booking
+    this.currentServiceIndex = 0;
+    this.serviceSchedules = [];
     this.resetSelection();
     this.resetPatientDetails();
     this.resetConfirmedBooking();

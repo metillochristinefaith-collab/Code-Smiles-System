@@ -13,13 +13,13 @@ const CLINIC_CONFIG = {
     end: 13 * 60,   // 01:00 PM in minutes
   },
   operating_hours: {
-    monday: { start: 8 * 60, end: 20.5 * 60 },      // 08:00 - 20:30
-    tuesday: { start: 8 * 60, end: 20.5 * 60 },     // 08:00 - 20:30
-    wednesday: { start: 8 * 60, end: 20.5 * 60 },   // 08:00 - 20:30
-    thursday: { start: 8 * 60, end: 20.5 * 60 },    // 08:00 - 20:30
-    friday: { start: 8 * 60, end: 20.5 * 60 },      // 08:00 - 20:30
-    saturday: { start: 8 * 60, end: 21 * 60 },      // 08:00 - 21:00
-    sunday: { start: 8 * 60, end: 21.5 * 60 },      // 08:00 - 21:30
+    monday: { start: 8 * 60, end: 20.5 * 60 },      // 08:00 AM - 08:30 PM (weekday)
+    tuesday: { start: 8 * 60, end: 20.5 * 60 },     // 08:00 AM - 08:30 PM (weekday)
+    wednesday: { start: 8 * 60, end: 20.5 * 60 },   // 08:00 AM - 08:30 PM (weekday)
+    thursday: { start: 8 * 60, end: 20.5 * 60 },    // 08:00 AM - 08:30 PM (weekday)
+    friday: { start: 8 * 60, end: 20.5 * 60 },      // 08:00 AM - 08:30 PM (weekday)
+    saturday: { start: 8 * 60, end: 21 * 60 },      // 08:00 AM - 09:00 PM (Saturday)
+    sunday: { start: 8 * 60, end: 21.5 * 60 },      // 08:00 AM - 09:30 PM (Sunday)
   },
   buffer_time: 10, // 10 minutes after each appointment
 };
@@ -216,20 +216,51 @@ function getServiceDuration(serviceName) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Convert time string (HH:MM) to minutes since midnight
+ * Convert time string (HH:MM or HH:MM AM/PM) to minutes since midnight
  */
 function timeToMinutes(timeStr) {
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return hours * 60 + minutes;
+  // Handle both 24-hour format (HH:MM) and 12-hour format (HH:MM AM/PM)
+  const trimmed = timeStr.trim();
+  const hasAmPm = /\s*(AM|PM|am|pm)\s*$/.test(trimmed);
+  
+  if (hasAmPm) {
+    // Extract AM/PM and time parts
+    const match = trimmed.match(/^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)$/i);
+    if (!match) {
+      throw new Error(`Invalid time format: ${timeStr}`);
+    }
+    
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const period = match[3].toUpperCase();
+    
+    // Convert to 24-hour format
+    if (period === 'AM') {
+      if (hours === 12) hours = 0; // 12 AM = 00:00
+    } else { // PM
+      if (hours !== 12) hours += 12; // 1 PM = 13:00, but 12 PM = 12:00
+    }
+    
+    return hours * 60 + minutes;
+  } else {
+    // Standard 24-hour format
+    const [hours, minutes] = trimmed.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
 }
 
 /**
- * Convert minutes since midnight to time string (HH:MM)
+ * Convert minutes since midnight to time string (HH:MM AM/PM format)
  */
 function minutesToTime(minutes) {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  
+  // Convert to 12-hour format
+  let displayHours = hours % 12 || 12;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  
+  return `${String(displayHours).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${period}`;
 }
 
 /**

@@ -1,0 +1,745 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ENHANCED BOOKING COMPONENTS - UNIFIED DESIGN SYSTEM
+   Apply these styles to both patient-booking.css and staff-booking.css
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. CSS VARIABLES - DESIGN SYSTEM FOUNDATION
+   ───────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Primary Colors */
+  --primary-blue: #1a56db;
+  --primary-blue-dark: #1e40af;
+  --primary-blue-light: #eff6ff;
+  
+  /* Semantic Colors */
+  --success: #16a34a;
+  --success-light: #ecfdf5;
+  --warning: #f59e0b;
+  --warning-light: #fffbeb;
+  --error: #ef4444;
+  --error-light: #fee2e2;
+  
+  /* Neutral Colors */
+  --navy: #1e3a5f;
+  --muted: #6b7c93;
+  --line: #e2e8f0;
+  --bg-light: #f8fafc;
+  --bg-lighter: #f0f4f8;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  
+  /* Spacing (8px base unit) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 40px;
+  
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. BUTTON ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Primary Button - Enhanced */
+.btn-next,
+.btn-submit,
+.btn-primary-portal {
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-base);
+  box-shadow: 0 4px 14px rgba(26, 86, 219, 0.25);
+}
+
+.btn-next:hover:not(:disabled),
+.btn-submit:hover:not(:disabled),
+.btn-primary-portal:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(26, 86, 219, 0.35);
+}
+
+.btn-next:active:not(:disabled),
+.btn-submit:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(26, 86, 219, 0.2);
+}
+
+.btn-next:focus-visible,
+.btn-submit:focus-visible,
+.btn-primary-portal:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* Secondary Button - Enhanced */
+.btn-prev,
+.btn-cancel-link,
+.btn-outline {
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.btn-prev:hover,
+.btn-cancel-link:hover,
+.btn-outline:hover {
+  background: var(--primary-blue-light);
+  border-color: var(--primary-blue);
+  color: var(--primary-blue);
+  transform: translateY(-1px);
+}
+
+.btn-prev:focus-visible,
+.btn-cancel-link:focus-visible,
+.btn-outline:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* Button Disabled State */
+.btn-next:disabled,
+.btn-submit:disabled,
+.btn-prev:disabled,
+.btn-cancel-link:disabled,
+.btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. FORM INPUT ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.form-field input,
+.form-field textarea,
+.form-field-compact input,
+.form-field-compact textarea,
+.notes-textarea-compact-inline {
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.form-field input::placeholder,
+.form-field textarea::placeholder,
+.form-field-compact input::placeholder,
+.form-field-compact textarea::placeholder,
+.notes-textarea-compact-inline::placeholder {
+  color: #a0b0c4;
+  transition: color var(--transition-base);
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field-compact input:focus,
+.form-field-compact textarea:focus,
+.notes-textarea-compact-inline:focus {
+  border-color: var(--primary-blue);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Error State */
+.form-field.invalid input,
+.form-field.invalid textarea,
+.form-field-compact.invalid input,
+.form-field-compact.invalid textarea {
+  border-color: var(--error);
+  background: var(--error-light);
+}
+
+.form-field.invalid input:focus,
+.form-field.invalid textarea:focus,
+.form-field-compact.invalid input:focus,
+.form-field-compact.invalid textarea:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   4. CATEGORY CARD ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.category-card {
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.category-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(26, 86, 219, 0.05), transparent);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  pointer-events: none;
+}
+
+.category-card:hover::before {
+  opacity: 1;
+}
+
+.category-card:hover {
+  border-color: var(--primary-blue);
+  box-shadow: 0 8px 24px rgba(26, 86, 219, 0.15);
+  transform: translateY(-4px);
+}
+
+.category-card.selected {
+  border-color: var(--primary-blue);
+  background: linear-gradient(135deg, var(--primary-blue-light), #fff);
+  box-shadow: 0 8px 24px rgba(26, 86, 219, 0.2);
+}
+
+.category-card:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. SERVICE SELECTION BUTTON ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.service-row-btn {
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.service-row-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3), transparent);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  pointer-events: none;
+}
+
+.service-row-btn:hover:not(:disabled)::after {
+  opacity: 1;
+}
+
+.service-row-btn:hover:not(:disabled) {
+  border-color: var(--primary-blue);
+  background: var(--primary-blue-light);
+  transform: translateY(-2px);
+}
+
+.service-row-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.service-row-btn.selected {
+  animation: selectPulse 0.3s ease;
+}
+
+@keyframes selectPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.service-row-btn:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   6. CALENDAR DATE BUTTON ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.cal-date {
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.cal-date.available:hover:not(:disabled) {
+  background: #d1fae5;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+}
+
+.cal-date.selected {
+  animation: dateSelect 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes dateSelect {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1.1); opacity: 1; }
+}
+
+.cal-date.today:not(.selected) {
+  position: relative;
+}
+
+.cal-date.today:not(.selected)::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: #d97706;
+  border-radius: 50%;
+}
+
+.cal-date:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   7. TIME SLOT BUTTON ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.timeslot-btn {
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.timeslot-btn:hover:not(:disabled):not(.full) {
+  border-color: var(--primary-blue);
+  background: var(--primary-blue-light);
+  transform: translateX(4px);
+}
+
+.timeslot-btn.active {
+  border-color: var(--primary-blue);
+  background: var(--primary-blue-light);
+  box-shadow: inset 4px 0 0 var(--primary-blue);
+  font-weight: 800;
+}
+
+.timeslot-btn.full {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.timeslot-btn.full::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(239, 68, 68, 0.05) 10px,
+    rgba(239, 68, 68, 0.05) 20px
+  );
+  pointer-events: none;
+}
+
+.timeslot-btn:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   8. CARD ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.selection-cart,
+.calendar-panel,
+.timeslot-panel,
+.review-box,
+.review-services-box {
+  transition: all var(--transition-base);
+}
+
+.selection-cart:hover,
+.calendar-panel:hover,
+.timeslot-panel:hover {
+  border-color: var(--primary-blue);
+  box-shadow: 0 6px 16px rgba(26, 86, 219, 0.1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   9. LOADING & EMPTY STATES
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.loading-spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.timeslot-placeholder,
+.cart-empty {
+  transition: all var(--transition-base);
+}
+
+.timeslot-placeholder svg,
+.cart-empty svg {
+  opacity: 0.5;
+  transition: opacity var(--transition-base);
+}
+
+.timeslot-placeholder:hover svg,
+.cart-empty:hover svg {
+  opacity: 0.7;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   10. ANIMATIONS & TRANSITIONS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.fade-in {
+  animation: fadeIn 0.4s ease both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.timeslot-btn {
+  animation: fadeInSlot 0.3s ease-out;
+}
+
+@keyframes fadeInSlot {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   11. ACCESSIBILITY IMPROVEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Visible Focus Ring */
+*:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: more) {
+  .btn-next,
+  .btn-submit,
+  .btn-primary-portal {
+    border: 2px solid var(--primary-blue-dark);
+  }
+  
+  .form-field input,
+  .form-field textarea {
+    border-width: 2px;
+  }
+  
+  .selection-cart,
+  .calendar-panel,
+  .timeslot-panel {
+    border-width: 2px;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   12. RESPONSIVE IMPROVEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Tablet (768px) */
+@media (max-width: 768px) {
+  .category-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .service-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .datetime-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .btn-next,
+  .btn-submit,
+  .btn-prev,
+  .btn-cancel-link {
+    height: 40px;
+    padding: 0 var(--space-md);
+    font-size: 0.85rem;
+  }
+}
+
+/* Mobile (640px) */
+@media (max-width: 640px) {
+  .category-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .step-body {
+    padding: var(--space-md);
+  }
+  
+  .btn-next,
+  .btn-submit,
+  .btn-prev,
+  .btn-cancel-link {
+    width: 100%;
+    height: 40px;
+  }
+  
+  .cal-date {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+  }
+  
+  .service-selection-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   13. CATEGORY TABS ENHANCEMENT (Staff Booking)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.category-tabs {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: fadeIn 0.4s ease;
+}
+
+.category-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  position: relative;
+  overflow: hidden;
+}
+
+.category-tab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(26, 86, 219, 0.1), transparent);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  pointer-events: none;
+}
+
+.category-tab:hover::before {
+  opacity: 1;
+}
+
+.category-tab:hover {
+  border-color: var(--primary-blue);
+  background: var(--primary-blue-light);
+  color: var(--primary-blue);
+  transform: translateY(-2px);
+}
+
+.category-tab.active {
+  border-color: var(--primary-blue);
+  background: var(--primary-blue);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(26, 86, 219, 0.25);
+}
+
+.category-tab:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+}
+
+.tab-icon {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform var(--transition-base);
+}
+
+.category-tab:hover .tab-icon,
+.category-tab.active .tab-icon {
+  transform: scale(1.1);
+}
+
+.tab-name {
+  font-weight: 700;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   14. RESET BUTTON ENHANCEMENT
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.btn-reset {
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-reset:hover:not(:disabled) {
+  background: #ffe4e6;
+  transform: translateY(-1px);
+}
+
+.btn-reset:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-reset:focus-visible {
+  outline: 2px solid #be123c;
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   15. CHIP/TAG ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.cart-chip,
+.review-chip {
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.cart-chip:hover,
+.review-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.chip-remove {
+  transition: all var(--transition-base);
+}
+
+.chip-remove:hover {
+  color: #fca5a5;
+  transform: scale(1.2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   16. PROGRESS BAR ENHANCEMENT
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.cart-progress-fill {
+  transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cart-progress-fill.at-limit {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   17. SUCCESS STATE ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.booking-success-card {
+  animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.success-icon-wrap {
+  animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   18. MODAL ENHANCEMENTS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.success-modal-overlay {
+  animation: fadeIn 0.3s ease;
+}
+
+.success-modal-content {
+  animation: modalSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   END OF ENHANCED STYLES
+   ═══════════════════════════════════════════════════════════════════════════════ */

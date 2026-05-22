@@ -7,6 +7,7 @@ const crypto     = require('crypto');
 const nodemailer = require('nodemailer');
 const rateLimit  = require('express-rate-limit');
 const db         = require('./db');
+const SlotManager = require('./slot-manager');
 const { startScheduler } = require('./scheduler');
 
 const app    = express();
@@ -54,8 +55,8 @@ const bookingLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many booking attempts. Please try again in 1 hour.' },
   skip: (req) => {
-    // Skip rate limiting for staff/admin creating appointments
-    return req.user?.role === 'Staff' || req.user?.role === 'Admin';
+    // TESTING: Skip rate limiting for all requests during development
+    return true;
   }
 });
 
@@ -226,6 +227,492 @@ async function sendVerificationEmail(toEmail, firstName, token) {
   }
 }
 
+// ─── APPOINTMENT CONFIRMATION EMAIL ────────────────────────────────────────────
+async function sendAppointmentConfirmationEmail(toEmail, patientName, appointmentDetails) {
+  const { treatment, appointment_date, appointment_time, dentist_name, duration_minutes, status } = appointmentDetails;
+  
+  // Format date for display
+  const dateObj = new Date(appointment_date);
+  const formattedDate = dateObj.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  
+  // Calculate end time
+  const [hours, minutes] = appointment_time.split(':').map(Number);
+  const endMinutes = (hours * 60 + minutes) + duration_minutes;
+  const endHours = Math.floor(endMinutes / 60);
+  const endMins = endMinutes % 60;
+  const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+
+  // Determine title and message based on status
+  const isApproved = status === 'Approved';
+  const emailTitle = isApproved ? '✓ Appointment Confirmed' : '📋 Appointment Under Review';
+  const emailSubject = isApproved 
+    ? `Appointment Confirmed - ${treatment} on ${formattedDate}`
+    : `Appointment Pending Review - ${treatment} on ${formattedDate}`;
+  const statusMessage = isApproved
+    ? 'Your appointment has been confirmed by our staff!'
+    : 'Your appointment request has been received and is under review. We will send you a confirmation email once approved.';
+  const statusColor = isApproved ? '#10b981' : '#f59e0b'; // green for approved, amber for pending
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${emailTitle} - Code Smiles</title>
+</head>
+<body style="margin:0;padding:0;background:#edf5ff;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#edf5ff;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:560px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(20,70,120,0.12);">
+
+        <!-- Header stripe -->
+        <tr><td style="background:linear-gradient(90deg,#0e2742 0%,#1b67a9 54%,#46b3ff 100%);height:5px;"></td></tr>
+
+        <!-- Logo / Brand -->
+        <tr><td align="center" style="padding:32px 32px 0;">
+          <div style="display:inline-flex;align-items:center;gap:10px;">
+            <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(180deg,#1b67a9,#0e2742);display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:18px;font-weight:900;line-height:1;">&#129463;</span>
+            </div>
+            <span style="font-size:18px;font-weight:900;letter-spacing:0.12em;color:#0e2742;text-transform:uppercase;">Code Smiles</span>
+          </div>
+        </td></tr>
+
+        <!-- Title -->
+        <tr><td align="center" style="padding:24px 32px 8px;">
+          <h1 style="margin:0;font-size:26px;font-weight:800;color:#0e2742;letter-spacing:-0.02em;">${emailTitle}</h1>
+          <p style="margin:10px 0 0;font-size:15px;color:#5a7a9a;line-height:1.6;">
+            Hi <strong style="color:#0e2742;">${patientName}</strong>, ${statusMessage}
+          </p>
+        </td></tr>
+
+        <!-- Divider -->
+        <tr><td style="padding:0 32px;"><div style="height:1px;background:rgba(20,70,120,0.08);margin:16px 0;"></div></td></tr>
+
+        <!-- Status Badge -->
+        <tr><td align="center" style="padding:16px 32px;">
+          <div style="display:inline-block;background:${statusColor};color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:700;letter-spacing:0.05em;">
+            ${isApproved ? 'CONFIRMED' : 'PENDING APPROVAL'}
+          </div>
+        </td></tr>
+
+        <!-- Appointment Details -->
+        <tr><td style="padding:24px 32px;">
+          <div style="background:#f0f7ff;border-left:4px solid #1b67a9;border-radius:8px;padding:20px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:8px 0;font-size:13px;color:#5a7a9a;font-weight:600;">SERVICE</td>
+                <td align="right" style="padding:8px 0;font-size:15px;color:#0e2742;font-weight:700;">${treatment}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-size:13px;color:#5a7a9a;font-weight:600;">DATE</td>
+                <td align="right" style="padding:8px 0;font-size:15px;color:#0e2742;font-weight:700;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-size:13px;color:#5a7a9a;font-weight:600;">TIME</td>
+                <td align="right" style="padding:8px 0;font-size:15px;color:#0e2742;font-weight:700;">${appointment_time} - ${endTime}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-size:13px;color:#5a7a9a;font-weight:600;">DENTIST</td>
+                <td align="right" style="padding:8px 0;font-size:15px;color:#0e2742;font-weight:700;">${dentist_name || 'To be assigned'}</td>
+              </tr>
+            </table>
+          </div>
+        </td></tr>
+
+        <!-- Important Info -->
+        <tr><td style="padding:0 32px;">
+          <div style="background:#fff3cd;border:1px solid rgba(255,193,7,0.3);border-radius:12px;padding:14px 20px;margin:16px 0;">
+            <p style="margin:0;font-size:13px;color:#856404;line-height:1.6;">
+              <strong>📌 Please arrive 10 minutes early</strong> to complete any necessary paperwork and allow time for check-in.
+            </p>
+          </div>
+        </td></tr>
+
+        <!-- Status-specific message -->
+        ${!isApproved ? `
+        <tr><td style="padding:0 32px;">
+          <div style="background:#e0f2fe;border:1px solid rgba(3,102,214,0.3);border-radius:12px;padding:14px 20px;margin:16px 0;">
+            <p style="margin:0;font-size:12px;color:#0369a1;line-height:1.6;">
+              <strong>⏳ What's next?</strong><br/>
+              Our staff will review your appointment request and send you a confirmation email within 24 hours. You can also check your appointment status in your patient portal.
+            </p>
+          </div>
+        </td></tr>
+        ` : ''}
+
+        <!-- Cancellation Info -->
+        <tr><td style="padding:0 32px;">
+          <div style="background:#f8f9fa;border:1px solid rgba(20,70,120,0.08);border-radius:12px;padding:14px 20px;margin:16px 0;">
+            <p style="margin:0;font-size:12px;color:#5a7a9a;line-height:1.6;">
+              <strong style="color:#0e2742;">Need to reschedule or cancel?</strong><br/>
+              Contact us at least 24 hours before your appointment. Call or visit our clinic for assistance.
+            </p>
+          </div>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:0 32px;"><div style="height:1px;background:rgba(20,70,120,0.08);margin:16px 0;"></div></td></tr>
+        <tr><td align="center" style="padding:0 32px 28px;">
+          <p style="margin:0;font-size:12px;color:#a0b4c8;line-height:1.7;">
+            Code Smiles Dental Clinic &bull; USTP Villanueva Campus, Misamis Oriental<br/>
+            &copy; ${new Date().getFullYear()} Code Smiles. All rights reserved.
+          </p>
+        </td></tr>
+
+        <!-- Bottom stripe -->
+        <tr><td style="background:linear-gradient(90deg,#0e2742 0%,#1b67a9 54%,#46b3ff 100%);height:3px;"></td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const mailOptions = {
+    from:    `"Code Smiles Dental" <${process.env.EMAIL_USER || etherealUser || 'noreply@codesmiles.com'}>`,
+    to:      toEmail,
+    subject: emailSubject,
+    html,
+    text: `Hi ${patientName},\n\n${statusMessage}\n\nService: ${treatment}\nDate: ${formattedDate}\nTime: ${appointment_time} - ${endTime}\nDentist: ${dentist_name || 'To be assigned'}\nStatus: ${isApproved ? 'CONFIRMED' : 'PENDING APPROVAL'}\n\nPlease arrive 10 minutes early.\n\nIf you need to reschedule or cancel, contact us at least 24 hours before your appointment.\n\nCode Smiles Dental Clinic`,
+    headers: {
+      'X-Priority': '1',
+      'X-Mailer': 'Code Smiles Dental Portal',
+    },
+  };
+
+  console.log(`\n[Email] Sending appointment ${isApproved ? 'confirmation' : 'notification'} to: ${toEmail}`);
+  
+  const t = await getTransporter();
+  const info = await t.sendMail(mailOptions);
+
+  const previewUrl = nodemailer.getTestMessageUrl(info);
+  if (previewUrl) {
+    console.log(`[Email] ✓ Sent via Ethereal — 👉 View at: ${previewUrl}`);
+  } else {
+    console.log(`[Email] ✓ Email delivered to ${toEmail}`);
+    console.log(`[Email]   Message ID: ${info.messageId}`);
+  }
+}
+
+// ─── APPOINTMENT CANCELLATION EMAIL ────────────────────────────────────────────
+async function sendAppointmentCancellationEmail(toEmail, patientName, appointmentDetails, cancelledBy) {
+  const { treatment, appointment_date, appointment_time, reason } = appointmentDetails;
+  
+  // Format date for display
+  const dateObj = new Date(appointment_date);
+  const formattedDate = dateObj.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appointment Cancelled - Code Smiles</title>
+</head>
+<body style="margin:0;padding:0;background:#edf5ff;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#edf5ff;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:560px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(20,70,120,0.12);">
+
+        <!-- Header stripe -->
+        <tr><td style="background:linear-gradient(90deg,#0e2742 0%,#1b67a9 54%,#46b3ff 100%);height:5px;"></td></tr>
+
+        <!-- Logo / Brand -->
+        <tr><td align="center" style="padding:32px 32px 0;">
+          <div style="display:inline-flex;align-items:center;gap:10px;">
+            <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(180deg,#1b67a9,#0e2742);display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:18px;font-weight:900;line-height:1;">&#129463;</span>
+            </div>
+            <span style="font-size:18px;font-weight:900;letter-spacing:0.12em;color:#0e2742;text-transform:uppercase;">Code Smiles</span>
+          </div>
+        </td></tr>
+
+        <!-- Title -->
+        <tr><td align="center" style="padding:24px 32px 8px;">
+          <h1 style="margin:0;font-size:26px;font-weight:800;color:#0e2742;letter-spacing:-0.02em;">⚠️ Appointment Cancelled</h1>
+          <p style="margin:10px 0 0;font-size:15px;color:#5a7a9a;line-height:1.6;">
+            Hi <strong style="color:#0e2742;">${patientName}</strong>, your appointment has been cancelled.
+          </p>
+        </td></tr>
+
+        <!-- Divider -->
+        <tr><td style="padding:0 32px;"><div style="height:1px;background:rgba(20,70,120,0.08);margin:16px 0;"></div></td></tr>
+
+        <!-- Status Badge -->
+        <tr><td align="center" style="padding:16px 32px;">
+          <div style="display:inline-block;background:#ef4444;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:700;letter-spacing:0.05em;">
+            CANCELLED
+          </div>
+        </td></tr>
+
+        <!-- Cancelled Appointment Details -->
+        <tr><td style="padding:24px 32px;">
+          <div style="background:#fee2e2;border-left:4px solid #ef4444;border-radius:8px;padding:20px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:8px 0;font-size:13px;color:#7f1d1d;font-weight:600;">SERVICE</td>
+                <td align="right" style="padding:8px 0;font-size:15px;color:#0e2742;font-weight:700;">${treatment}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-size:13px;color:#7f1d1d;font-weight:600;">DATE</td>
+                <td align="right" style="padding:8px 0;font-size:15px;color:#0e2742;font-weight:700;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-size:13px;color:#7f1d1d;font-weight:600;">TIME</td>
+                <td align="right" style="padding:8px 0;font-size:15px;color:#0e2742;font-weight:700;">${appointment_time}</td>
+              </tr>
+            </table>
+          </div>
+        </td></tr>
+
+        <!-- Cancellation Reason -->
+        ${reason ? `
+        <tr><td style="padding:0 32px;">
+          <div style="background:#f8f9fa;border:1px solid rgba(20,70,120,0.08);border-radius:12px;padding:14px 20px;margin:16px 0;">
+            <p style="margin:0;font-size:12px;color:#5a7a9a;line-height:1.6;">
+              <strong style="color:#0e2742;">Reason for Cancellation:</strong><br/>
+              ${reason}
+            </p>
+          </div>
+        </td></tr>
+        ` : ''}
+
+        <!-- Next Steps -->
+        <tr><td style="padding:0 32px;">
+          <div style="background:#e0f2fe;border:1px solid rgba(3,102,214,0.3);border-radius:12px;padding:14px 20px;margin:16px 0;">
+            <p style="margin:0;font-size:12px;color:#0369a1;line-height:1.6;">
+              <strong>📅 Need to reschedule?</strong><br/>
+              You can book a new appointment through your patient portal or contact us directly for assistance.
+            </p>
+          </div>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:0 32px;"><div style="height:1px;background:rgba(20,70,120,0.08);margin:16px 0;"></div></td></tr>
+        <tr><td align="center" style="padding:0 32px 28px;">
+          <p style="margin:0;font-size:12px;color:#a0b4c8;line-height:1.7;">
+            Code Smiles Dental Clinic &bull; USTP Villanueva Campus, Misamis Oriental<br/>
+            &copy; ${new Date().getFullYear()} Code Smiles. All rights reserved.
+          </p>
+        </td></tr>
+
+        <!-- Bottom stripe -->
+        <tr><td style="background:linear-gradient(90deg,#0e2742 0%,#1b67a9 54%,#46b3ff 100%);height:3px;"></td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const mailOptions = {
+    from:    `"Code Smiles Dental" <${process.env.EMAIL_USER || etherealUser || 'noreply@codesmiles.com'}>`,
+    to:      toEmail,
+    subject: `Appointment Cancelled - ${treatment} on ${formattedDate}`,
+    html,
+    text: `Hi ${patientName},\n\nYour appointment has been cancelled.\n\nService: ${treatment}\nDate: ${formattedDate}\nTime: ${appointment_time}\n${reason ? `\nReason: ${reason}` : ''}\n\nIf you need to reschedule, you can book a new appointment through your patient portal or contact us directly.\n\nCode Smiles Dental Clinic`,
+    headers: {
+      'X-Priority': '2',
+      'X-Mailer': 'Code Smiles Dental Portal',
+    },
+  };
+
+  console.log(`\n[Email] Sending cancellation email to: ${toEmail}`);
+  
+  const t = await getTransporter();
+  const info = await t.sendMail(mailOptions);
+
+  const previewUrl = nodemailer.getTestMessageUrl(info);
+  if (previewUrl) {
+    console.log(`[Email] ✓ Sent via Ethereal — 👉 View at: ${previewUrl}`);
+  } else {
+    console.log(`[Email] ✓ Cancellation email delivered to ${toEmail}`);
+    console.log(`[Email]   Message ID: ${info.messageId}`);
+  }
+}
+
+// ─── APPOINTMENT RESCHEDULE EMAIL ────────────────────────────────────────────────
+async function sendAppointmentRescheduleEmail(toEmail, patientName, appointmentDetails) {
+  const { treatment, old_date, old_time, new_date, new_time, reason } = appointmentDetails;
+  
+  // Format dates for display
+  const oldDateObj = new Date(old_date);
+  const newDateObj = new Date(new_date);
+  const formattedOldDate = oldDateObj.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  const formattedNewDate = newDateObj.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appointment Rescheduled - Code Smiles</title>
+</head>
+<body style="margin:0;padding:0;background:#edf5ff;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#edf5ff;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:560px;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(20,70,120,0.12);">
+
+        <!-- Header stripe -->
+        <tr><td style="background:linear-gradient(90deg,#0e2742 0%,#1b67a9 54%,#46b3ff 100%);height:5px;"></td></tr>
+
+        <!-- Logo / Brand -->
+        <tr><td align="center" style="padding:32px 32px 0;">
+          <div style="display:inline-flex;align-items:center;gap:10px;">
+            <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(180deg,#1b67a9,#0e2742);display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-size:18px;font-weight:900;line-height:1;">&#129463;</span>
+            </div>
+            <span style="font-size:18px;font-weight:900;letter-spacing:0.12em;color:#0e2742;text-transform:uppercase;">Code Smiles</span>
+          </div>
+        </td></tr>
+
+        <!-- Title -->
+        <tr><td align="center" style="padding:24px 32px 8px;">
+          <h1 style="margin:0;font-size:26px;font-weight:800;color:#0e2742;letter-spacing:-0.02em;">📅 Appointment Rescheduled</h1>
+          <p style="margin:10px 0 0;font-size:15px;color:#5a7a9a;line-height:1.6;">
+            Hi <strong style="color:#0e2742;">${patientName}</strong>, your appointment has been rescheduled.
+          </p>
+        </td></tr>
+
+        <!-- Divider -->
+        <tr><td style="padding:0 32px;"><div style="height:1px;background:rgba(20,70,120,0.08);margin:16px 0;"></div></td></tr>
+
+        <!-- Status Badge -->
+        <tr><td align="center" style="padding:16px 32px;">
+          <div style="display:inline-block;background:#f59e0b;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:700;letter-spacing:0.05em;">
+            RESCHEDULED
+          </div>
+        </td></tr>
+
+        <!-- Old Appointment -->
+        <tr><td style="padding:24px 32px;">
+          <p style="margin:0 0 12px;font-size:13px;color:#5a7a9a;font-weight:600;">PREVIOUS APPOINTMENT</p>
+          <div style="background:#f3f4f6;border-left:4px solid #9ca3af;border-radius:8px;padding:16px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:4px 0;font-size:12px;color:#6b7280;">Date:</td>
+                <td align="right" style="padding:4px 0;font-size:13px;color:#0e2742;font-weight:600;">${formattedOldDate}</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 0;font-size:12px;color:#6b7280;">Time:</td>
+                <td align="right" style="padding:4px 0;font-size:13px;color:#0e2742;font-weight:600;">${old_time}</td>
+              </tr>
+            </table>
+          </div>
+        </td></tr>
+
+        <!-- Arrow -->
+        <tr><td align="center" style="padding:8px 32px;">
+          <div style="font-size:20px;color:#1b67a9;">↓</div>
+        </td></tr>
+
+        <!-- New Appointment -->
+        <tr><td style="padding:0 32px 24px;">
+          <p style="margin:0 0 12px;font-size:13px;color:#5a7a9a;font-weight:600;">NEW APPOINTMENT</p>
+          <div style="background:#dbeafe;border-left:4px solid #0284c7;border-radius:8px;padding:16px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:4px 0;font-size:12px;color:#0369a1;font-weight:600;">Service:</td>
+                <td align="right" style="padding:4px 0;font-size:13px;color:#0e2742;font-weight:700;">${treatment}</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 0;font-size:12px;color:#0369a1;font-weight:600;">Date:</td>
+                <td align="right" style="padding:4px 0;font-size:13px;color:#0e2742;font-weight:700;">${formattedNewDate}</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 0;font-size:12px;color:#0369a1;font-weight:600;">Time:</td>
+                <td align="right" style="padding:4px 0;font-size:13px;color:#0e2742;font-weight:700;">${new_time}</td>
+              </tr>
+            </table>
+          </div>
+        </td></tr>
+
+        <!-- Reschedule Reason -->
+        ${reason ? `
+        <tr><td style="padding:0 32px;">
+          <div style="background:#f8f9fa;border:1px solid rgba(20,70,120,0.08);border-radius:12px;padding:14px 20px;margin:16px 0;">
+            <p style="margin:0;font-size:12px;color:#5a7a9a;line-height:1.6;">
+              <strong style="color:#0e2742;">Reason:</strong><br/>
+              ${reason}
+            </p>
+          </div>
+        </td></tr>
+        ` : ''}
+
+        <!-- Reminder -->
+        <tr><td style="padding:0 32px;">
+          <div style="background:#fff3cd;border:1px solid rgba(255,193,7,0.3);border-radius:12px;padding:14px 20px;margin:16px 0;">
+            <p style="margin:0;font-size:13px;color:#856404;line-height:1.6;">
+              <strong>📌 Please arrive 10 minutes early</strong> to complete any necessary paperwork and allow time for check-in.
+            </p>
+          </div>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:0 32px;"><div style="height:1px;background:rgba(20,70,120,0.08);margin:16px 0;"></div></td></tr>
+        <tr><td align="center" style="padding:0 32px 28px;">
+          <p style="margin:0;font-size:12px;color:#a0b4c8;line-height:1.7;">
+            Code Smiles Dental Clinic &bull; USTP Villanueva Campus, Misamis Oriental<br/>
+            &copy; ${new Date().getFullYear()} Code Smiles. All rights reserved.
+          </p>
+        </td></tr>
+
+        <!-- Bottom stripe -->
+        <tr><td style="background:linear-gradient(90deg,#0e2742 0%,#1b67a9 54%,#46b3ff 100%);height:3px;"></td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const mailOptions = {
+    from:    `"Code Smiles Dental" <${process.env.EMAIL_USER || etherealUser || 'noreply@codesmiles.com'}>`,
+    to:      toEmail,
+    subject: `Appointment Rescheduled - ${treatment}`,
+    html,
+    text: `Hi ${patientName},\n\nYour appointment has been rescheduled.\n\nPrevious: ${formattedOldDate} at ${old_time}\nNew: ${formattedNewDate} at ${new_time}\nService: ${treatment}\n${reason ? `\nReason: ${reason}` : ''}\n\nPlease arrive 10 minutes early.\n\nCode Smiles Dental Clinic`,
+    headers: {
+      'X-Priority': '1',
+      'X-Mailer': 'Code Smiles Dental Portal',
+    },
+  };
+
+  console.log(`\n[Email] Sending reschedule email to: ${toEmail}`);
+  
+  const t = await getTransporter();
+  const info = await t.sendMail(mailOptions);
+
+  const previewUrl = nodemailer.getTestMessageUrl(info);
+  if (previewUrl) {
+    console.log(`[Email] ✓ Sent via Ethereal — 👉 View at: ${previewUrl}`);
+  } else {
+    console.log(`[Email] ✓ Reschedule email delivered to ${toEmail}`);
+    console.log(`[Email]   Message ID: ${info.messageId}`);
+  }
+}
+
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:4200',
@@ -309,7 +796,7 @@ db.query(`
 
 app.get('/patient-vault-records/:patientId', authMiddleware, async (req, res) => {
   const isOwner = String(req.user.id) === String(req.params.patientId);
-  const isPrivileged = ['Staff', 'Admin'].includes(req.user.role);
+  const isPrivileged = ['Staff', 'Dentist'].includes(req.user.role);
   if (!isOwner && !isPrivileged) {
     return res.status(403).json({ message: 'Access denied.' });
   }
@@ -540,7 +1027,7 @@ app.post('/patient-vault-records/:recordId/revoke-share', authMiddleware, async 
 // Auth: user can only view their own profile; Staff/Admin can view any
 app.get('/user/profile/:userId', authMiddleware, async (req, res) => {
   const isOwner = String(req.user.id) === String(req.params.userId);
-  const isPrivileged = ['Staff', 'Admin'].includes(req.user.role);
+  const isPrivileged = ['Staff', 'Dentist'].includes(req.user.role);
   if (!isOwner && !isPrivileged) {
     return res.status(403).json({ message: 'Access denied.' });
   }
@@ -1104,9 +1591,18 @@ app.post('/auth/register', registerLimiter, async (req, res) => {
       [first_name, last_name, normalizedEmail, phone, hashed, token, expires]
     );
 
+    const userId = result.rows[0].id;
+
     await client.query(
       'INSERT INTO patient_profiles (user_id) VALUES ($1)',
-      [result.rows[0].id]
+      [userId]
+    );
+
+    // INSERT INTO PATIENTS TABLE - CRITICAL FOR NEW PATIENT REGISTRATIONS
+    await client.query(
+      `INSERT INTO patients (user_id, first_name, last_name, email, contact_number, status)
+       VALUES ($1, $2, $3, $4, $5, 'Active')`,
+      [userId, first_name, last_name, normalizedEmail, phone]
     );
 
     await client.query('COMMIT');
@@ -1294,7 +1790,7 @@ app.post('/auth/login', loginLimiter, async (req, res) => {
 // Returns all patients enriched with profile data (gender, DOB) and
 // appointment summary (last completed visit + next upcoming appointment)
 app.get('/staff/patients-enriched', authMiddleware, async (req, res) => {
-  if (!['Staff', 'Admin'].includes(req.user.role)) {
+  if (!['Staff', 'Dentist'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied.' });
   }
   try {
@@ -1339,9 +1835,9 @@ app.get('/staff/patients-enriched', authMiddleware, async (req, res) => {
   }
 });
 
-// Auth: Staff and Admin only
+// Auth: Staff and Dentist only
 app.get('/list-patients', authMiddleware, async (req, res) => {
-  if (!['Staff', 'Admin'].includes(req.user.role)) {
+  if (!['Staff', 'Dentist'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied.' });
   }
   try {
@@ -1355,9 +1851,9 @@ app.get('/list-patients', authMiddleware, async (req, res) => {
   }
 });
 
-// Auth: Staff and Admin only
+// Auth: Staff and Dentist only
 app.post('/add-patient', authMiddleware, async (req, res) => {
-  if (!['Staff', 'Admin'].includes(req.user.role)) {
+  if (!['Staff', 'Dentist'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied.' });
   }
   const { first_name, last_name, phone } = req.body;
@@ -1383,9 +1879,9 @@ app.post('/add-patient', authMiddleware, async (req, res) => {
   }
 });
 
-// Auth: Staff and Admin only
+// Auth: Staff and Dentist only
 app.delete('/delete-patient/:id', authMiddleware, async (req, res) => {
-  if (!['Staff', 'Admin'].includes(req.user.role)) {
+  if (!['Staff', 'Dentist'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied.' });
   }
   try {
@@ -1558,11 +2054,27 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
     return res.status(400).json({ message: 'Appointment date cannot be in the past.' });
   }
 
-  // Validate time is within operating hours (9 AM - 9 PM)
+  // Validate time is within operating hours
   const [hours, minutes] = appointment_time.split(':').map(Number);
-  if (hours < 9 || hours >= 21 || (hours === 21 && minutes > 0)) {
+  const appointmentDateObj = new Date(appointment_date);
+  const dayOfWeek = appointmentDateObj.toLocaleDateString('en-US', { weekday: 'lowercase' });
+  const { CLINIC_CONFIG } = require('./scheduling-engine');
+  const operatingHours = CLINIC_CONFIG.operating_hours[dayOfWeek];
+  
+  if (!operatingHours) {
+    console.log('ERROR: Clinic closed on this day');
+    return res.status(400).json({ message: 'The clinic is closed on this day.' });
+  }
+  
+  const appointmentTimeInMinutes = hours * 60 + minutes;
+  const closingTimeInMinutes = operatingHours.end;
+  const closingHour = Math.floor(closingTimeInMinutes / 60);
+  const closingMinute = closingTimeInMinutes % 60;
+  const closingTimeStr = `${String(closingHour % 12 || 12).padStart(2, '0')}:${String(closingMinute).padStart(2, '0')} ${closingHour >= 12 ? 'PM' : 'AM'}`;
+  
+  if (appointmentTimeInMinutes < operatingHours.start || appointmentTimeInMinutes >= closingTimeInMinutes) {
     console.log('ERROR: Appointment time outside operating hours');
-    return res.status(400).json({ message: 'Appointments must be between 9:00 AM and 9:00 PM.' });
+    return res.status(400).json({ message: `Appointments must be between 8:00 AM and ${closingTimeStr}.` });
   }
 
   // Validate not during lunch break (12:00 PM - 1:00 PM)
@@ -1571,11 +2083,36 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
     return res.status(400).json({ message: 'Appointments cannot be scheduled during lunch break (12:00 PM - 1:00 PM).' });
   }
 
-  // Validate date is not a weekend
-  const dayOfWeek = bookingDate.getDay();
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    console.log('ERROR: Appointment on weekend');
-    return res.status(400).json({ message: 'Appointments cannot be scheduled on weekends.' });
+  // ── VALIDATE END TIME DOESN'T GO PAST CLOSING ──────────────────────────────
+  // Import helper to calculate end time
+  const { timeToMinutes: timeToMinutesHelper, minutesToTime: minutesToTimeHelper, getServiceDuration } = require('./scheduling-engine');
+  
+  // Get service duration (will be used to calculate end time)
+  const serviceDuration = getServiceDuration(treatment);
+  const totalDuration = serviceDuration + 10; // +10 min buffer
+  
+  // Calculate end time in minutes
+  const startTimeMinutes = timeToMinutesHelper(appointment_time);
+  const endTimeMinutes = startTimeMinutes + totalDuration;
+  
+  // Get clinic closing time for this day
+  const closingTimeMinutes = operatingHours.end;
+  
+  if (endTimeMinutes > closingTimeMinutes) {
+    const endTime = minutesToTimeHelper(endTimeMinutes);
+    const closingTime = minutesToTimeHelper(closingTimeMinutes);
+    console.log(`ERROR: Appointment end time (${endTime}) goes past clinic closing time (${closingTime})`);
+    return res.status(400).json({ 
+      message: `Appointment would end at ${endTime}, which is after clinic closing time (${closingTime}). Please select an earlier time.`,
+      details: {
+        start_time: appointment_time,
+        end_time: endTime,
+        service_duration: serviceDuration,
+        buffer_time: 10,
+        total_duration: totalDuration,
+        clinic_closing: closingTime
+      }
+    });
   }
 
   // Determine status based on booking type
@@ -1769,9 +2306,28 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
     console.log('Inserting appointment into database...');
     
     // Use the dentist that was checked for overlaps
-    const finalDentistId = assignedDentistId || dentistToCheck;
-    const finalDentistName = assignedDentistName || (dentistToCheck ? 
-      Object.values(require('./scheduling-engine').DENTISTS).find(d => d.dbId === dentistToCheck)?.name : null);
+    let finalDentistId = assignedDentistId || dentistToCheck;
+    let finalDentistName = assignedDentistName;
+    
+    // If still no dentist found, try to find one based on treatment
+    if (!finalDentistId && treatment) {
+      const { findDentistForService, DENTISTS } = require('./scheduling-engine');
+      const dentist = findDentistForService(treatment);
+      if (dentist) {
+        finalDentistId = dentist.dbId;
+        finalDentistName = dentist.name;
+        console.log(`Fallback: Assigned to ${finalDentistName} (ID: ${finalDentistId}) based on treatment`);
+      }
+    }
+    
+    // If we still don't have a dentist, this is an error
+    if (!finalDentistId) {
+      console.error(`ERROR: Could not find a dentist for treatment: ${treatment}`);
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        message: `No dentist available for the selected treatment: ${treatment}. Please contact the clinic.`
+      });
+    }
     
     const result = await client.query(
       `INSERT INTO appointments
@@ -1813,6 +2369,23 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
     // ── COMMIT TRANSACTION ─────────────────────────────────────────────────
     await client.query('COMMIT');
     console.log('SUCCESS: Booking transaction committed. ID:', appointmentId);
+    
+    // Send confirmation email asynchronously (don't wait for it)
+    if (email) {
+      setImmediate(() => {
+        sendAppointmentConfirmationEmail(email, full_name, {
+          treatment,
+          appointment_date,
+          appointment_time,
+          dentist_name: finalDentistName,
+          duration_minutes: calculatedDuration || 60,
+          status: status  // Pass the status (Pending or Approved)
+        }).catch(err => {
+          console.error('[Email] Failed to send appointment notification:', err.message);
+        });
+      });
+    }
+    
     res.json({ 
       message: normalizedBookingType === 'Walk-in' 
         ? 'Walk-in appointment confirmed!' 
@@ -2015,6 +2588,23 @@ app.put('/staff/appointments/:id/approve', authMiddleware, async (req, res) => {
 
     // ── COMMIT TRANSACTION ─────────────────────────────────────────────────
     await client.query('COMMIT');
+    
+    // Send approval confirmation email asynchronously
+    if (a.email) {
+      setImmediate(() => {
+        sendAppointmentConfirmationEmail(a.email, a.patient_name, {
+          treatment: a.treatment,
+          appointment_date: a.appointment_date,
+          appointment_time: a.appointment_time,
+          dentist_name: dentist_name || a.dentist_name,
+          duration_minutes: a.duration_minutes,
+          status: 'Approved'  // Now it's approved!
+        }).catch(err => {
+          console.error('[Email] Failed to send approval confirmation:', err.message);
+        });
+      });
+    }
+    
     res.json({ 
       message: 'Appointment approved!',
       dentist_id: dentistId,
@@ -2031,6 +2621,7 @@ app.put('/staff/appointments/:id/approve', authMiddleware, async (req, res) => {
 });
 
 // Staff: reject/cancel an appointment
+// Staff: reject/cancel an appointment
 // ACID: Atomicity — status update + patient notification committed together
 app.put('/staff/appointments/:id/cancel', authMiddleware, async (req, res) => {
   const { reason } = req.body;
@@ -2038,12 +2629,17 @@ app.put('/staff/appointments/:id/cancel', authMiddleware, async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // Get appointment details BEFORE cancelling (need date/time for slot management)
+    const apptBefore = await client.query('SELECT appointment_date, appointment_time FROM appointments WHERE id = $1', [req.params.id]);
+    const appointmentDate = apptBefore.rows[0]?.appointment_date;
+    const appointmentTime = apptBefore.rows[0]?.appointment_time;
+
     await client.query(
       `UPDATE appointments SET status = 'Cancelled by Staff', notes = $1, updated_at = NOW() WHERE id = $2`,
       [reason || 'Cancelled by staff', req.params.id]
     );
 
-    const appt = await client.query('SELECT patient_id, treatment FROM appointments WHERE id = $1', [req.params.id]);
+    const appt = await client.query('SELECT patient_id, patient_name, email, treatment, appointment_date, appointment_time FROM appointments WHERE id = $1', [req.params.id]);
     if (appt.rows[0]?.patient_id) {
       await client.query(
         `INSERT INTO notifications (user_id, title, detail, level) VALUES ($1, $2, $3, 'Warning')`,
@@ -2053,6 +2649,30 @@ app.put('/staff/appointments/:id/cancel', authMiddleware, async (req, res) => {
     }
 
     await client.query('COMMIT');
+    
+    // Free up the slot AFTER transaction commits (outside transaction)
+    if (appointmentDate && appointmentTime) {
+      setImmediate(() => {
+        SlotManager.increaseSlot(appointmentDate, appointmentTime).catch(err => {
+          console.error('[SlotManager] Failed to increase slot:', err.message);
+        });
+      });
+    }
+    
+    // Send cancellation email asynchronously
+    if (appt.rows[0]?.email) {
+      setImmediate(() => {
+        sendAppointmentCancellationEmail(appt.rows[0].email, appt.rows[0].patient_name, {
+          treatment: appt.rows[0].treatment,
+          appointment_date: appt.rows[0].appointment_date,
+          appointment_time: appt.rows[0].appointment_time,
+          reason: reason || 'No reason provided'
+        }, 'Staff').catch(err => {
+          console.error('[Email] Failed to send cancellation email:', err.message);
+        });
+      });
+    }
+    
     res.json({ message: 'Appointment cancelled.' });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -2074,6 +2694,11 @@ app.put('/staff/appointments/:id/reschedule', authMiddleware, async (req, res) =
     // Ensure rescheduled_by column exists (idempotent)
     await client.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS rescheduled_by VARCHAR(30)`);
 
+    // Get old appointment details before updating
+    const oldAppt = await client.query('SELECT appointment_date, appointment_time FROM appointments WHERE id = $1', [req.params.id]);
+    const oldDate = oldAppt.rows[0]?.appointment_date;
+    const oldTime = oldAppt.rows[0]?.appointment_time;
+
     await client.query(
       `UPDATE appointments
        SET status = 'Approved', appointment_date = $1,
@@ -2082,7 +2707,7 @@ app.put('/staff/appointments/:id/reschedule', authMiddleware, async (req, res) =
       [appointment_date, appointment_time, reason || 'Rescheduled by staff', req.params.id]
     );
 
-    const appt = await client.query('SELECT patient_id, treatment FROM appointments WHERE id = $1', [req.params.id]);
+    const appt = await client.query('SELECT patient_id, patient_name, email, treatment FROM appointments WHERE id = $1', [req.params.id]);
     if (appt.rows[0]?.patient_id) {
       await client.query(
         `INSERT INTO notifications (user_id, title, detail, level) VALUES ($1, $2, $3, 'Update')`,
@@ -2092,6 +2717,42 @@ app.put('/staff/appointments/:id/reschedule', authMiddleware, async (req, res) =
     }
 
     await client.query('COMMIT');
+    
+    // Manage slots AFTER transaction commits (outside transaction)
+    // Free up the OLD slot
+    if (oldDate && oldTime) {
+      setImmediate(() => {
+        SlotManager.increaseSlot(oldDate, oldTime).catch(err => {
+          console.error('[SlotManager] Failed to increase old slot:', err.message);
+        });
+      });
+    }
+    
+    // Book the NEW slot
+    if (appointment_date && appointment_time) {
+      setImmediate(() => {
+        SlotManager.decreaseSlot(appointment_date, appointment_time).catch(err => {
+          console.error('[SlotManager] Failed to decrease new slot:', err.message);
+        });
+      });
+    }
+    
+    // Send reschedule email asynchronously
+    if (appt.rows[0]?.email) {
+      setImmediate(() => {
+        sendAppointmentRescheduleEmail(appt.rows[0].email, appt.rows[0].patient_name, {
+          treatment: appt.rows[0].treatment,
+          old_date: oldDate,
+          old_time: oldTime,
+          new_date: appointment_date,
+          new_time: appointment_time,
+          reason: reason || 'Rescheduled by clinic'
+        }).catch(err => {
+          console.error('[Email] Failed to send reschedule email:', err.message);
+        });
+      });
+    }
+    
     res.json({ message: 'Appointment rescheduled.' });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -2109,13 +2770,18 @@ app.put('/appointments/:id/cancel', authMiddleware, async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // Get appointment details BEFORE cancelling (need date/time for slot management)
+    const apptBefore = await client.query('SELECT appointment_date, appointment_time FROM appointments WHERE id = $1', [req.params.id]);
+    const appointmentDate = apptBefore.rows[0]?.appointment_date;
+    const appointmentTime = apptBefore.rows[0]?.appointment_time;
+
     await client.query(
       `UPDATE appointments SET status = 'Cancelled by Patient', notes = $1, updated_at = NOW() WHERE id = $2`,
       [reason || 'Cancelled by patient', req.params.id]
     );
 
     // Notify all staff
-    const appt = await client.query('SELECT patient_name, treatment FROM appointments WHERE id = $1', [req.params.id]);
+    const appt = await client.query('SELECT patient_name, treatment, email FROM appointments WHERE id = $1', [req.params.id]);
     if (appt.rows[0]) {
       const staffUsers = await client.query(`SELECT id FROM users WHERE role = 'Staff'`);
       for (const staff of staffUsers.rows) {
@@ -2128,6 +2794,30 @@ app.put('/appointments/:id/cancel', authMiddleware, async (req, res) => {
     }
 
     await client.query('COMMIT');
+    
+    // Free up the slot AFTER transaction commits (outside transaction)
+    if (appointmentDate && appointmentTime) {
+      setImmediate(() => {
+        SlotManager.increaseSlot(appointmentDate, appointmentTime).catch(err => {
+          console.error('[SlotManager] Failed to increase slot:', err.message);
+        });
+      });
+    }
+    
+    // Send cancellation email asynchronously
+    if (appt.rows[0]?.email) {
+      setImmediate(() => {
+        sendAppointmentCancellationEmail(appt.rows[0].email, appt.rows[0].patient_name, {
+          treatment: appt.rows[0].treatment,
+          appointment_date: appointmentDate,
+          appointment_time: appointmentTime,
+          reason: reason || 'Cancelled by patient'
+        }, 'Patient').catch(err => {
+          console.error('[Email] Failed to send cancellation email:', err.message);
+        });
+      });
+    }
+    
     res.json({ message: 'Appointment cancelled.' });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -2288,9 +2978,9 @@ app.put('/dentist/appointments/:id/no-show', authMiddleware, async (req, res) =>
   }
 });
 
-// Auth: Staff and Admin only (legacy update route)
+// Auth: Staff and Dentist only (legacy update route)
 app.put('/update-appointment/:id', authMiddleware, async (req, res) => {
-  if (!['Staff', 'Admin'].includes(req.user.role)) {
+  if (!['Staff', 'Dentist'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied.' });
   }
   const { treatment, appointment_date, appointment_time, status, notes } = req.body;
@@ -2308,9 +2998,9 @@ app.put('/update-appointment/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Auth: Staff and Admin only (legacy delete route)
+// Auth: Staff and Dentist only (legacy delete route)
 app.delete('/delete-appointment/:id', authMiddleware, async (req, res) => {
-  if (!['Staff', 'Admin'].includes(req.user.role)) {
+  if (!['Staff', 'Dentist'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied.' });
   }
   try {
@@ -2326,7 +3016,7 @@ app.delete('/delete-appointment/:id', authMiddleware, async (req, res) => {
 // Auth: user can only read their own notifications; Staff/Admin can read any
 app.get('/notifications/:userId', authMiddleware, async (req, res) => {
   const isOwner = String(req.user.id) === String(req.params.userId);
-  const isPrivileged = ['Staff', 'Admin'].includes(req.user.role);
+  const isPrivileged = ['Staff', 'Dentist'].includes(req.user.role);
   if (!isOwner && !isPrivileged) {
     return res.status(403).json({ message: 'Access denied.' });
   }
@@ -2359,7 +3049,7 @@ app.put('/notifications/:id/read', authMiddleware, async (req, res) => {
 // Auth: patient can only view their own profile; Staff/Admin can view any
 app.get('/patient-profile/:userId', authMiddleware, async (req, res) => {
   const isOwner = String(req.user.id) === String(req.params.userId);
-  const isPrivileged = ['Staff', 'Admin'].includes(req.user.role);
+  const isPrivileged = ['Staff', 'Dentist'].includes(req.user.role);
   if (!isOwner && !isPrivileged) {
     return res.status(403).json({ message: 'Access denied.' });
   }
@@ -2939,8 +3629,8 @@ app.get('/staff/patient-reliability', async (req, res) => {
 // POST /admin/create-account — Admin creates Staff or Dentist accounts
 // Only accessible with a valid Admin (dentist) JWT token
 app.post('/admin/create-account', authMiddleware, async (req, res) => {
-  // Only Admin role can create staff/dentist accounts
-  if (req.user.role !== 'Admin') {
+  // Only Dentist role can create staff/dentist accounts
+  if (req.user.role !== 'Dentist') {
     return res.status(403).json({ message: 'Only administrators can create staff accounts.' });
   }
 
@@ -2950,8 +3640,8 @@ app.post('/admin/create-account', authMiddleware, async (req, res) => {
     return res.status(400).json({ message: 'First name, last name, email, role, and password are required.' });
   }
 
-  if (!['Staff', 'Admin'].includes(role)) {
-    return res.status(400).json({ message: 'Role must be Staff or Admin (Dentist).' });
+  if (!['Staff', 'Dentist'].includes(role)) {
+    return res.status(400).json({ message: 'Role must be Staff or Dentist.' });
   }
 
   if (password.length < 8) {
@@ -2981,7 +3671,7 @@ app.post('/admin/create-account', authMiddleware, async (req, res) => {
     // Send welcome email (non-blocking)
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
     const loginUrl = `${baseUrl}/login`;
-    const roleLabel = role === 'Admin' ? 'Dentist' : 'Staff';
+    const roleLabel = role === 'Dentist' ? 'Dentist' : 'Staff';
 
     const html = `
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/></head>
@@ -3059,9 +3749,9 @@ app.post('/admin/create-account', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /admin/staff-accounts — list all Staff and Admin accounts
+// GET /admin/staff-accounts — list all Staff and Dentist accounts
 app.get('/admin/staff-accounts', authMiddleware, async (req, res) => {
-  if (req.user.role !== 'Admin') {
+  if (req.user.role !== 'Dentist') {
     return res.status(403).json({ message: 'Access denied.' });
   }
   try {

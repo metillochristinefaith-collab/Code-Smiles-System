@@ -12,7 +12,23 @@ interface TimeSlot {
 
 interface ServiceDetail {
   name: string;
+  category?: string;
   duration: number;
+  dentistId?: number;
+  dentistName?: string;
+  date?: string;
+  time?: string;
+  endTime?: string;
+}
+
+interface ServiceSchedule {
+  service: ServiceDetail;
+  selectedDate: string;
+  selectedTime: string;
+  availableSlots: TimeSlot[];
+  isLoadingSlots: boolean;
+  availableDentists: any[];
+  selectedDentist?: any;
 }
 
 @Component({
@@ -49,6 +65,10 @@ export class StaffBookingComponent implements OnInit {
   selectedTime = '';
   availableSlots: TimeSlot[] = [];
 
+  // Multi-service booking
+  currentServiceIndex: number = 0;
+  serviceSchedules: ServiceSchedule[] = [];
+
   viewDate = new Date();
   currentMonthName = '';
   currentYear = 0;
@@ -83,6 +103,7 @@ export class StaffBookingComponent implements OnInit {
     Orthodontics: [
       { name: 'Traditional Braces', duration: 90 },
       { name: 'Ceramic Braces', duration: 90 },
+      { name: 'Self-Ligating Braces', duration: 90 },
       { name: 'Clear Aligners', duration: 45 },
       { name: 'Retainers', duration: 30 },
       { name: 'Orthodontic Consultation', duration: 30 },
@@ -98,6 +119,7 @@ export class StaffBookingComponent implements OnInit {
       { name: 'Single Tooth Implant', duration: 90 },
       { name: 'Multiple Tooth Implant', duration: 120 },
       { name: 'Implant Crown Placement', duration: 60 },
+      { name: 'Implant Maintenance', duration: 45 },
     ],
     'Pediatric Care': [
       { name: 'Pediatric Check-up', duration: 20 },
@@ -178,13 +200,13 @@ export class StaffBookingComponent implements OnInit {
 
   get isEmailValid(): boolean {
     const email = this.patientEmail.trim();
-    if (!email) return true; // email is optional
+    if (!email) return false; // email is required in staff-booking
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
   get isAgeValid(): boolean {
     const age = String(this.patientAge).trim();
-    if (!age) return true; // age is optional
+    if (!age) return false; // age is required in staff-booking
     const ageNum = parseInt(age, 10);
     return !isNaN(ageNum) && ageNum >= 1 && ageNum <= 120;
   }
@@ -195,7 +217,8 @@ export class StaffBookingComponent implements OnInit {
     const hasValidEmail = this.isEmailValid;
     const hasValidAge = this.isAgeValid;
     const hasCategory = !!this.selectedCategory;
-    const hasServices = this.selectedServices.length > 0;
+    // BUG FIX #9: Check selectedSubServices instead of selectedServices (which is just names)
+    const hasServices = this.selectedSubServices.length > 0;
     const hasDate = !!this.selectedDate;
     const hasTime = !!this.selectedTime;
 
@@ -207,10 +230,8 @@ export class StaffBookingComponent implements OnInit {
   }
 
   selectCategory(category: string): void {
-    if (this.selectedCategory !== category) {
-      this.resetSelection();
-    }
     this.selectedCategory = category;
+    // Don't reset selection - allow selecting services from multiple categories
   }
 
   toggleService(serviceName: string): void {
@@ -240,6 +261,37 @@ export class StaffBookingComponent implements OnInit {
         this.selectedTime = '';
       }
     }
+    
+    // Clear any previous errors when services change
+    this.submitError = '';
+  }
+
+  proceedToScheduling(): void {
+    if (this.selectedSubServices.length === 0) {
+      alert('Please select at least one service');
+      return;
+    }
+
+    // DECISION POINT: Single vs Multi-service
+    if (this.selectedSubServices.length === 1) {
+      // Single service → Skip to date/time selection (original flow)
+      this.currentStep = 2;
+    } else {
+      // Multi-service → Go to individual scheduling
+      // BUG FIX #5: Use deep clone instead of shallow copy to prevent shared state
+      this.serviceSchedules = this.selectedSubServices.map(service => ({
+        service: JSON.parse(JSON.stringify(service)),
+        selectedDate: '',
+        selectedTime: '',
+        availableSlots: [],
+        isLoadingSlots: false,
+        availableDentists: []
+      }));
+      this.currentStep = 2.5; // Multi-service scheduling step
+      this.currentServiceIndex = 0;
+    }
+
+    this.cdr.detectChanges();
   }
 
   resetSelection(): void {
@@ -290,7 +342,7 @@ export class StaffBookingComponent implements OnInit {
         isToday: dateObj.getTime() === today.getTime(),
         isPast,
         isFullyBooked: false, // Will be determined by API call
-        isAvailable: !isPast && !isWeekend,
+        isAvailable: !isPast,
       });
     }
   }
@@ -316,6 +368,8 @@ export class StaffBookingComponent implements OnInit {
 
     this.selectedDate = date;
     this.selectedTime = '';
+    this.submitError = ''; // Clear any previous errors when selecting a new date
+    this.availableSlots = []; // Clear slots immediately while loading
     
     // Fetch available slots from API
     if (this.selectedCategory) {
@@ -334,29 +388,18 @@ export class StaffBookingComponent implements OnInit {
     // Call the API to get available times
     this.api.getAvailableTimes(date, this.selectedCategory).subscribe({
       next: (response) => {
-        // Filter slots that can fit the selected services duration
+        // Map all slots, don't filter them out - just mark as full if slotsLeft === 0
         this.availableSlots = (response.availableTimes || [])
-          .filter((slot: any) => {
-            // Parse the time to minutes
-            const [hours, minutes] = slot.time24.split(':').map(Number);
-            const startMin = hours * 60 + minutes;
-            const endMin = startMin + this.totalSelectedDuration;
-            
-            // Check if appointment fits within operating hours
-            // Operating hours: 09:00 - 21:00 (with lunch 12:00-13:00)
-            const isWithinHours = startMin >= 9 * 60 && endMin <= 21 * 60;
-            const isNotLunch = !(startMin >= 12 * 60 && startMin < 13 * 60);
-            
-            return isWithinHours && isNotLunch && slot.slotsLeft > 0;
-          })
           .map((slot: any) => ({
             time: slot.time,
-            slotsLeft: Math.min(slot.slotsLeft, 4), // Max 4 slots
+            slotsLeft: slot.slotsLeft, // Keep original count, don't cap at 4
           }));
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error fetching available slots:', err);
         this.availableSlots = [];
+        this.cdr.detectChanges();
       },
     });
   }
@@ -381,16 +424,55 @@ export class StaffBookingComponent implements OnInit {
   }
 
   convertTo24Hour(time12h: string): string {
-    const [time, modifier] = time12h.split(' ');
-    let [hours, minutes] = time.split(':');
-    let hour = parseInt(hours, 10);
+    // BUG FIX #6: Add comprehensive validation for time format
+    if (!time12h) {
+      console.error('[STAFF-BOOKING] Empty time string');
+      return '';
+    }
 
-    if (modifier === 'AM' && hour === 12) hour = 0;
-    if (modifier === 'PM' && hour !== 12) hour += 12;
+    // Validate format: "HH:MM AM/PM"
+    const timeRegex = /^(\d{1,2}):(\d{2})\s+(AM|PM)$/i;
+    const match = time12h.trim().match(timeRegex);
+    
+    if (!match) {
+      console.error(`[STAFF-BOOKING] Invalid time format: ${time12h}`);
+      return '';
+    }
 
-    hours = String(hour).padStart(2, '0');
-    minutes = String(minutes).padStart(2, '0');
-    return `${hours}:${minutes}`;
+    let hour = parseInt(match[1], 10);
+    const minutes = match[2];
+    const modifier = match[3].toUpperCase();
+
+    // Validate hour range for 12-hour format
+    if (hour < 1 || hour > 12) {
+      console.error(`[STAFF-BOOKING] Invalid hour for 12-hour format: ${hour}`);
+      return '';
+    }
+
+    // Validate minutes range
+    const minutesNum = parseInt(minutes, 10);
+    if (minutesNum < 0 || minutesNum > 59) {
+      console.error(`[STAFF-BOOKING] Invalid minutes: ${minutesNum}`);
+      return '';
+    }
+    
+    // Convert 12-hour to 24-hour format
+    if (modifier === 'AM') {
+      if (hour === 12) {
+        hour = 0; // 12 AM is 00:XX
+      }
+    } else if (modifier === 'PM') {
+      if (hour !== 12) {
+        hour += 12; // 1 PM is 13, 2 PM is 14, etc.
+      }
+      // 12 PM stays as 12
+    }
+    
+    // Pad hours and minutes with leading zeros
+    const paddedHours = String(hour).padStart(2, '0');
+    const paddedMinutes = String(minutes).padStart(2, '0');
+    
+    return `${paddedHours}:${paddedMinutes}`;
   }
 
   formatDateLocal(date: Date): string {
@@ -400,10 +482,208 @@ export class StaffBookingComponent implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
+  // ═════════════════════════════════════════════════════════════════════════════
+  // MULTI-SERVICE SCHEDULING METHODS
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  getCurrentServiceSchedule(): ServiceSchedule {
+    // BUG FIX #3: Add bounds checking to prevent undefined access
+    if (this.currentServiceIndex < 0 || this.currentServiceIndex >= this.serviceSchedules.length) {
+      console.error(`[STAFF-BOOKING] Index out of bounds: ${this.currentServiceIndex} for array length ${this.serviceSchedules.length}`);
+      return null as any;
+    }
+    return this.serviceSchedules[this.currentServiceIndex];
+  }
+
+  selectDateForMultiService(date: string): void {
+    const schedule = this.getCurrentServiceSchedule();
+    const dayObj = this.calendarDays.find(d => d.date === date);
+    
+    if (dayObj && dayObj.isAvailable && !dayObj.isPast && !dayObj.isFullyBooked) {
+      schedule.selectedDate = date;
+      schedule.selectedTime = '';
+      schedule.availableSlots = [];
+      this.loadAvailableSlotsForMultiService();
+    }
+  }
+
+  async loadAvailableSlotsForMultiService(): Promise<void> {
+    const schedule = this.getCurrentServiceSchedule();
+
+    if (!schedule.selectedDate) {
+      alert('Please select a date');
+      return;
+    }
+
+    schedule.isLoadingSlots = true;
+
+    try {
+      // Get available slots for this service on this date
+      const slotsResponse = await this.api.getAvailableTimes(schedule.selectedDate, schedule.service.name).toPromise();
+
+      schedule.availableSlots = (slotsResponse?.availableTimes || []).map((slot: any) => ({
+        time: slot.time,
+        slotsLeft: slot.slotsLeft
+      }));
+
+      if (schedule.availableSlots.length === 0) {
+        console.warn('No available slots for this date and service');
+      }
+    } catch (error) {
+      console.error('Error loading slots:', error);
+      alert('Error loading available time slots');
+      schedule.availableSlots = [];
+    } finally {
+      schedule.isLoadingSlots = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  selectTimeForMultiService(time: string): void {
+    const schedule = this.getCurrentServiceSchedule();
+    schedule.selectedTime = time;
+
+    // Calculate end time
+    const [hours, minutes] = time.split(':').map(Number);
+    const endMin = hours * 60 + minutes + schedule.service.duration;
+    const endHours = Math.floor(endMin / 60);
+    const endMinutes = endMin % 60;
+    schedule.service.endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+    schedule.service.date = schedule.selectedDate;
+    schedule.service.time = time;
+  }
+
+  proceedToNextService(): void {
+    const schedule = this.getCurrentServiceSchedule();
+
+    if (!schedule || !schedule.selectedDate || !schedule.selectedTime) {
+      alert('Please select both date and time for this service');
+      return;
+    }
+
+    // Validate no time conflicts with previously scheduled services
+    const currentStartTime = this.timeStringToMinutes(schedule.selectedTime);
+    const currentEndTime = currentStartTime + schedule.service.duration;
+
+    for (let i = 0; i < this.currentServiceIndex; i++) {
+      const prevSchedule = this.serviceSchedules[i];
+      if (prevSchedule.selectedDate === schedule.selectedDate) {
+        const prevStartTime = this.timeStringToMinutes(prevSchedule.selectedTime);
+        const prevEndTime = prevStartTime + prevSchedule.service.duration;
+
+        // Check for overlap
+        if ((currentStartTime < prevEndTime && currentEndTime > prevStartTime)) {
+          alert(`This time slot overlaps with "${prevSchedule.service.name}" scheduled at ${prevSchedule.selectedTime}. Please choose a different time.`);
+          return;
+        }
+      }
+    }
+
+    if (this.currentServiceIndex < this.serviceSchedules.length - 1) {
+      this.currentServiceIndex++;
+      // BUG FIX #8: Don't reset calendar - keep user's current month context
+      this.generateCalendar();
+      this.cdr.detectChanges();
+    } else {
+      // BUG FIX #1: Validate ALL services are scheduled before proceeding to step 3
+      const allScheduled = this.serviceSchedules.every(s => 
+        s.selectedDate && 
+        s.selectedTime && 
+        /^\d{4}-\d{2}-\d{2}$/.test(s.selectedDate) && 
+        /^\d{2}:\d{2}/.test(s.selectedTime)
+      );
+      
+      if (!allScheduled) {
+        alert('Please schedule all services before proceeding.');
+        return;
+      }
+
+      // All services scheduled, proceed to patient details
+      this.currentStep = 3;
+      this.cdr.detectChanges();
+    }
+  }
+
+  private timeStringToMinutes(timeStr: string): number {
+    // BUG FIX #2: Add validation for 12-hour format
+    // Handle both "HH:MM" and "HH:MM AM/PM" formats
+    const parts = timeStr.trim().split(/\s+/);
+    const timePart = parts[0];
+    const modifier = (parts[1] || '').toUpperCase(); // Normalize to uppercase
+    
+    const [hoursStr, minutesStr] = timePart.split(':');
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+
+    // Validate hours and minutes
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.error(`[STAFF-BOOKING] Invalid time format: ${timeStr}`);
+      return 0;
+    }
+
+    // Validate ranges for 12-hour format
+    if (modifier && (modifier === 'AM' || modifier === 'PM')) {
+      if (hours < 1 || hours > 12) {
+        console.error(`[STAFF-BOOKING] Invalid hour for 12-hour format: ${hours}`);
+        return 0;
+      }
+    }
+
+    if (minutes < 0 || minutes > 59) {
+      console.error(`[STAFF-BOOKING] Invalid minutes: ${minutes}`);
+      return 0;
+    }
+
+    let totalMinutes = hours * 60 + minutes;
+
+    // Convert 12-hour to 24-hour if needed
+    if (modifier === 'PM' && hours !== 12) {
+      totalMinutes += 12 * 60;
+    } else if (modifier === 'AM' && hours === 12) {
+      totalMinutes -= 12 * 60;
+    }
+
+    return totalMinutes;
+  }
+
+  goBackToServiceSelection(): void {
+    if (this.currentServiceIndex > 0) {
+      this.currentServiceIndex--;
+    } else {
+      this.currentStep = 1;
+      // BUG FIX #7: Clear all service selections when going back to step 1
+      this.selectedCategory = '';
+      this.selectedServices = [];
+      this.selectedSubServices = [];
+      this.totalSelectedDuration = 0;
+    }
+    this.cdr.detectChanges();
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // BOOKING SUBMISSION
+  // ═════════════════════════════════════════════════════════════════════════════
+
   submit(): void {
     if (this.isSubmitting || !this.canSubmit) {
       this.submitError = 'Please complete the required booking details before submitting.';
       return;
+    }
+
+    // Validate based on booking type
+    if (this.selectedSubServices.length === 1) {
+      // Single service
+      if (!this.selectedDate || !this.selectedTime) {
+        this.submitError = 'Please complete the service, date, and time before submitting.';
+        return;
+      }
+    } else {
+      // Multi-service
+      const allScheduled = this.serviceSchedules.every(s => s.selectedDate && s.selectedTime);
+      if (!allScheduled) {
+        this.submitError = 'Please schedule all services before submitting.';
+        return;
+      }
     }
 
     const staffNotes = [
@@ -414,36 +694,78 @@ export class StaffBookingComponent implements OnInit {
       this.notes.trim() ? `Notes: ${this.notes.trim()}` : '',
     ].filter(Boolean).join('\n');
 
+    // Prepare appointments based on booking type
+    let appointments: any[];
+
+    if (this.selectedSubServices.length === 1) {
+      // Single service
+      appointments = [{
+        date: this.selectedDate,
+        time: this.convertTo24Hour(this.selectedTime)
+      }];
+    } else {
+      // Multi-service
+      appointments = this.serviceSchedules.map(schedule => ({
+        date: schedule.selectedDate,
+        time: this.convertTo24Hour(schedule.selectedTime)
+      }));
+    }
+
+    const bookingData = {
+      services: this.selectedSubServices.map(s => ({
+        name: s.name,
+        category: s.category,
+        duration: s.duration
+      })),
+      appointments,
+      patientDetails: {
+        firstName: this.patientName.trim().split(' ')[0] || '',
+        lastName: this.patientName.trim().split(' ').slice(1).join(' ') || '',
+        email: this.patientEmail.trim() || `staff-booking-${Date.now()}@codesmiles.local`,
+        phone: this.patientPhone.trim(),
+        age: this.patientAge,
+        notes: staffNotes
+      },
+      bookingType: this.bookingType,
+      intakePriority: this.intakePriority,
+      intakeSource: this.intakeSource
+    };
+
     this.isSubmitting = true;
     this.submitError = '';
 
-    this.api.bookAppointment({
+    const payload = {
       patient_id: null,
       full_name: this.patientName.trim(),
       phone: this.patientPhone.trim(),
-      email: this.patientEmail.trim() || `staff-booking-${Date.now()}@codesmiles.local`,
+      email: this.patientEmail.trim() || `staff-booking-${Date.now().toString(36)}@codesmiles.local`,
       treatment: this.selectedCategory,
-      services: this.selectedServices,
+      services: this.selectedSubServices.map(s => s.name),
       appointment_date: this.selectedDate,
-      appointment_time: this.convertTo24Hour(this.selectedTime),
+      appointment_time: this.selectedSubServices.length === 1 ? this.convertTo24Hour(this.selectedTime) : this.convertTo24Hour(this.serviceSchedules[0].selectedTime),
       duration_minutes: this.totalSelectedDuration,
       notes: staffNotes,
-      booking_type: this.bookingType, // Send booking type to backend
-    }).subscribe({
-      next: (response) => {
+      booking_type: this.bookingType
+    };
+
+    console.log('[STAFF-BOOKING] Submitting payload:', payload);
+
+    this.api.bookAppointment(payload).subscribe({
+      next: (response: any) => {
         this.confirmedBooking = {
           fullName: this.patientName.trim(),
           date: this.selectedDate,
-          time: this.selectedTime,
+          time: this.selectedSubServices.length === 1 ? this.selectedTime : this.serviceSchedules[0].selectedTime,
           services: [...this.selectedSubServices],
         };
         this.isSubmitting = false;
         this.submitSuccess = true;
         this.cdr.detectChanges();
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isSubmitting = false;
-        this.submitError = err?.error?.message || 'Booking failed. Please try again.';
+        console.error('[STAFF-BOOKING] Submission error:', err);
+        this.submitError = err?.error?.message || err?.error?.error || 'Booking failed. Please try again.';
         this.cdr.detectChanges();
       },
     });
@@ -460,6 +782,9 @@ export class StaffBookingComponent implements OnInit {
     this.patientAge = '';
     this.notes = '';
     this.selectedCategory = '';
+    // BUG FIX #4: Reset multi-service state for new booking
+    this.currentServiceIndex = 0;
+    this.serviceSchedules = [];
     this.resetSelection();
     this.submitSuccess = false;
     this.submitError = '';
@@ -471,5 +796,20 @@ export class StaffBookingComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/staff-appointments']);
+  }
+
+  proceedToPatientDetails(): void {
+    // BUG FIX #10: Validate date and time are selected before proceeding
+    if (!this.selectedDate) {
+      alert('Please select a date');
+      return;
+    }
+    if (!this.selectedTime) {
+      alert('Please select a time');
+      return;
+    }
+    this.currentStep = 3;
+    this.submitError = '';
+    this.cdr.detectChanges();
   }
 }

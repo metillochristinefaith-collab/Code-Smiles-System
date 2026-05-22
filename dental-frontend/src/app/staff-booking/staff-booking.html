@@ -115,6 +115,20 @@
           <h2>{{ selectedCategory }}</h2>
           <p>Select services for this patient visit. The total appointment block can be up to 120 minutes.</p>
         </div>
+        
+        <!-- Category tabs to switch between categories -->
+        <div class="category-tabs">
+          <button
+            type="button"
+            class="category-tab"
+            *ngFor="let category of categoryCards"
+            [class.active]="selectedCategory === category.name"
+            (click)="selectCategory(category.name)">
+            <span class="tab-icon">{{ category.icon }}</span>
+            <span class="tab-name">{{ category.name }}</span>
+          </button>
+        </div>
+
         <div class="service-selection-layout">
           <div class="service-list">
             <button
@@ -200,7 +214,77 @@
                 (click)="selectedTime = slot.time">
                 <span class="slot-time">{{ slot.time }}</span>
                 <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">
-                  {{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' left' }}
+                  {{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' slot' + (slot.slotsLeft > 1 ? 's' : '') + ' left' }}
+                </span>
+              </button>
+            </div>
+            <ng-template #noDateSelected>
+              <div class="timeslot-placeholder">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                <p>Select a date to view available time slots</p>
+              </div>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2.5: MULTI-SERVICE INDIVIDUAL SCHEDULING -->
+      <div *ngIf="currentStep === 2.5 && getCurrentServiceSchedule()" class="step-body fade-in">
+        <div class="step-heading">
+          <h2>Schedule {{ getCurrentServiceSchedule().service.name }}</h2>
+          <p>Service {{ currentServiceIndex + 1 }} of {{ serviceSchedules.length }} • Select date and time for this service</p>
+        </div>
+        <div class="multi-service-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="((currentServiceIndex + 1) / serviceSchedules.length) * 100"></div>
+          </div>
+          <div class="progress-text">{{ currentServiceIndex + 1 }} of {{ serviceSchedules.length }} services scheduled</div>
+        </div>
+        <div class="datetime-layout">
+          <div class="calendar-panel">
+            <div class="calendar-nav">
+              <button type="button" class="cal-nav-btn" (click)="prevMonth()">&lsaquo;</button>
+              <h3 class="cal-month-label">{{ currentMonthName }} {{ currentYear }}</h3>
+              <button type="button" class="cal-nav-btn" (click)="nextMonth()">&rsaquo;</button>
+            </div>
+            <div class="cal-grid">
+              <span class="cal-day-name" *ngFor="let day of ['Su','Mo','Tu','We','Th','Fr','Sa']">{{ day }}</span>
+              <button
+                type="button"
+                *ngFor="let day of calendarDays"
+                class="cal-date"
+                [class.empty]="!day.number"
+                [class.selected]="getCurrentServiceSchedule().selectedDate === day.date"
+                [class.available]="day.isAvailable && !day.isPast && !day.isFullyBooked"
+                [class.fully-booked]="day.isFullyBooked"
+                [class.unavailable]="day.isPast || !day.isAvailable"
+                [class.today]="day.isToday"
+                [disabled]="day.isPast || !day.number || day.isFullyBooked || !day.isAvailable"
+                (click)="selectDateForMultiService(day.date)">
+                {{ day.number }}
+              </button>
+            </div>
+            <div class="cal-legend">
+              <div class="legend-item"><span class="legend-dot available"></span><span>Available</span></div>
+              <div class="legend-item"><span class="legend-dot selected"></span><span>Selected</span></div>
+              <div class="legend-item"><span class="legend-dot booked"></span><span>Fully Booked</span></div>
+              <div class="legend-item"><span class="legend-dot unavailable"></span><span>Unavailable</span></div>
+            </div>
+          </div>
+          <div class="timeslot-panel">
+            <div class="timeslot-label">Available Slots</div>
+            <div *ngIf="getCurrentServiceSchedule().selectedDate; else noDateSelected" class="timeslot-list">
+              <button
+                type="button"
+                *ngFor="let slot of getCurrentServiceSchedule().availableSlots"
+                class="timeslot-btn"
+                [class.active]="getCurrentServiceSchedule().selectedTime === slot.time"
+                [class.full]="slot.slotsLeft === 0"
+                [disabled]="slot.slotsLeft === 0"
+                (click)="selectTimeForMultiService(slot.time)">
+                <span class="slot-time">{{ slot.time }}</span>
+                <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">
+                  {{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' slot' + (slot.slotsLeft > 1 ? 's' : '') + ' left' }}
                 </span>
               </button>
             </div>
@@ -217,70 +301,130 @@
       <div *ngIf="currentStep === 3" class="step-body fade-in">
         <div class="step-heading">
           <h2>Patient &amp; Staff Intake</h2>
-          <p>Booking for <strong>{{ selectedDate | date:'MMMM d, y' }}</strong> at <strong>{{ selectedTime }}</strong></p>
+          <!-- BUG FIX #11: Removed redundant appointment date/time display - will show on Review page -->
         </div>
-        <div class="details-form">
-          <div class="staff-intake-panel">
-            <div class="staff-intake-title">
-              <span class="staff-intake-dot"></span>
-              <strong>Staff Intake</strong>
-            </div>
-            <div class="intake-group">
-              <span class="intake-label">Booking type</span>
-              <div class="segmented-control">
-                <button type="button" [class.active]="bookingType === 'Walk-in'" (click)="bookingType = 'Walk-in'">
-                  Walk-in
-                  <span class="badge-auto-approved">✓ Auto-Approved</span>
-                </button>
-                <button type="button" [class.active]="bookingType === 'Registered patient'" (click)="bookingType = 'Registered patient'">
-                  Registered
-                  <span class="badge-pending">Pending Review</span>
-                </button>
+
+        <!-- BOOKING TYPE & PRIORITY - SIDE BY SIDE -->
+        <div class="intake-row-two-cards">
+          <div class="intake-card">
+            <div class="card-header">
+              <div class="card-icon booking-icon">🚶</div>
+              <div class="card-title-group">
+                <h3 class="card-title">Booking Type</h3>
+                <p class="card-subtitle">Walk-in or registered</p>
               </div>
             </div>
-            <div class="intake-group">
-              <span class="intake-label">Priority</span>
-              <div class="segmented-control compact">
-                <button type="button" [class.active]="intakePriority === 'Standard'" (click)="intakePriority = 'Standard'">Standard</button>
-                <button type="button" [class.active]="intakePriority === 'Urgent'" (click)="intakePriority = 'Urgent'">Urgent</button>
-              </div>
-            </div>
-            <div class="intake-group source-select">
-              <label class="intake-label" for="intakeSource">Source</label>
-              <select id="intakeSource" [(ngModel)]="intakeSource" name="intakeSource">
-                <option value="Front desk">Front desk</option>
-                <option value="Phone call">Phone call</option>
-                <option value="Staff referral">Staff referral</option>
-              </select>
+            <div class="booking-type-grid-compact">
+              <button type="button" class="booking-type-btn-compact" [class.active]="bookingType === 'Walk-in'" (click)="bookingType = 'Walk-in'">
+                <span class="type-icon">🚶</span>
+                <span class="type-label">Walk-in</span>
+                <span class="type-desc">At clinic</span>
+              </button>
+              <button type="button" class="booking-type-btn-compact" [class.active]="bookingType === 'Registered patient'" (click)="bookingType = 'Registered patient'">
+                <span class="type-icon">📋</span>
+                <span class="type-label">Registered</span>
+                <span class="type-desc">Existing patient</span>
+              </button>
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-field" [class.invalid]="patientName && !isNameValid">
+
+          <div class="intake-card">
+            <div class="card-header">
+              <div class="card-icon priority-icon">⚡</div>
+              <div class="card-title-group">
+                <h3 class="card-title">Priority</h3>
+                <p class="card-subtitle">Queue position</p>
+              </div>
+            </div>
+            <div class="priority-buttons-compact">
+              <button type="button" class="priority-btn-compact" [class.active]="intakePriority === 'Standard'" (click)="intakePriority = 'Standard'">
+                <span class="priority-icon-small">📌</span>
+                <span class="priority-label">Standard</span>
+              </button>
+              <button type="button" class="priority-btn-compact" [class.active]="intakePriority === 'Urgent'" (click)="intakePriority = 'Urgent'">
+                <span class="priority-icon-small">🚨</span>
+                <span class="priority-label">Urgent</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- APPOINTMENT DETAILS CARD -->
+        <div class="intake-card">
+          <div class="card-header">
+            <div class="card-icon appointment-icon">📅</div>
+            <div class="card-title-group">
+              <h3 class="card-title">Appointment</h3>
+              <p class="card-subtitle">{{ totalSelectedDuration }} min</p>
+            </div>
+          </div>
+          <!-- BUG FIX #11: Removed appointment date/time display from Step 3 -->
+        </div>
+
+        <!-- PATIENT DETAILS CARD -->
+        <div class="intake-card">
+          <div class="card-header">
+            <div class="card-icon patient-icon">👤</div>
+            <div class="card-title-group">
+              <h3 class="card-title">Patient Info</h3>
+              <p class="card-subtitle">Contact & demographics</p>
+            </div>
+          </div>
+          <div class="patient-form-grid-compact">
+            <div class="form-field-compact" [class.invalid]="patientName && !isNameValid">
               <label>Full Name <span class="req">*</span></label>
-              <input type="text" name="patientName" [(ngModel)]="patientName" placeholder="Patient full name" autocomplete="off" />
-              <p class="field-error" *ngIf="patientName && !isNameValid">Enter the patient's full name.</p>
+              <input type="text" name="patientName" [(ngModel)]="patientName" placeholder="Full name" autocomplete="off" />
+              <p class="field-error" *ngIf="patientName && !isNameValid">Enter full name.</p>
             </div>
-            <div class="form-field" [class.invalid]="patientPhone && !isPhoneValid">
-              <label>Phone Number <span class="req">*</span></label>
+            <div class="form-field-compact" [class.invalid]="patientPhone && !isPhoneValid">
+              <label>Phone <span class="req">*</span></label>
               <input type="tel" name="patientPhone" [(ngModel)]="patientPhone" placeholder="09XXXXXXXXX" maxlength="11" autocomplete="off" />
-              <p class="field-error" *ngIf="patientPhone && !isPhoneValid">Enter a valid PH mobile number.</p>
+              <p class="field-error" *ngIf="patientPhone && !isPhoneValid">Invalid phone.</p>
             </div>
-          </div>
-          <div class="form-row">
-            <div class="form-field form-field-wide" [class.invalid]="patientEmail && !isEmailValid">
-              <label>Email Address <span class="optional">(optional)</span></label>
+            <div class="form-field-compact" [class.invalid]="patientEmail && !isEmailValid">
+              <label>Email <span class="req">*</span></label>
               <input type="email" name="patientEmail" [(ngModel)]="patientEmail" placeholder="patient@email.com" autocomplete="off" />
-              <p class="field-error" *ngIf="patientEmail && !isEmailValid">Please enter a valid email.</p>
+              <p class="field-error" *ngIf="patientEmail && !isEmailValid">Invalid email.</p>
             </div>
-            <div class="form-field form-field-narrow" [class.invalid]="patientAge && !isAgeValid">
-              <label>Age <span class="optional">(optional)</span></label>
+            <div class="form-field-compact" [class.invalid]="patientAge && !isAgeValid">
+              <label>Age <span class="req">*</span></label>
               <input type="number" name="patientAge" [(ngModel)]="patientAge" min="1" max="120" placeholder="Age" />
               <p class="field-error" *ngIf="patientAge && !isAgeValid">Invalid age.</p>
             </div>
           </div>
-          <div class="form-field">
-            <label>Staff Notes</label>
-            <textarea name="notes" [(ngModel)]="notes" placeholder="Allergies, walk-in context, or front desk instructions" autocomplete="off"></textarea>
+        </div>
+
+        <!-- INTAKE SOURCE & NOTES - SIDE BY SIDE -->
+        <div class="intake-row-two-cards">
+          <div class="intake-card">
+            <div class="card-header">
+              <div class="card-icon source-icon">📞</div>
+              <div class="card-title-group">
+                <h3 class="card-title">Source</h3>
+                <p class="card-subtitle">How they reached us</p>
+              </div>
+            </div>
+            <div class="source-grid">
+              <div class="intake-field-compact">
+                <label for="intakeSource">Channel</label>
+                <select id="intakeSource" [(ngModel)]="intakeSource" name="intakeSource" class="intake-select-compact">
+                  <option value="Front desk">Front desk</option>
+                  <option value="Phone call">Phone call</option>
+                  <option value="Staff referral">Staff referral</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="intake-card">
+            <div class="card-header">
+              <div class="card-icon notes-icon">📝</div>
+              <div class="card-title-group">
+                <h3 class="card-title">Notes</h3>
+                <p class="card-subtitle">Special instructions</p>
+              </div>
+            </div>
+            <textarea name="notes" [(ngModel)]="notes" placeholder="Allergies, context..." autocomplete="off" class="notes-textarea-compact-inline"></textarea>
           </div>
         </div>
       </div>
@@ -288,43 +432,93 @@
       <div *ngIf="currentStep === 4" class="step-body fade-in">
         <div class="step-heading">
           <h2>Review &amp; Confirm</h2>
-          <p>Check the patient and staff intake details before submitting the appointment request.</p>
+          <p>Verify all details before submitting the appointment request.</p>
         </div>
         <div class="error-banner" *ngIf="submitError">{{ submitError }}</div>
-        <div class="review-grid">
+
+        <!-- SINGLE SERVICE REVIEW -->
+        <div *ngIf="selectedSubServices.length === 1" class="review-grid">
           <div class="review-box">
-            <div class="review-box-header"><span class="header-dot blue"></span><span>Appointment Schedule</span></div>
-            <div class="review-row"><span>Date</span><strong>{{ selectedDate | date:'MMMM d, y' }}</strong></div>
+            <div class="review-box-header"><span class="header-dot blue"></span><span>Appointment</span></div>
+            <div class="review-row"><span>Date</span><strong>{{ selectedDate | date:'MMM d, y' }}</strong></div>
             <div class="review-row"><span>Time</span><strong class="time-highlight">{{ selectedTime }}</strong></div>
-            <div class="review-row"><span>Duration</span><strong>{{ totalSelectedDuration }} minutes</strong></div>
+            <div class="review-row"><span>Duration</span><strong>{{ totalSelectedDuration }} min</strong></div>
             <div class="review-row"><span>Priority</span><strong>{{ intakePriority }}</strong></div>
           </div>
           <div class="review-box">
-            <div class="review-box-header"><span class="header-dot green"></span><span>Patient Intake</span></div>
+            <div class="review-box-header"><span class="header-dot green"></span><span>Patient</span></div>
             <div class="review-row"><span>Type</span><strong>{{ bookingType }}</strong></div>
             <div class="review-row"><span>Name</span><strong>{{ patientName }}</strong></div>
             <div class="review-row"><span>Phone</span><strong>{{ patientPhone }}</strong></div>
-            <div class="review-row" *ngIf="patientEmail"><span>Email</span><strong>{{ patientEmail }}</strong></div>
-            <div class="review-row" *ngIf="patientAge"><span>Age</span><strong>{{ patientAge }}</strong></div>
+            <div class="review-row"><span>Email</span><strong>{{ patientEmail }}</strong></div>
+            <div class="review-row"><span>Age</span><strong>{{ patientAge }}</strong></div>
           </div>
         </div>
+
+        <!-- MULTI-SERVICE REVIEW -->
+        <div *ngIf="selectedSubServices.length > 1" class="review-multi-service">
+          <div class="review-box">
+            <div class="review-box-header"><span class="header-dot green"></span><span>Patient</span></div>
+            <div class="review-row"><span>Type</span><strong>{{ bookingType }}</strong></div>
+            <div class="review-row"><span>Name</span><strong>{{ patientName }}</strong></div>
+            <div class="review-row"><span>Phone</span><strong>{{ patientPhone }}</strong></div>
+            <div class="review-row"><span>Email</span><strong>{{ patientEmail }}</strong></div>
+            <div class="review-row"><span>Age</span><strong>{{ patientAge }}</strong></div>
+          </div>
+
+          <div class="review-appointments-section">
+            <div class="review-box-header"><span class="header-dot blue"></span><span>Scheduled Appointments</span><span class="services-count-badge">{{ serviceSchedules.length }} appointments</span></div>
+            <div class="appointments-list">
+              <div class="appointment-card" *ngFor="let schedule of serviceSchedules; let i = index">
+                <div class="appointment-number">Appointment {{ i + 1 }}</div>
+                <div class="appointment-details">
+                  <div class="detail-row">
+                    <span class="detail-label">Service</span>
+                    <span class="detail-value">{{ schedule.service.name }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Date</span>
+                    <span class="detail-value">{{ schedule.selectedDate | date:'MMM d, y' }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Time</span>
+                    <span class="detail-value time-highlight">{{ schedule.selectedTime }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Duration</span>
+                    <span class="detail-value">{{ schedule.service.duration }} minutes</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SERVICES SECTION - PROMINENT -->
         <div class="review-services-box">
           <div class="review-box-header">
             <span class="header-dot amber"></span>
-            <span>Selected Services</span>
-            <span class="services-count-badge">{{ selectedSubServices.length }} selected</span>
+            <span>Services Requested</span>
+            <span class="services-count-badge">{{ selectedSubServices.length }} service{{ selectedSubServices.length !== 1 ? 's' : '' }}</span>
           </div>
           <div class="review-chips">
-            <span *ngFor="let service of selectedSubServices" class="review-chip"><span class="chip-dot-blue"></span>{{ service.name }}</span>
+            <span *ngFor="let service of selectedSubServices" class="review-chip">
+              <span class="chip-dot-amber"></span>
+              <span class="chip-name">{{ service.name }}</span>
+              <span class="chip-duration">{{ service.duration }}m</span>
+            </span>
           </div>
-          <div class="review-notes">
-            <span class="notes-label">Staff routing</span>
-            <p>{{ intakeSource }} / {{ intakePriority }} / {{ bookingType }}</p>
+        </div>
+
+        <!-- INTAKE & NOTES -->
+        <div class="review-services-box">
+          <div class="review-box-header">
+            <span class="header-dot purple"></span>
+            <span>Staff Intake</span>
           </div>
-          <div class="review-notes" *ngIf="notes.trim()">
-            <span class="notes-label">Notes</span>
-            <p>{{ notes.trim() }}</p>
-          </div>
+          <div class="review-row"><span>Source</span><strong>{{ intakeSource }}</strong></div>
+          <div class="review-row" *ngIf="notes.trim()"><span>Notes</span><strong>{{ notes.trim() }}</strong></div>
+          <div class="review-row" *ngIf="!notes.trim()"><span>Notes</span><strong style="color: #a0b0c4;">None</strong></div>
         </div>
       </div>
     </div>
@@ -339,14 +533,22 @@
       <ng-container *ngIf="currentStep === 1.5">
         <button type="button" class="btn-prev" (click)="currentStep = 1"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>Previous</button>
         <button type="button" class="btn-cancel-link" (click)="goBack()">Cancel</button>
-        <button type="button" class="btn-next" [disabled]="selectedServices.length === 0" (click)="currentStep = 2">Next: Date &amp; Time
+        <button type="button" class="btn-next" [disabled]="selectedServices.length === 0" (click)="proceedToScheduling()">Next: Date &amp; Time
           <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
         </button>
       </ng-container>
-      <ng-container *ngIf="currentStep === 2">
+      <ng-container *ngIf="currentStep === 2 && selectedSubServices.length === 1">
         <button type="button" class="btn-prev" (click)="currentStep = 1.5"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>Previous</button>
         <button type="button" class="btn-cancel-link" (click)="goBack()">Cancel</button>
-        <button type="button" class="btn-next" [disabled]="!selectedDate || !selectedTime" (click)="currentStep = 3">Next: Patient Details
+        <!-- BUG FIX #10: Call method to validate date/time before proceeding -->
+        <button type="button" class="btn-next" [disabled]="!selectedDate || !selectedTime" (click)="proceedToPatientDetails()">Next: Patient Details
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+        </button>
+      </ng-container>
+      <ng-container *ngIf="currentStep === 2.5">
+        <button type="button" class="btn-prev" (click)="goBackToServiceSelection()"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>Previous</button>
+        <button type="button" class="btn-cancel-link" (click)="goBack()">Cancel</button>
+        <button type="button" class="btn-next" [disabled]="!getCurrentServiceSchedule() || !getCurrentServiceSchedule().selectedDate || !getCurrentServiceSchedule().selectedTime" (click)="proceedToNextService()">{{ currentServiceIndex < serviceSchedules.length - 1 ? 'Next Service' : 'Continue to Details' }}
           <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
         </button>
       </ng-container>

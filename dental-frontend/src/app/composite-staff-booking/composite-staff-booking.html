@@ -1,0 +1,479 @@
+<div class="composite-booking-container">
+  <app-staff-sidebar></app-staff-sidebar>
+
+  <div class="booking-content">
+    <!-- HEADER -->
+    <div class="booking-header">
+      <h1>Multi-Service Staff Booking</h1>
+      <p class="subtitle">Create bookings for up to 3 services with separate appointments</p>
+      
+      <!-- Progress Indicator -->
+      <div class="progress-indicator">
+        <div class="progress-step" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
+          <span class="step-number">1</span>
+          <span class="step-label">Patient</span>
+        </div>
+        <div class="progress-line" [class.completed]="currentStep > 1"></div>
+        
+        <div class="progress-step" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
+          <span class="step-number">2</span>
+          <span class="step-label">Services</span>
+        </div>
+        <div class="progress-line" [class.completed]="currentStep > 2"></div>
+        
+        <div class="progress-step" [class.active]="currentStep === 3" [class.completed]="currentStep > 3">
+          <span class="step-number">3</span>
+          <span class="step-label">Schedule</span>
+        </div>
+        <div class="progress-line" [class.completed]="currentStep > 3"></div>
+        
+        <div class="progress-step" [class.active]="currentStep === 4" [class.completed]="currentStep > 4">
+          <span class="step-number">4</span>
+          <span class="step-label">Review</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 1: PATIENT & BOOKING TYPE -->
+    <div class="booking-step" *ngIf="currentStep === 1">
+      <div class="step-content">
+        <h2>Patient Information</h2>
+        <p class="step-description">Enter patient details and booking type</p>
+
+        <form class="patient-form">
+          <!-- Booking Type Selection -->
+          <div class="form-group">
+            <label>Booking Type *</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" [(ngModel)]="bookingType" value="Walk-in" name="bookingType">
+                Walk-in
+              </label>
+              <label class="radio-label">
+                <input type="radio" [(ngModel)]="bookingType" value="Registered patient" name="bookingType">
+                Registered Patient
+              </label>
+            </div>
+          </div>
+
+          <!-- Patient Name -->
+          <div class="form-group">
+            <label>Patient Name *</label>
+            <input 
+              type="text" 
+              [(ngModel)]="patientName"
+              name="patientName"
+              placeholder="Full name"
+              required>
+          </div>
+
+          <!-- Patient Age -->
+          <div class="form-group">
+            <label>Age *</label>
+            <input 
+              type="number" 
+              [(ngModel)]="patientAge"
+              name="patientAge"
+              placeholder="Patient age"
+              required>
+          </div>
+
+          <!-- Patient Phone -->
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input 
+              type="tel" 
+              [(ngModel)]="patientPhone"
+              name="patientPhone"
+              placeholder="Phone number">
+          </div>
+
+          <!-- Patient Email (for registered patients) -->
+          <div class="form-group" *ngIf="bookingType === 'Registered patient'">
+            <label>Email *</label>
+            <input 
+              type="email" 
+              [(ngModel)]="patientEmail"
+              name="patientEmail"
+              placeholder="Email address"
+              required>
+          </div>
+
+          <!-- Intake Priority -->
+          <div class="form-group">
+            <label>Intake Priority</label>
+            <select [(ngModel)]="intakePriority" name="intakePriority">
+              <option value="Standard">Standard</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </div>
+
+          <!-- Intake Source -->
+          <div class="form-group">
+            <label>Intake Source</label>
+            <select [(ngModel)]="intakeSource" name="intakeSource">
+              <option value="Front desk">Front Desk</option>
+              <option value="Phone call">Phone Call</option>
+              <option value="Staff referral">Staff Referral</option>
+            </select>
+          </div>
+
+          <!-- Notes -->
+          <div class="form-group">
+            <label>Notes</label>
+            <textarea 
+              [(ngModel)]="notes"
+              name="notes"
+              rows="3"
+              placeholder="Any special notes..."></textarea>
+          </div>
+
+          <div class="error-message" *ngIf="submitError">
+            {{ submitError }}
+          </div>
+        </form>
+
+        <!-- Action Buttons -->
+        <div class="step-actions">
+          <button class="btn btn-secondary" (click)="cancelBooking()">Cancel</button>
+          <button class="btn btn-primary" (click)="proceedToServices()">
+            Continue to Services
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: SERVICE SELECTION -->
+    <div class="booking-step" *ngIf="currentStep === 2">
+      <div class="step-content">
+        <h2>Select Services (1-3)</h2>
+        <p class="step-description">Choose up to 3 services. Total duration cannot exceed 120 minutes.</p>
+
+        <!-- Service Categories -->
+        <div class="service-categories">
+          <button 
+            *ngFor="let category of ['General Dentistry', 'Cosmetic Arts', 'Orthodontics', 'Oral Surgery', 'Dental Implants', 'Pediatric Care']"
+            class="category-btn"
+            [class.active]="selectedCategory === category"
+            (click)="selectCategory(category)">
+            {{ category }}
+          </button>
+        </div>
+
+        <!-- Services for Selected Category -->
+        <div class="services-list" *ngIf="selectedCategory">
+          <div class="services-grid">
+            <div 
+              *ngFor="let service of serviceMap[selectedCategory]"
+              class="service-card"
+              [class.selected]="isServiceSelected(service.name)">
+              
+              <input 
+                type="checkbox"
+                [checked]="isServiceSelected(service.name)"
+                (change)="toggleService(service)"
+                class="service-checkbox">
+              
+              <div class="service-info">
+                <h3>{{ service.name }}</h3>
+                <p class="duration">{{ service.duration }} minutes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Services Summary -->
+        <div class="selected-summary" *ngIf="selectedSubServices.length > 0">
+          <h3>Selected Services ({{ selectedSubServices.length }}/{{ MAX_SERVICES }})</h3>
+          <div class="selected-list">
+            <div *ngFor="let service of selectedSubServices" class="selected-item">
+              <span class="service-name">{{ service.name }}</span>
+              <span class="service-duration">{{ service.duration }}m</span>
+            </div>
+          </div>
+          <div class="duration-info">
+            <p>Total Duration: <strong>{{ totalSelectedDuration }} minutes</strong></p>
+            <p class="duration-limit" [class.warning]="totalSelectedDuration > MAX_MINUTES">
+              Maximum: {{ MAX_MINUTES }} minutes
+            </p>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="step-actions">
+          <button class="btn btn-secondary" (click)="goBackToPatient()">Back</button>
+          <button 
+            class="btn btn-primary" 
+            (click)="proceedToScheduling()"
+            [disabled]="selectedSubServices.length === 0">
+            Continue to Scheduling
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: INDIVIDUAL SERVICE SCHEDULING -->
+    <div class="booking-step" *ngIf="currentStep === 3">
+      <div class="step-content">
+        <h2>Schedule Each Service Separately</h2>
+        <p class="step-description">
+          Service {{ currentServiceIndex + 1 }} of {{ serviceSchedules.length }}: 
+          <strong>{{ getCurrentServiceSchedule().service.name }}</strong>
+        </p>
+
+        <!-- Service Progress -->
+        <div class="service-progress">
+          <div *ngFor="let schedule of serviceSchedules; let i = index" 
+               class="service-progress-item"
+               [class.active]="i === currentServiceIndex"
+               [class.completed]="schedule.selectedTime">
+            <span class="progress-number">{{ i + 1 }}</span>
+            <span class="progress-name">{{ schedule.service.name }}</span>
+            <span class="progress-status" *ngIf="schedule.selectedTime">✓</span>
+          </div>
+        </div>
+
+        <div class="scheduling-container">
+          <!-- Service Info -->
+          <div class="service-info-box">
+            <h3>{{ getCurrentServiceSchedule().service.name }}</h3>
+            <p>Category: {{ getCurrentServiceSchedule().service.category }}</p>
+            <p>Duration: {{ getCurrentServiceSchedule().service.duration }} minutes</p>
+          </div>
+
+          <!-- Calendar -->
+          <div class="calendar-section">
+            <h3>Select Date</h3>
+            <div class="calendar-header">
+              <button (click)="previousMonth()" class="nav-btn">&lt;</button>
+              <h4>{{ currentMonthName }} {{ currentYear }}</h4>
+              <button (click)="nextMonth()" class="nav-btn">&gt;</button>
+            </div>
+
+            <div class="calendar-grid">
+              <div class="day-header" *ngFor="let day of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']">
+                {{ day }}
+              </div>
+              <button 
+                *ngFor="let day of calendarDays"
+                class="calendar-day"
+                [class.empty]="!day"
+                [class.past]="day?.isPast"
+                [class.today]="day?.isToday"
+                [class.selected]="day?.isSelected"
+                [disabled]="!day || day.isPast"
+                (click)="selectDateForService(day?.date)">
+                {{ day?.day }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Dentist Selection -->
+          <div class="dentist-section" *ngIf="getCurrentServiceSchedule().selectedDate">
+            <h3>Select Dentist</h3>
+            <div class="dentist-list">
+              <button 
+                *ngFor="let dentist of getCurrentServiceSchedule().availableDentists"
+                class="dentist-btn"
+                [class.selected]="getCurrentServiceSchedule().selectedDentist?.id === dentist.id"
+                (click)="changeDentistForService(dentist)">
+                <span class="dentist-name">Dr. {{ dentist.first_name }} {{ dentist.last_name }}</span>
+                <span class="dentist-specialty">{{ dentist.specialty }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Time Slot Selection -->
+          <div class="time-section" *ngIf="getCurrentServiceSchedule().selectedDate && getCurrentServiceSchedule().selectedDentist">
+            <h3>Select Time</h3>
+            <div class="loading" *ngIf="getCurrentServiceSchedule().isLoadingSlots">
+              <p>Loading available slots...</p>
+            </div>
+            <div class="time-slots" *ngIf="!getCurrentServiceSchedule().isLoadingSlots">
+              <button 
+                *ngFor="let slot of getCurrentServiceSchedule().availableSlots"
+                class="time-slot"
+                [class.selected]="getCurrentServiceSchedule().selectedTime === slot.time"
+                [disabled]="slot.slotsLeft === 0"
+                (click)="selectTimeForService(slot.time)">
+                {{ slot.time }}
+              </button>
+              <p *ngIf="getCurrentServiceSchedule().availableSlots.length === 0" class="no-slots">
+                No available slots for this date and dentist
+              </p>
+            </div>
+          </div>
+
+          <!-- Selected Appointment Summary -->
+          <div class="appointment-summary" *ngIf="getCurrentServiceSchedule().selectedTime">
+            <h3>Appointment Summary</h3>
+            <div class="summary-item">
+              <span>Service:</span>
+              <strong>{{ getCurrentServiceSchedule().service.name }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>Dentist:</span>
+              <strong>Dr. {{ getCurrentServiceSchedule().selectedDentist?.first_name }} {{ getCurrentServiceSchedule().selectedDentist?.last_name }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>Date:</span>
+              <strong>{{ getCurrentServiceSchedule().selectedDate }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>Time:</span>
+              <strong>{{ getCurrentServiceSchedule().selectedTime }} - {{ getCurrentServiceSchedule().service.endTime }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="step-actions">
+          <button class="btn btn-secondary" (click)="goBackToService()">Back</button>
+          <button 
+            class="btn btn-primary" 
+            (click)="proceedToNextService()"
+            [disabled]="!getCurrentServiceSchedule().selectedTime">
+            {{ currentServiceIndex < serviceSchedules.length - 1 ? 'Next Service' : 'Continue to Review' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: REVIEW & CONFIRM -->
+    <div class="booking-step" *ngIf="currentStep === 4">
+      <div class="step-content">
+        <h2>Review Booking</h2>
+        <p class="step-description">Please review all details before confirming</p>
+
+        <!-- Patient Information -->
+        <div class="review-section">
+          <h3>Patient Information</h3>
+          <div class="review-item">
+            <span>Name:</span>
+            <strong>{{ patientName }}</strong>
+          </div>
+          <div class="review-item">
+            <span>Age:</span>
+            <strong>{{ patientAge }}</strong>
+          </div>
+          <div class="review-item" *ngIf="patientPhone">
+            <span>Phone:</span>
+            <strong>{{ patientPhone }}</strong>
+          </div>
+          <div class="review-item" *ngIf="patientEmail">
+            <span>Email:</span>
+            <strong>{{ patientEmail }}</strong>
+          </div>
+          <div class="review-item">
+            <span>Booking Type:</span>
+            <strong>{{ bookingType }}</strong>
+          </div>
+          <div class="review-item">
+            <span>Priority:</span>
+            <strong>{{ intakePriority }}</strong>
+          </div>
+          <div class="review-item">
+            <span>Source:</span>
+            <strong>{{ intakeSource }}</strong>
+          </div>
+          <div class="review-item" *ngIf="notes">
+            <span>Notes:</span>
+            <strong>{{ notes }}</strong>
+          </div>
+        </div>
+
+        <!-- Appointments Summary -->
+        <div class="review-section">
+          <h3>Appointments ({{ confirmedBooking.appointments.length }})</h3>
+          <div class="appointments-list">
+            <div *ngFor="let apt of confirmedBooking.appointments" class="appointment-card">
+              <div class="appointment-header">
+                <h4>{{ apt.service }}</h4>
+                <span class="appointment-number">Appointment {{ apt.sequence }}</span>
+              </div>
+              <div class="appointment-details">
+                <div class="detail-row">
+                  <span>Category:</span>
+                  <strong>{{ apt.category }}</strong>
+                </div>
+                <div class="detail-row">
+                  <span>Dentist:</span>
+                  <strong>{{ apt.dentist }}</strong>
+                </div>
+                <div class="detail-row">
+                  <span>Date:</span>
+                  <strong>{{ apt.date }}</strong>
+                </div>
+                <div class="detail-row">
+                  <span>Time:</span>
+                  <strong>{{ apt.time }} - {{ apt.endTime }}</strong>
+                </div>
+                <div class="detail-row">
+                  <span>Duration:</span>
+                  <strong>{{ apt.duration }} minutes</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message" *ngIf="submitError">
+          {{ submitError }}
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="step-actions">
+          <button class="btn btn-secondary" (click)="goBackToService()">Back</button>
+          <button 
+            class="btn btn-primary" 
+            (click)="submitCompositeBooking()"
+            [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Submitting...' : 'Confirm Booking' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUCCESS MODAL -->
+    <div class="modal-overlay" *ngIf="showSuccessModal">
+      <div class="modal-content success-modal">
+        <div class="modal-header">
+          <h2>✓ Booking Created!</h2>
+        </div>
+        <div class="modal-body">
+          <p>The composite booking has been successfully created.</p>
+          <div class="booking-id">
+            <span>Booking ID:</span>
+            <strong>{{ confirmedBooking.bookingId }}</strong>
+          </div>
+          <p class="confirmation-message">
+            All {{ confirmedBooking.appointments.length }} appointments have been scheduled.
+            The patient will be notified of their booking details.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" (click)="closeSuccessModal()">
+            Go to Appointments
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CANCEL CONFIRMATION MODAL -->
+    <div class="modal-overlay" *ngIf="showCancelConfirm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Cancel Booking?</h2>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to cancel this booking? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="showCancelConfirm = false">Keep Booking</button>
+          <button class="btn btn-danger" (click)="confirmCancel()">Cancel Booking</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
