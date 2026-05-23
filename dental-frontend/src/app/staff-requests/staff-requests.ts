@@ -3,6 +3,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { StaffSidebar } from '../staff-sidebar/staff-sidebar';
 import { ApiService } from '../services/api.service';
+import { SyncService } from '../services/sync.service';
 import { DENTIST_ROSTER } from '../dentist-portal-data';
 
 interface Appointment {
@@ -59,7 +60,11 @@ export class StaffRequestsComponent implements OnInit {
   protected rescheduleReason = '';
   protected rejectReason = '';
 
-  constructor(private api: ApiService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private api: ApiService,
+    private cdr: ChangeDetectorRef,
+    private syncService: SyncService
+  ) {}
 
   ngOnInit(): void {
     this.loadAppointments();
@@ -168,6 +173,11 @@ export class StaffRequestsComponent implements OnInit {
         this.showToast(`${this.pendingApproveReq!.patient_name}'s appointment approved — assigned to ${this.assignedDentist}.`, 'success');
         this.pendingApproveReq = null;
         this.closeDetails();
+        
+        // Trigger sync refresh for dentist portal
+        console.log('[StaffRequests] Triggering sync refresh after approval');
+        this.syncService.triggerRefresh();
+        
         this.cdr.detectChanges();
       },
       error: (err) => {

@@ -10,6 +10,7 @@ const SlotManager = require('./slot-manager');
 const {
   BookingValidator,
   AvailabilityCalculator,
+  CLINIC_CONFIG,
   DENTISTS,
   SERVICES,
   SERVICE_DURATIONS,
@@ -108,12 +109,26 @@ router.get('/available-times', async (req, res) => {
 
     console.log(`\n[DYNAMIC TIMELINE] Fetching available times for date: ${date}, service: ${service}`);
 
-    // Step 1: Find dentist responsible for this service
-    const dentist = findDentistForService(service);
-    if (!dentist) {
+    // Step 1: Find dentist responsible for this service (from database)
+    const dentistResult = await pool.query(
+      `SELECT d.dentist_id, u.first_name, u.last_name, d.specialization
+       FROM service_dentist_mapping sdm
+       JOIN dentist d ON sdm.dentist_id = d.dentist_id
+       JOIN users u ON d.user_id = u.id
+       WHERE LOWER(sdm.service_name) = LOWER($1) AND sdm.is_primary = TRUE AND sdm.is_active = TRUE
+       LIMIT 1`,
+      [service]
+    );
+    
+    if (dentistResult.rowCount === 0) {
       return res.status(400).json({ error: `No dentist found for service: ${service}` });
     }
-    console.log(`[DYNAMIC TIMELINE] Service "${service}" → Dentist: ${dentist.name} (ID: ${dentist.dbId})`);
+    
+    const dentistRow = dentistResult.rows[0];
+    const dentistId = dentistRow.dentist_id;
+    const dentistName = `${dentistRow.first_name} ${dentistRow.last_name}`;
+    
+    console.log(`[DYNAMIC TIMELINE] Service "${service}" → Dentist: ${dentistName} (ID: ${dentistId})`);
 
     // Step 2: Get service duration
     const serviceDuration = getServiceDuration(service);
@@ -129,7 +144,7 @@ router.get('/available-times', async (req, res) => {
          AND dentist_id = $2
          AND status IN ('Approved', 'Pending')
        ORDER BY appointment_time ASC`,
-      [date, dentist.dbId]
+      [date, dentistId]
     );
 
     const approvedAppointments = result.rows;
@@ -158,7 +173,9 @@ router.get('/available-times', async (req, res) => {
 
     // Step 4: Generate all possible time slots (30-minute intervals from 8:00 AM to closing time)
     // Closing times vary by day: Mon-Fri 8:30 PM, Sat 9:00 PM, Sun 9:30 PM
-    const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'lowercase' });
+    const dateObj = new Date(date + 'T00:00:00'); // Parse date string correctly
+    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayOfWeek = daysOfWeek[dateObj.getDay()]; // Get day name from 0-6 (Sun-Sat)
     const closingHour = CLINIC_CONFIG.operating_hours[dayOfWeek]?.end || 20.5 * 60;
     
     const timeSlots = [];

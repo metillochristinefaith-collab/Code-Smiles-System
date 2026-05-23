@@ -50,6 +50,9 @@ export class PatientBookingComponent implements OnInit {
 
   isSubmitting = false;
   submitError = '';
+  private submitDebounceTimer: any = null;
+  private lastSubmitTime: number = 0;
+  private readonly SUBMIT_DEBOUNCE_MS = 1000; // Prevent double-clicks within 1 second
 
   currentStep: any = 1;
   selectedCategory: string = '';
@@ -78,7 +81,7 @@ export class PatientBookingComponent implements OnInit {
   bookingConfirmed: boolean = false;
   showSuccessModal: boolean = false;
   isRescheduleFlow: boolean = false;
-  wasRescheduleFlow: boolean = false; // tracks if the completed booking was a reschedule
+  wasRescheduleFlow: boolean = false;
   rescheduleAppointmentId: string | null = null;
 
   showCancelConfirm: boolean = false;
@@ -217,7 +220,6 @@ export class PatientBookingComponent implements OnInit {
       this.isPhoneValid &&
       this.isAgeValid
     );
-    // Reschedule flow requires a reason
     if (this.isRescheduleFlow) {
       return baseValid && this.patientDetails.rescheduleReason.trim().length >= 5;
     }
@@ -231,7 +233,6 @@ export class PatientBookingComponent implements OnInit {
 
   selectCategory(category: string) {
     this.selectedCategory = category;
-    // Don't auto-advance — user clicks Continue button
   }
 
   toggleService(serviceName: string) {
@@ -241,12 +242,10 @@ export class PatientBookingComponent implements OnInit {
     const index = this.selectedServices.indexOf(serviceName);
 
     if (index > -1) {
-      // Remove service
       this.selectedServices.splice(index, 1);
       this.selectedSubServices = this.selectedSubServices.filter(s => s.name !== serviceName);
       this.totalSelectedDuration -= serviceObj.duration;
     } else {
-      // Add service
       if (this.selectedServices.length >= this.MAX_SERVICES) {
         alert(`Maximum ${this.MAX_SERVICES} services allowed`);
         return;
@@ -268,7 +267,6 @@ export class PatientBookingComponent implements OnInit {
     }
 
     if (this.selectedDate && this.selectedSubServices.length === 1) {
-      // Re-generate slots when service selection changes (only for single service)
       this.selectDate(this.selectedDate);
     }
   }
@@ -279,13 +277,9 @@ export class PatientBookingComponent implements OnInit {
       return;
     }
 
-    // DECISION POINT: Single vs Multi-service
     if (this.selectedSubServices.length === 1) {
-      // Single service → Skip to date/time selection (original flow)
       this.currentStep = 2;
     } else {
-      // Multi-service → Go to individual scheduling
-      // BUG FIX #5: Use deep clone instead of shallow copy to prevent shared state
       this.serviceSchedules = this.selectedSubServices.map(service => ({
         service: JSON.parse(JSON.stringify(service)),
         selectedDate: '',
@@ -294,7 +288,7 @@ export class PatientBookingComponent implements OnInit {
         isLoadingSlots: false,
         availableDentists: []
       }));
-      this.currentStep = 2.5; // Multi-service scheduling step
+      this.currentStep = 2.5;
       this.currentServiceIndex = 0;
     }
 
@@ -365,9 +359,6 @@ export class PatientBookingComponent implements OnInit {
       const dayOfWeek = dateObj.getDay();
       const isPast = dateObj < today;
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      
-      // Check if date is within operating hours (not past)
-      // Weekends are now allowed - clinic is open Saturday and Sunday
       const isOperatingDay = !isPast;
 
       this.calendarDays.push({
@@ -376,7 +367,7 @@ export class PatientBookingComponent implements OnInit {
         isToday: dateObj.getTime() === today.getTime(),
         isPast,
         isWeekend,
-        isFullyBooked: false, // Will be determined by API call
+        isFullyBooked: false,
         isAvailable: isOperatingDay
       });
     }
@@ -401,8 +392,8 @@ export class PatientBookingComponent implements OnInit {
       console.log(`[BOOKING] Date is valid, setting selectedDate to ${date}`);
       this.selectedDate = date;
       this.selectedTime = '';
-      this.submitError = ''; // Clear any previous errors
-      this.availableSlots = []; // Clear slots immediately while loading
+      this.submitError = '';
+      this.availableSlots = [];
       this.refreshAvailableSlots(date);
     } else {
       console.warn(`[BOOKING] Date is invalid:`, {
@@ -418,7 +409,6 @@ export class PatientBookingComponent implements OnInit {
   }
 
   private refreshAvailableSlots(date: string) {
-    // Get the first selected service
     if (this.selectedSubServices.length === 0) {
       console.warn(`[BOOKING] No services selected, cannot fetch available slots`);
       this.availableSlots = [];
@@ -429,9 +419,8 @@ export class PatientBookingComponent implements OnInit {
     
     console.log(`[BOOKING] Fetching available times for date: ${date}, service: ${service}`);
     this.isLoadingSlots = true;
-    this.availableSlots = []; // Clear slots while loading
+    this.availableSlots = [];
     
-    // Fetch real slot counts from API
     this.api.getAvailableTimes(date, service).subscribe({
       next: (response: any) => {
         console.log(`[BOOKING] API Response:`, response);
@@ -459,23 +448,19 @@ export class PatientBookingComponent implements OnInit {
   }
 
   private timeStringToMinutes(timeStr: string): number {
-    // BUG FIX #2: Add validation for 12-hour format
-    // Handle both "HH:MM" and "HH:MM AM/PM" formats
     const parts = timeStr.trim().split(/\s+/);
     const timePart = parts[0];
-    const modifier = (parts[1] || '').toUpperCase(); // Normalize to uppercase
+    const modifier = (parts[1] || '').toUpperCase();
     
     const [hoursStr, minutesStr] = timePart.split(':');
     const hours = parseInt(hoursStr, 10);
     const minutes = parseInt(minutesStr, 10);
 
-    // Validate hours and minutes
     if (isNaN(hours) || isNaN(minutes)) {
       console.error(`[BOOKING] Invalid time format: ${timeStr}`);
       return 0;
     }
 
-    // Validate ranges for 12-hour format
     if (modifier && (modifier === 'AM' || modifier === 'PM')) {
       if (hours < 1 || hours > 12) {
         console.error(`[BOOKING] Invalid hour for 12-hour format: ${hours}`);
@@ -490,7 +475,6 @@ export class PatientBookingComponent implements OnInit {
 
     let totalMinutes = hours * 60 + minutes;
 
-    // Convert 12-hour to 24-hour if needed
     if (modifier === 'PM' && hours !== 12) {
       totalMinutes += 12 * 60;
     } else if (modifier === 'AM' && hours === 12) {
@@ -515,12 +499,7 @@ export class PatientBookingComponent implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // MULTI-SERVICE SCHEDULING METHODS
-  // ═════════════════════════════════════════════════════════════════════════════
-
   getCurrentServiceSchedule(): ServiceSchedule {
-    // BUG FIX #3: Add bounds checking to prevent undefined access
     if (this.currentServiceIndex < 0 || this.currentServiceIndex >= this.serviceSchedules.length) {
       console.error(`[BOOKING] Index out of bounds: ${this.currentServiceIndex} for array length ${this.serviceSchedules.length}`);
       return null as any;
@@ -551,7 +530,6 @@ export class PatientBookingComponent implements OnInit {
     schedule.isLoadingSlots = true;
 
     try {
-      // Get available slots for this service on this date
       const slotsResponse = await this.api.getAvailableTimes(
         schedule.selectedDate,
         schedule.service.name
@@ -577,16 +555,16 @@ export class PatientBookingComponent implements OnInit {
 
   selectTimeForMultiService(time: string) {
     const schedule = this.getCurrentServiceSchedule();
-    schedule.selectedTime = time;
+    const time24 = this.convertTo24Hour(time);
+    schedule.selectedTime = time24;
 
-    // Calculate end time
-    const [hours, minutes] = time.split(':').map(Number);
+    const [hours, minutes] = time24.split(':').map(Number);
     const endMin = hours * 60 + minutes + schedule.service.duration;
     const endHours = Math.floor(endMin / 60);
     const endMinutes = endMin % 60;
     schedule.service.endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
     schedule.service.date = schedule.selectedDate;
-    schedule.service.time = time;
+    schedule.service.time = time24;
   }
 
   proceedToNextService() {
@@ -597,7 +575,6 @@ export class PatientBookingComponent implements OnInit {
       return;
     }
 
-    // Validate no time conflicts with previously scheduled services
     const currentStartTime = this.timeStringToMinutes(schedule.selectedTime);
     const currentEndTime = currentStartTime + schedule.service.duration;
 
@@ -607,7 +584,6 @@ export class PatientBookingComponent implements OnInit {
         const prevStartTime = this.timeStringToMinutes(prevSchedule.selectedTime);
         const prevEndTime = prevStartTime + prevSchedule.service.duration;
 
-        // Check for overlap
         if ((currentStartTime < prevEndTime && currentEndTime > prevStartTime)) {
           alert(`This time slot overlaps with "${prevSchedule.service.name}" scheduled at ${prevSchedule.selectedTime}. Please choose a different time.`);
           return;
@@ -617,11 +593,9 @@ export class PatientBookingComponent implements OnInit {
 
     if (this.currentServiceIndex < this.serviceSchedules.length - 1) {
       this.currentServiceIndex++;
-      // BUG FIX #8: Don't reset calendar - keep user's current month context
       this.generateCalendar();
       this.cdr.detectChanges();
     } else {
-      // BUG FIX #1: Validate ALL services are scheduled before proceeding to step 3
       const allScheduled = this.serviceSchedules.every(s => 
         s.selectedDate && 
         s.selectedTime && 
@@ -634,7 +608,6 @@ export class PatientBookingComponent implements OnInit {
         return;
       }
 
-      // All services scheduled, proceed to patient details
       this.currentStep = 3;
       this.cdr.detectChanges();
     }
@@ -645,7 +618,6 @@ export class PatientBookingComponent implements OnInit {
       this.currentServiceIndex--;
     } else {
       this.currentStep = 1;
-      // BUG FIX #7: Clear all service selections when going back to step 1
       this.selectedCategory = '';
       this.selectedServices = [];
       this.selectedSubServices = [];
@@ -654,12 +626,16 @@ export class PatientBookingComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // BOOKING SUBMISSION
-  // ═════════════════════════════════════════════════════════════════════════════
-
   completeBooking() {
     console.log(`[BOOKING] completeBooking called`);
+    
+    // Debounce: prevent multiple submissions within SUBMIT_DEBOUNCE_MS
+    const now = Date.now();
+    if (now - this.lastSubmitTime < this.SUBMIT_DEBOUNCE_MS) {
+      console.warn(`[BOOKING] Submission debounced - too soon after last attempt`);
+      return;
+    }
+    this.lastSubmitTime = now;
     
     if (this.isSubmitting) {
       console.warn(`[BOOKING] Already submitting, ignoring`);
@@ -670,15 +646,12 @@ export class PatientBookingComponent implements OnInit {
       return;
     }
 
-    // Validate based on booking type
     if (this.selectedSubServices.length === 1) {
-      // Single service
       if (!this.selectedDate || !this.selectedTime) {
         this.submitError = 'Please complete the service, date, and time before submitting.';
         return;
       }
     } else {
-      // Multi-service
       const allScheduled = this.serviceSchedules.every(s => s.selectedDate && s.selectedTime);
       if (!allScheduled) {
         this.submitError = 'Please schedule all services before submitting.';
@@ -696,83 +669,126 @@ export class PatientBookingComponent implements OnInit {
       services: selectedServiceNames
     });
 
-    // Prepare appointments based on booking type
-    let appointments: any[];
-
-    if (this.selectedSubServices.length === 1) {
-      // Single service
-      const time24Hour = this.convertTo24Hour(this.selectedTime);
-      appointments = [{
-        date: this.selectedDate,
-        time: time24Hour
-      }];
-    } else {
-      // Multi-service
-      appointments = this.serviceSchedules.map(schedule => ({
-        date: schedule.selectedDate,
-        time: schedule.selectedTime
-      }));
-    }
-
     this.isSubmitting = true;
     this.submitError = '';
 
-    const bookingData = {
-      patient_id: null,
-      full_name: `${this.patientDetails.firstName.trim()} ${this.patientDetails.lastName.trim()}`,
-      phone: this.patientDetails.phone.trim(),
-      email: this.patientDetails.email.trim(),
-      treatment: this.selectedCategory,
-      services: this.selectedSubServices.map(s => s.name),
-      appointment_date: this.selectedDate,
-      appointment_time: this.selectedSubServices.length === 1 ? this.convertTo24Hour(this.selectedTime) : this.convertTo24Hour(this.serviceSchedules[0].selectedTime),
-      duration_minutes: this.totalSelectedDuration,
-      notes: this.patientDetails.notes.trim(),
-      booking_type: 'Patient'
-    };
+    const loggedInUser = this.auth.getUser();
+    const patient_id = loggedInUser?.id || null;
 
-    console.log(`[BOOKING] Submitting booking:`, bookingData);
+    if (this.selectedSubServices.length === 1) {
+      const appointmentTime = this.convertTo24Hour(this.selectedTime);
 
-    this.api.bookAppointment(bookingData).subscribe({
-      next: (res: any) => {
-        console.log(`[BOOKING] Booking successful:`, res);
-        this.submitError = '';
+      const bookingData = {
+        patient_id: patient_id,
+        full_name: `${this.patientDetails.firstName.trim()} ${this.patientDetails.lastName.trim()}`,
+        phone: this.patientDetails.phone.trim(),
+        email: this.patientDetails.email.trim(),
+        treatment: this.selectedCategory,
+        services: this.selectedSubServices.map(s => s.name),
+        appointment_date: this.selectedDate,
+        appointment_time: appointmentTime,
+        duration_minutes: this.totalSelectedDuration,
+        notes: this.patientDetails.notes.trim(),
+        booking_type: 'Patient'
+      };
 
-        this.confirmedBooking = {
-          appointmentId: res.id || res.appointment_id || '',
-          fullName: `${this.patientDetails.firstName.trim()} ${this.patientDetails.lastName.trim()}`,
-          date: this.selectedDate,
-          time: this.selectedSubServices.length === 1 ? this.selectedTime : this.serviceSchedules[0].selectedTime,
-          services: [...this.selectedSubServices],
-        };
+      console.log(`[BOOKING] Submitting SINGLE service booking:`, bookingData);
 
-        this.wasRescheduleFlow = this.isRescheduleFlow;
-        this.isSubmitting = false;
-        this.isRescheduleFlow = false;
-        this.rescheduleAppointmentId = null;
-        this.resetSelection();
-        this.resetPatientDetails();
+      this.api.bookAppointment(bookingData).subscribe({
+        next: (res: any) => {
+          console.log(`[BOOKING] Booking successful:`, res);
+          this.submitError = '';
 
-        this.showSuccessModal = true;
-        this.cdr.detectChanges();
-      },
-      error: (err: any) => {
-        console.error(`[BOOKING] Booking failed:`, err);
-        this.isSubmitting = false;
-        this.submitError = err?.error?.error || 'Booking failed. Please try again.';
-        this.cdr.detectChanges();
-      }
-    });
+          this.confirmedBooking = {
+            appointmentId: res.id || res.appointment_id || '',
+            fullName: `${this.patientDetails.firstName.trim()} ${this.patientDetails.lastName.trim()}`,
+            date: this.selectedDate,
+            time: this.selectedTime,
+            services: [...this.selectedSubServices],
+          };
+
+          this.wasRescheduleFlow = this.isRescheduleFlow;
+          this.isSubmitting = false;
+          this.isRescheduleFlow = false;
+          this.rescheduleAppointmentId = null;
+          this.resetSelection();
+          this.resetPatientDetails();
+
+          this.showSuccessModal = true;
+          this.cdr.detectChanges();
+        },
+        error: (err: any) => {
+          console.error(`[BOOKING] Booking failed:`, err);
+          this.isSubmitting = false;
+          this.submitError = err?.error?.error || err?.error?.message || 'Booking failed. Please try again.';
+          this.cdr.detectChanges();
+        }
+      });
+    } else {
+      const bookingData = {
+        services: this.selectedSubServices.map((s, idx) => ({
+          name: s.name,
+          category: s.category || this.selectedCategory,
+          duration: s.duration
+        })),
+        appointments: this.serviceSchedules.map(schedule => ({
+          date: schedule.selectedDate,
+          time: schedule.selectedTime
+        })),
+        patientDetails: {
+          firstName: this.patientDetails.firstName.trim(),
+          lastName: this.patientDetails.lastName.trim(),
+          email: this.patientDetails.email.trim(),
+          phone: this.patientDetails.phone.trim(),
+          age: this.patientDetails.age || '',
+          notes: this.patientDetails.notes.trim()
+        },
+        bookingType: 'Patient',
+        intakePriority: 'Standard',
+        intakeSource: 'Online'
+      };
+
+      console.log(`[BOOKING] Submitting MULTI-SERVICE booking:`, bookingData);
+
+      this.api.createCompositeBooking(bookingData, patient_id).subscribe({
+        next: (res: any) => {
+          console.log(`[BOOKING] Multi-service booking successful:`, res);
+          this.submitError = '';
+
+          this.confirmedBooking = {
+            appointmentId: res.id || res.booking_id || '',
+            fullName: `${this.patientDetails.firstName.trim()} ${this.patientDetails.lastName.trim()}`,
+            date: this.serviceSchedules[0].selectedDate,
+            time: this.serviceSchedules[0].selectedTime,
+            services: [...this.selectedSubServices],
+          };
+
+          this.wasRescheduleFlow = this.isRescheduleFlow;
+          this.isSubmitting = false;
+          this.isRescheduleFlow = false;
+          this.rescheduleAppointmentId = null;
+          this.resetSelection();
+          this.resetPatientDetails();
+
+          this.showSuccessModal = true;
+          this.cdr.detectChanges();
+        },
+        error: (err: any) => {
+          console.error(`[BOOKING] Multi-service booking failed:`, err);
+          this.isSubmitting = false;
+          this.submitError = err?.error?.error || err?.error?.message || 'Booking failed. Please try again.';
+          this.cdr.detectChanges();
+        }
+      });
+    }
   }
 
   convertTo24Hour(time12h: string): string {
-    // BUG FIX #6: Add comprehensive validation for time format
     if (!time12h) {
       console.error('[BOOKING] Empty time string');
       return '';
     }
 
-    // Validate format: "HH:MM AM/PM"
     const timeRegex = /^(\d{1,2}):(\d{2})\s+(AM|PM)$/i;
     const match = time12h.trim().match(timeRegex);
     
@@ -785,32 +801,27 @@ export class PatientBookingComponent implements OnInit {
     const minutes = match[2];
     const modifier = match[3].toUpperCase();
 
-    // Validate hour range for 12-hour format
     if (hour < 1 || hour > 12) {
       console.error(`[BOOKING] Invalid hour for 12-hour format: ${hour}`);
       return '';
     }
 
-    // Validate minutes range
     const minutesNum = parseInt(minutes, 10);
     if (minutesNum < 0 || minutesNum > 59) {
       console.error(`[BOOKING] Invalid minutes: ${minutesNum}`);
       return '';
     }
     
-    // Convert 12-hour to 24-hour format
     if (modifier === 'AM') {
       if (hour === 12) {
-        hour = 0; // 12 AM is 00:XX
+        hour = 0;
       }
     } else if (modifier === 'PM') {
       if (hour !== 12) {
-        hour += 12; // 1 PM is 13, 2 PM is 14, etc.
+        hour += 12;
       }
-      // 12 PM stays as 12
     }
     
-    // Pad hours and minutes with leading zeros
     const paddedHours = String(hour).padStart(2, '0');
     const paddedMinutes = String(minutes).padStart(2, '0');
     
@@ -824,7 +835,6 @@ export class PatientBookingComponent implements OnInit {
     this.selectedCategory = '';
     this.isRescheduleFlow = false;
     this.rescheduleAppointmentId = null;
-    // BUG FIX #4: Reset multi-service state for new booking
     this.currentServiceIndex = 0;
     this.serviceSchedules = [];
     this.resetSelection();
@@ -834,13 +844,13 @@ export class PatientBookingComponent implements OnInit {
 
   goToDashboardFromModal() {
     this.showSuccessModal = false;
-    this.bookingConfirmed = true; // Set to show success state before leaving
+    this.bookingConfirmed = true;
     this.router.navigate(['/patient-dashboard']);
   }
 
   goToAppointmentsFromModal() {
     this.showSuccessModal = false;
-    this.bookingConfirmed = true; // Set to show success state before leaving
+    this.bookingConfirmed = true;
     this.router.navigate(['/patient-appointments']);
   }
 
@@ -852,7 +862,6 @@ export class PatientBookingComponent implements OnInit {
     this.router.navigate(['/patient-appointments']);
   }
 
-  /** Called by "← Back to Dashboard" button */
   requestBackToDashboard() {
     if (this.hasBookingStarted && !this.bookingConfirmed) {
       this.pendingNavigationUrl = '/patient-dashboard';
@@ -862,7 +871,6 @@ export class PatientBookingComponent implements OnInit {
     }
   }
 
-  /** Called by "Cancel Booking" buttons */
   requestCancel() {
     if (this.hasBookingStarted && !this.bookingConfirmed) {
       this.showCancelConfirm = true;

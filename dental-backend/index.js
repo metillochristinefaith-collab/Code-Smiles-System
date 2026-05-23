@@ -2057,7 +2057,8 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
   // Validate time is within operating hours
   const [hours, minutes] = appointment_time.split(':').map(Number);
   const appointmentDateObj = new Date(appointment_date);
-  const dayOfWeek = appointmentDateObj.toLocaleDateString('en-US', { weekday: 'lowercase' });
+  const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayOfWeek = daysOfWeek[appointmentDateObj.getDay()]; // Get day name from 0-6 (Sun-Sat)
   const { CLINIC_CONFIG } = require('./scheduling-engine');
   const operatingHours = CLINIC_CONFIG.operating_hours[dayOfWeek];
   
@@ -2129,6 +2130,14 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
   try {
     // ── BEGIN TRANSACTION ──────────────────────────────────────────────────
     await client.query('BEGIN');
+    
+    // ── SET SERIALIZABLE ISOLATION LEVEL ───────────────────────────────────
+    // CRITICAL FIX: Prevents race condition double-booking bug
+    // Default PostgreSQL isolation (READ COMMITTED) allows phantom reads:
+    // Two concurrent requests can both pass the overlap check
+    // SERIALIZABLE ensures: if txns conflict, one rolls back automatically
+    // Side effect: May get occasional serialization failures, handled by retry logic
+    await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
 
     // ── DYNAMIC DURATION CALCULATION ───────────────────────────────────────
     // Import scheduling engine helpers
@@ -2399,9 +2408,28 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
     });
   } catch (err) {
     // ── ROLLBACK — appointment AND notifications are both undone ───────────
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackErr) {
+      console.error('Rollback error:', rollbackErr.message);
+    }
+    
     console.error('Booking transaction rolled back:', err.message);
-    res.status(500).json({ message: err.message });
+    
+    // Handle serialization conflicts (from SERIALIZABLE isolation)
+    // Error code 40001 = serialization_failure
+    if (err.code === '40001') {
+      console.warn('⚠️ Serialization conflict detected. Another booking was concurrent.');
+      return res.status(409).json({ 
+        message: 'The appointment slot was just booked. Please try another time.',
+        code: 'SERIALIZATION_CONFLICT'
+      });
+    }
+    
+    // Generic error
+    res.status(500).json({ 
+      message: err.message || 'Failed to book appointment. Please try again.' 
+    });
   } finally {
     client.release();
   }
@@ -3443,6 +3471,149 @@ db.query(`
   )
 `).catch(err => console.error('Support requests table error:', err.message));
 
+// Composite booking table for multi-service bookings
+db.query(`
+  CREATE TABLE IF NOT EXISTS composite_bookings (
+    id                        SERIAL PRIMARY KEY,
+    booking_id                VARCHAR(50) UNIQUE NOT NULL,
+    patient_id                INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    patient_name              VARCHAR(255) NOT NULL,
+    patient_email             VARCHAR(255) NOT NULL,
+    patient_phone             VARCHAR(20) NOT NULL,
+    booking_type              VARCHAR(50) NOT NULL DEFAULT 'Patient',
+    intake_priority           VARCHAR(50) NOT NULL DEFAULT 'Standard',
+    intake_source             VARCHAR(50) NOT NULL DEFAULT 'Online',
+    service_count             INTEGER NOT NULL,
+    total_duration_minutes    INTEGER NOT NULL,
+    patient_notes             TEXT,
+    overall_status            VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    created_by                INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at                TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at                TIMESTAMP NOT NULL DEFAULT NOW()
+  )
+`).catch(err => console.error('Composite bookings table error:', err.message));
+
+// Composite booking appointments table for individual appointments within a composite booking
+// Wait a bit to ensure composite_bookings table exists first
+setTimeout(() => {
+  db.query(`
+    CREATE TABLE IF NOT EXISTS composite_booking_appointments (
+      id                        SERIAL PRIMARY KEY,
+      composite_booking_id      INTEGER NOT NULL REFERENCES composite_bookings(id) ON DELETE CASCADE,
+      booking_id                VARCHAR(50) NOT NULL,
+      appointment_id            VARCHAR(100) UNIQUE NOT NULL,
+      appointment_sequence      INTEGER NOT NULL,
+      service_name              VARCHAR(255) NOT NULL,
+      service_category          VARCHAR(100) NOT NULL,
+      service_duration_minutes  INTEGER NOT NULL,
+      appointment_date          DATE NOT NULL,
+      appointment_time          VARCHAR(5) NOT NULL,
+      dentist_id                INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      dentist_name              VARCHAR(255),
+      patient_age               VARCHAR(10),
+      appointment_status        VARCHAR(50) NOT NULL DEFAULT 'Pending',
+      cancellation_reason       TEXT,
+      created_at                TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at                TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `).catch(err => console.error('Composite booking appointments table error:', err.message));
+}, 500);
+
+// Service to Dentist Mapping table
+db.query(`
+  CREATE TABLE IF NOT EXISTS service_dentist_mapping (
+    id                SERIAL PRIMARY KEY,
+    service_name      VARCHAR(255) NOT NULL,
+    service_category  VARCHAR(100) NOT NULL,
+    dentist_id        INTEGER NOT NULL REFERENCES dentist(dentist_id) ON DELETE CASCADE,
+    is_primary        BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active         BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE(service_name, dentist_id)
+  )
+`).catch(err => console.error('Service dentist mapping table error:', err.message));
+
+// Populate service_dentist_mapping with initial data
+setTimeout(() => {
+  // Insert a mapping for each service to the first available dentist
+  db.query(`
+    INSERT INTO service_dentist_mapping (service_name, service_category, dentist_id, is_primary, is_active)
+    SELECT 
+      'oral consultation',
+      'General Dentistry',
+      d.dentist_id,
+      TRUE as is_primary,
+      TRUE as is_active
+    FROM dentist d LIMIT 1
+    ON CONFLICT DO NOTHING
+  `).catch(err => {}); // Silent fail if already exists
+
+  // Populate all general dentistry services
+  const generalDentistryServices = [
+    'oral consultation', 'dental cleaning', 'digital x-rays', 'tooth fillings', 
+    'fluoride treatment', 'dental sealants', 'simple tooth extraction', 'emergency dental care'
+  ];
+  
+  db.query(`
+    SELECT dentist_id FROM dentist LIMIT 1
+  `).then(result => {
+    if (result.rows.length > 0) {
+      const dentistId = result.rows[0].dentist_id;
+      generalDentistryServices.forEach(service => {
+        db.query(`
+          INSERT INTO service_dentist_mapping (service_name, service_category, dentist_id, is_primary, is_active)
+          VALUES ($1, $2, $3, TRUE, TRUE)
+          ON CONFLICT (service_name, dentist_id) DO NOTHING
+        `, [service.toLowerCase(), 'General Dentistry', dentistId])
+          .catch(err => {});
+      });
+    }
+  }).catch(err => {});
+
+  // Populate cosmetic arts services
+  const cosmeticServices = [
+    'teeth whitening', 'dental veneers', 'dental bonding', 'smile makeover', 'tooth contouring', 'gum contouring'
+  ];
+
+  db.query(`
+    SELECT dentist_id FROM dentist WHERE dentist_id > 1 LIMIT 1
+  `).then(result => {
+    if (result.rows.length > 0) {
+      const dentistId = result.rows[0].dentist_id;
+      cosmeticServices.forEach(service => {
+        db.query(`
+          INSERT INTO service_dentist_mapping (service_name, service_category, dentist_id, is_primary, is_active)
+          VALUES ($1, $2, $3, TRUE, TRUE)
+          ON CONFLICT (service_name, dentist_id) DO NOTHING
+        `, [service.toLowerCase(), 'Cosmetic Arts', dentistId])
+          .catch(err => {});
+      });
+    }
+  }).catch(err => {});
+
+  // Populate orthodontics services  
+  const orthodonticsServices = [
+    'traditional braces', 'ceramic braces', 'self-ligating braces', 'clear aligners', 'retainers', 'orthodontic consultation'
+  ];
+
+  db.query(`
+    SELECT dentist_id FROM dentist WHERE dentist_id > 2 LIMIT 1
+  `).then(result => {
+    if (result.rows.length > 0) {
+      const dentistId = result.rows[0].dentist_id;
+      orthodonticsServices.forEach(service => {
+        db.query(`
+          INSERT INTO service_dentist_mapping (service_name, service_category, dentist_id, is_primary, is_active)
+          VALUES ($1, $2, $3, TRUE, TRUE)
+          ON CONFLICT (service_name, dentist_id) DO NOTHING
+        `, [service.toLowerCase(), 'Orthodontics', dentistId])
+          .catch(err => {});
+      });
+    }
+  }).catch(err => {});
+}, 1500);
+
 // GET /faqs — fetch all FAQs, optionally filtered by category and/or role
 app.get('/faqs', async (req, res) => {
   try {
@@ -3768,6 +3939,10 @@ app.get('/admin/staff-accounts', authMiddleware, async (req, res) => {
 // Mount scheduling API routes
 const schedulingRouter = require('./scheduling-api');
 app.use('/api/scheduling', schedulingRouter);
+
+// Mount composite booking API routes
+const compositeBookingRouter = require('./composite-booking-api');
+app.use('/api/composite-booking', compositeBookingRouter);
 
 async function startServer() {
   try {

@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { StaffSidebar } from '../staff-sidebar/staff-sidebar';
 import { ApiService } from '../services/api.service';
 
 @Component({
   selector: 'app-staff-calendar',
   standalone: true,
-  imports: [CommonModule, StaffSidebar],
+  imports: [CommonModule, StaffSidebar, FormsModule],
   templateUrl: './staff-calendar.html',
   styleUrls: ['./staff-calendar.css'],
 })
@@ -15,12 +16,17 @@ export class StaffCalendar implements OnInit {
   currentDate: Date = new Date();
   currentWeekStart: Date = new Date();
   currentWeekEnd: Date = new Date();
-  currentView: 'day' | 'week' | 'month' = 'week';
+  currentView: 'day' | 'week' | 'month' = 'month';
 
   // Week/Day appointments
   protected allAppointments: any[] = [];
   // All future appointments for sidebar + month view
   allUpcoming: any[] = [];
+
+  // Modal state
+  selectedDay: any = null;
+  dayNotes: Record<string, string> = {};
+  currentNote: string = '';  // Local binding for textarea
 
   calendarDays: { label: string; date: string; active?: boolean }[] = [
     { label: 'MON', date: '' }, { label: 'TUE', date: '' },
@@ -50,6 +56,7 @@ export class StaffCalendar implements OnInit {
   ngOnInit(): void {
     this.goToToday();
     this.loadAllUpcoming();
+    this.loadDayNotes();
   }
 
   // ── Load all upcoming appointments for sidebar + month view ──────────────
@@ -250,13 +257,13 @@ export class StaffCalendar implements OnInit {
 
   getStatusClass(status: string): string {
     const map: Record<string, string> = {
-      Confirmed: 'badge-confirmed', Approved: 'badge-confirmed',
-      Pending: 'badge-pending', 'In Progress': 'badge-progress',
-      Cancelled: 'badge-cancelled', 'Cancelled by Staff': 'badge-cancelled',
-      'Cancelled by Patient': 'badge-cancelled',
-      'No-Show': 'badge-no-show', 'NO-SHOW': 'badge-no-show',
+      Confirmed: 'confirmed', Approved: 'confirmed',
+      Pending: 'pending', 'In Progress': 'in-progress',
+      Cancelled: 'cancelled', 'Cancelled by Staff': 'cancelled',
+      'Cancelled by Patient': 'cancelled',
+      'No-Show': 'no-show', 'NO-SHOW': 'no-show',
     };
-    return map[status] ?? 'badge-confirmed';
+    return map[status] ?? 'confirmed';
   }
 
   getEventClass(status: string): string {
@@ -289,6 +296,54 @@ export class StaffCalendar implements OnInit {
   formatDateShort(d: string): string {
     if (!d) return '—';
     return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  // ── Modal Functions ──────────────────────────────────────────────────────
+  openDayDetails(day: any): void {
+    if (day.day) {
+      this.selectedDay = day;
+      // Load notes for this day
+      const savedNote = localStorage.getItem(`staff-calendar-notes-${day.dateStr}`);
+      this.currentNote = savedNote || '';
+      this.cdr.detectChanges();
+    }
+  }
+
+  closeDayDetails(): void {
+    this.selectedDay = null;
+    this.currentNote = '';
+    this.cdr.detectChanges();
+  }
+
+  getDateDisplay(day: any): string {
+    if (!day || !day.dateStr) return '';
+    const date = new Date(day.dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  getDateDayCount(day: any): number {
+    return day?.events?.length || 0;
+  }
+
+  saveDayNotes(dateStr: string): void {
+    localStorage.setItem(`staff-calendar-notes-${dateStr}`, this.currentNote || '');
+  }
+
+  saveDayNotesWithFeedback(): void {
+    if (this.selectedDay?.dateStr) {
+      this.saveDayNotes(this.selectedDay.dateStr);
+      this.cdr.detectChanges();
+    }
+  }
+
+  private loadDayNotes(): void {
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith('staff-calendar-notes-')) {
+        const dateStr = key.replace('staff-calendar-notes-', '');
+        this.dayNotes[dateStr] = localStorage.getItem(key) || '';
+      }
+    });
   }
 
   get miniCalendarDates(): any[] {

@@ -442,7 +442,6 @@
             <div class="review-box-header"><span class="header-dot blue"></span><span>Appointment</span></div>
             <div class="review-row"><span>Date</span><strong>{{ selectedDate | date:'MMM d, y' }}</strong></div>
             <div class="review-row"><span>Time</span><strong class="time-highlight">{{ selectedTime }}</strong></div>
-            <div class="review-row"><span>Duration</span><strong>{{ totalSelectedDuration }} min</strong></div>
             <div class="review-row"><span>Priority</span><strong>{{ intakePriority }}</strong></div>
           </div>
           <div class="review-box">
@@ -483,10 +482,6 @@
                   <div class="detail-row">
                     <span class="detail-label">Time</span>
                     <span class="detail-value time-highlight">{{ schedule.selectedTime }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Duration</span>
-                    <span class="detail-value">{{ schedule.service.duration }} minutes</span>
                   </div>
                 </div>
               </div>

@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS service_dentist_mapping (
   id SERIAL PRIMARY KEY,
   service_name VARCHAR(255) NOT NULL,
   service_category VARCHAR(100) NOT NULL,
-  dentist_id INT NOT NULL REFERENCES dentist(id) ON DELETE CASCADE,
+  dentist_id INT NOT NULL REFERENCES dentist(dentist_id) ON DELETE CASCADE,
   is_primary BOOLEAN DEFAULT TRUE,  -- Primary dentist for this service
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT NOW(),

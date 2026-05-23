@@ -1,11 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { DentistSidebar } from '../dentist-sidebar/dentist-sidebar';
 import { ApiService } from '../services/api.service';
 import { AuthService } from '../services/auth.service';
 import { AvatarService } from '../services/avatar.service';
+import { SyncService } from '../services/sync.service';
 import { getDentistInfo } from '../dentist-portal-data';
 
 export interface Appointment {
@@ -34,7 +36,7 @@ export interface Appointment {
   templateUrl: './dentist-appointments.html',
   styleUrl: './dentist-appointments.css',
 })
-export class DentistAppointmentsComponent implements OnInit {
+export class DentistAppointmentsComponent implements OnInit, OnDestroy {
 
   readonly tabs = ['Upcoming', 'Today', 'Completed', 'Rescheduled', 'Cancelled'];
   activeTab = 'Upcoming';
@@ -70,28 +72,55 @@ export class DentistAppointmentsComponent implements OnInit {
   filterTreatment = 'All';
   private todayStr = new Date().toISOString().split('T')[0];
 
+  // Sync subscription
+  private syncSubscription: Subscription | null = null;
+
   constructor(
     private api: ApiService,
     private auth: AuthService,
     private cdr: ChangeDetectorRef,
     private avatarService: AvatarService,
+    private syncService: SyncService,
   ) {}
 
   ngOnInit() {
-  // Load avatar from localStorage or database
-  this.avatarUrl = this.avatarService.getAvatar();
-  if (!this.avatarUrl) {
-    this.avatarService.loadAvatarFromDB().then(() => {
-      // After loading from DB, check localStorage again
-      this.avatarUrl = this.avatarService.getAvatar();
-      this.cdr.detectChanges();
-    }).catch((err: any) => {
-      console.error('Failed to load avatar:', err);
+    // Load avatar from localStorage or database
+    this.avatarUrl = this.avatarService.getAvatar();
+    if (!this.avatarUrl) {
+      this.avatarService.loadAvatarFromDB().then(() => {
+        // After loading from DB, check localStorage again
+        this.avatarUrl = this.avatarService.getAvatar();
+        this.cdr.detectChanges();
+      }).catch((err: any) => {
+        console.error('Failed to load avatar:', err);
+      });
+    }
+
+    // Load initial appointments
+    this.loadAppointments();
+
+    // Subscribe to sync service for real-time updates
+    this.syncSubscription = this.syncService.appointmentRefresh$.subscribe({
+      next: (shouldRefresh) => {
+        if (shouldRefresh) {
+          console.log('[DentistAppointments] Refreshing appointments from sync service');
+          this.loadAppointments();
+        }
+      }
     });
+
+    // Start polling for appointment updates
+    this.syncService.startPolling();
   }
 
-  this.loadAppointments();
-}
+  ngOnDestroy() {
+    // Cleanup subscriptions
+    if (this.syncSubscription) {
+      this.syncSubscription.unsubscribe();
+    }
+    // Stop polling when component is destroyed
+    this.syncService.stopPolling();
+  }
 
   get displayDate(): string {
     return new Date().toLocaleDateString('en-US', {

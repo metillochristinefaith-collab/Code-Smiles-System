@@ -2,164 +2,122 @@
   <app-staff-sidebar></app-staff-sidebar>
 
   <main class="calendar-main">
+    <!-- ── HEADER ──────────────────────────────────────────────────────────── -->
+    <div class="calendar-header-bar">
+      <div class="header-left-section">
+        <h1 class="calendar-page-title">Calendar</h1>
+        <p class="calendar-page-subtitle">View and manage your schedule</p>
+      </div>
+      <div class="header-center-section">
+        <button class="btn-today" (click)="goToToday()">Today</button>
+      </div>
+      <div class="header-right-section">
+        <button class="btn-bell" (click)="navigateToNotifications()">🔔</button>
+      </div>
+    </div>
 
-    <!-- ── PAGE: two-column ──────────────────────────────────────────────── -->
-    <div class="page-layout">
+    <!-- ── CALENDAR CONTAINER ──────────────────────────────────────────────── -->
+    <div class="calendar-wrapper">
+      <!-- Month Navigation -->
+      <div class="month-nav-bar">
+        <button class="nav-btn" (click)="previousMonth()">&lt;</button>
+        <div class="month-display">
+          <strong>{{ monthName }}</strong>
+        </div>
+        <button class="nav-btn" (click)="nextMonth()">&gt;</button>
+      </div>
 
-      <!-- ── LEFT COLUMN (MAIN CALENDAR) ──────────────────────────────────── -->
-      <div class="page-left">
-
-        <!-- Calendar Controls Header -->
-        <header class="calendar-header">
-          <!-- Left: Title -->
-          <div class="header-left">
-            <h1 class="calendar-title">Calendar</h1>
-            <p class="calendar-subtitle">Manage schedules, appointments, and availability.</p>
+      <!-- Calendar Grid -->
+      <div class="calendar-grid-container">
+        <!-- Weekday Headers -->
+        <div class="calendar-weekday-header">
+          <div class="calendar-weekday-cell" *ngFor="let wd of ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']">
+            {{ wd }}
           </div>
+        </div>
 
-          <!-- Center: Navigation -->
-          <div class="header-center">
-            <button class="btn-today" (click)="goToToday()">Today</button>
-            <div class="week-nav">
-              <button class="week-nav-btn" (click)="previousWeek()">&lt;</button>
-              <button class="week-nav-btn" (click)="nextWeek()">&gt;</button>
-            </div>
-            <span class="week-range">{{ getWeekRangeDisplay() }}</span>
-            <div class="view-toggle">
-              <button class="view-btn" [class.active]="currentView === 'day'" (click)="changeView('day')">Day</button>
-              <button class="view-btn" [class.active]="currentView === 'week'" (click)="changeView('week')">Week</button>
-              <button class="view-btn" [class.active]="currentView === 'month'" (click)="changeView('month')">Month</button>
-            </div>
-          </div>
-
-          <!-- Right: Action -->
-          <div class="header-right">
-            <button class="btn-new-appointment" (click)="addWalkIn()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              New Appointment
-            </button>
-          </div>
-        </header>
-
-        <!-- WEEKLY GRID — EXACT MONTH LAYOUT -->
-        <div class="board-card" *ngIf="currentView === 'week'">
-          <div class="month-header">
-            <button class="week-nav-btn" (click)="previousWeek()">&lt;</button>
-            <strong class="month-title">{{ getWeekRangeDisplay() }}</strong>
-            <button class="week-nav-btn" (click)="nextWeek()">&gt;</button>
-          </div>
-          <div class="month-grid">
-            <div class="month-weekday" *ngFor="let day of calendarDays">{{ day.label }}</div>
-            <div class="month-day"
-              *ngFor="let day of calendarDays"
-              [class.month-day-today]="day.active">
-              <span class="month-day-num">{{ day.date }}</span>
-              <div class="month-events">
-                <div class="month-event" *ngFor="let ev of getDayEvents(day).slice(0,3)"
-                  [ngClass]="getEventClass(ev.status)">
-                  {{ ev.startTime }} {{ ev.patient }}
+        <!-- Calendar Days -->
+        <div class="calendar-days-grid">
+          <div class="calendar-day-cell" 
+               *ngFor="let day of monthDays"
+               [class.empty]="!day.day"
+               [class.today]="day.isToday"
+               (click)="openDayDetails(day)"
+               [class.clickable]="day.day">
+            <div class="day-number" *ngIf="day.day">{{ day.day }}</div>
+            <div class="day-events" *ngIf="day.day">
+              <ng-container *ngFor="let ev of day.events.slice(0, 2)">
+                <div class="event-block" [ngClass]="'event-' + getStatusClass(ev.status)">
+                  {{ formatTime(ev.appointment_time) }}
                 </div>
-                <div class="month-event-more" *ngIf="getDayEvents(day).length > 3">
-                  +{{ getDayEvents(day).length - 3 }} more
-                </div>
-                <div *ngIf="!getDayEvents(day).length" class="month-day-empty-text">No appointments</div>
-              </div>
-            </div>
-          </div>
-        </div><!-- /board-card -->
-
-        <!-- DAY VIEW — MONTH STYLE EVENTS LIST -->
-        <div class="board-card" *ngIf="currentView === 'day'">
-          <div class="month-header">
-            <button class="week-nav-btn" (click)="previousWeek()">&lt;</button>
-            <strong class="month-title">{{ getWeekRangeDisplay() }}</strong>
-            <button class="week-nav-btn" (click)="nextWeek()">&gt;</button>
-          </div>
-          <div class="day-events-list">
-            <div *ngIf="!boardEvents.length" class="month-day-empty-text" style="padding: 40px 20px; text-align: center;">
-              No appointments this day.
-            </div>
-            <div class="month-event" *ngFor="let ev of boardEvents"
-              [ngClass]="getEventClass(ev.status)"
-              style="margin: 8px 16px; padding: 8px 12px;">
-              {{ ev.startTime }} {{ ev.patient }}
-            </div>
-          </div>
-        </div><!-- /board-card -->
-
-        <!-- MONTH VIEW -->
-        <div class="board-card" *ngIf="currentView === 'month'">
-          <div class="month-header">
-            <button class="week-nav-btn" (click)="previousMonth()">&lt;</button>
-            <strong class="month-title">{{ monthName }}</strong>
-            <button class="week-nav-btn" (click)="nextMonth()">&gt;</button>
-          </div>
-          <div class="month-grid">
-            <div class="month-weekday" *ngFor="let d of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']">{{ d }}</div>
-            <div class="month-day"
-              *ngFor="let day of monthDays"
-              [class.month-day-empty]="!day.day"
-              [class.month-day-today]="day.isToday">
-              <span class="month-day-num" *ngIf="day.day">{{ day.day }}</span>
-              <div class="month-events">
-                <div class="month-event" *ngFor="let ev of day.events.slice(0,3)"
-                  [ngClass]="getEventClass(ev.status)">
-                  {{ formatTime(ev.appointment_time) }} {{ ev.patient_name }}
-                </div>
-                <div class="month-event-more" *ngIf="day.events.length > 3">
-                  +{{ day.events.length - 3 }} more
-                </div>
+              </ng-container>
+              <div class="event-more" *ngIf="day.events.length > 2">
+                +{{ day.events.length - 2 }}
               </div>
             </div>
           </div>
         </div>
-
-      </div><!-- /page-left -->
-
-      <!-- ── RIGHT SIDEBAR ─────────────────────────────────────────────────── -->
-      <aside class="page-right">
-
-        <!-- Upcoming Appointments -->
-        <section class="sidebar-card upcoming-sidebar">
-          <div class="sidebar-head">
-            <strong>Upcoming Appointments</strong>
-            <a class="view-all-link" (click)="viewAllAppointments()" style="cursor: pointer;">View all</a>
-          </div>
-          <div class="upcoming-list">
-            <div *ngIf="upcomingAppointments.length === 0" style="padding:16px;color:#8fa3bc;font-size:13px;text-align:center;">
-              No upcoming appointments.
-            </div>
-            <div class="upcoming-item" *ngFor="let appt of upcomingAppointments">
-              <div class="upcoming-time">
-                <strong>{{ appt.date }}</strong>
-                <span>{{ appt.time }}</span>
-              </div>
-              <div class="upcoming-details">
-                <strong class="upcoming-patient">{{ appt.patient }}</strong>
-                <p class="upcoming-service">{{ appt.service }}</p>
-                <span class="status-badge" [ngClass]="getStatusClass(appt.status)">{{ appt.status }}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Schedule Legend -->
-        <section class="sidebar-card">
-          <div class="sidebar-head"><strong>Schedule Legend</strong></div>
-          <div class="legend-list">
-            <div class="legend-row" *ngFor="let item of legendItems">
-              <span class="legend-dot" [ngClass]="item.cls"></span>
-              <span class="legend-lbl">{{ item.label }}</span>
-            </div>
-          </div>
-        </section>
-
-      </aside>
-
-    </div><!-- /page-layout -->
-
+      </div>
+    </div>
   </main>
+
+  <!-- ── DAY DETAILS MODAL ──────────────────────────────────────────────── -->
+  <div class="modal-overlay" *ngIf="selectedDay" (click)="closeDayDetails()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <h2>{{ getDateDisplay(selectedDay) }}</h2>
+          <p class="modal-date-info">{{ getDateDayCount(selectedDay) }} appointment<span *ngIf="selectedDay.events?.length !== 1">s</span></p>
+        </div>
+        <button class="modal-close" (click)="closeDayDetails()">✕</button>
+      </div>
+
+      <div class="modal-content">
+        <!-- Schedule Section -->
+        <div class="modal-section">
+          <div class="section-header">
+            <h3 class="modal-section-title">📅 Schedule</h3>
+          </div>
+          <div class="schedule-list" *ngIf="selectedDay.events && selectedDay.events.length > 0">
+            <div class="schedule-item" *ngFor="let ev of selectedDay.events" [ngClass]="'status-' + getStatusClass(ev.status)">
+              <div class="schedule-time-badge">{{ formatTime(ev.appointment_time) }}</div>
+              <div class="schedule-details">
+                <div class="schedule-patient">{{ ev.patient_name }}</div>
+                <div class="schedule-service">{{ ev.treatment }}</div>
+              </div>
+              <div class="schedule-status" [ngClass]="'badge-' + getStatusClass(ev.status)">
+                {{ ev.status === 'Approved' ? 'Confirmed' : ev.status }}
+              </div>
+            </div>
+          </div>
+          <div class="schedule-empty" *ngIf="!selectedDay.events || selectedDay.events.length === 0">
+            <div class="empty-state">
+              <span class="empty-icon">📭</span>
+              <p>No appointments scheduled</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes Section -->
+        <div class="modal-section notes-section">
+          <div class="section-header">
+            <h3 class="modal-section-title">📝 Notes</h3>
+          </div>
+          <textarea 
+            class="notes-textarea"
+            [(ngModel)]="currentNote"
+            placeholder="Add notes for this day... (reminders, follow-ups, etc.)">
+          </textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-footer-secondary" (click)="closeDayDetails()">Cancel</button>
+        <button class="btn-footer-primary" (click)="saveDayNotesWithFeedback()">
+          <span class="btn-icon">💾</span>
+          Save Notes
+        </button>
+      </div>
+    </div>
+  </div>
 </div>

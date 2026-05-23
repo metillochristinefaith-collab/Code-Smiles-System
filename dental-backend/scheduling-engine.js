@@ -29,33 +29,40 @@ const CLINIC_CONFIG = {
 // ═══════════════════════════════════════════════════════════════
 
 const DENTISTS = {
-  D3: {
-    id: 'D3',
-    dbId: 3,
-    name: 'Dr. Raphoncel Eduria',
-    email: 'eduria@codesmiles.com',
-    specialties: ['General Dentistry', 'Oral Surgery'],
-  },
-  D6: {
-    id: 'D6',
-    dbId: 6,
-    name: 'Dr. Christine Faith Metillo',
-    email: 'metillo@codesmiles.com',
-    specialties: ['Orthodontics', 'Dental Implants'],
-  },
-  D5: {
-    id: 'D5',
-    dbId: 5,
-    name: 'Dr. Nico Bongolto',
-    email: 'bongolto@codesmiles.com',
-    specialties: ['Pediatric Care'],
+  D1: {
+    id: 'D1',
+    dbId: 1,
+    name: 'Dr. Derence Acojedo',
+    email: 'acojedo@codesmiles.com',
+    specialties: ['Cosmetic Arts'],
   },
   D2: {
     id: 'D2',
     dbId: 2,
-    name: 'Dr. Derence Acojedo',
-    email: 'acojedo@codesmiles.com',
-    specialties: ['Cosmetic Arts'],
+    name: 'Dr. Raphoncel Eduria',
+    email: 'eduria@codesmiles.com',
+    specialties: ['General Dentistry', 'Oral Surgery'],
+  },
+  D3: {
+    id: 'D3',
+    dbId: 3,
+    name: 'Dr. Nico Bongolto',
+    email: 'bongolto@codesmiles.com',
+    specialties: ['Pediatric Care'],
+  },
+  D4: {
+    id: 'D4',
+    dbId: 4,
+    name: 'Dr. Christine Faith Metillo',
+    email: 'metillo@codesmiles.com',
+    specialties: ['General Dentistry'],
+  },
+  D5: {
+    id: 'D5',
+    dbId: 5,
+    name: 'Dr. Christine Metillo',
+    email: 'christine@codesmiles.com',
+    specialties: ['Orthodontics', 'Dental Implants'],
   },
 };
 

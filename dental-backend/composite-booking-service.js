@@ -133,6 +133,7 @@ class CompositeBookingValidator {
 
   /**
    * Validate appointment doesn't conflict with existing bookings
+   * IMPORTANT: Checks BOTH composite_booking_appointments AND regular appointments tables
    */
   static async validateAppointmentConflict(dentistId, appointmentDate, appointmentTime, durationMinutes) {
     try {
@@ -140,9 +141,9 @@ class CompositeBookingValidator {
       const startMin = hours * 60 + minutes;
       const endMin = startMin + durationMinutes + 10; // 10-min buffer
 
-      // Query existing appointments for this dentist on this date
-      const result = await pool.query(
-        `SELECT cba.id, cba.appointment_time, cba.service_duration_minutes
+      // Query 1: Check composite booking appointments
+      const compositeResult = await pool.query(
+        `SELECT cba.id, cba.appointment_time, cba.service_duration_minutes, 'composite' as source
          FROM composite_booking_appointments cba
          WHERE cba.dentist_id = $1 
            AND cba.appointment_date = $2
@@ -151,18 +152,33 @@ class CompositeBookingValidator {
         [dentistId, appointmentDate]
       );
 
+      // Query 2: Check regular appointments table
+      const regularResult = await pool.query(
+        `SELECT a.id, a.appointment_time, a.duration_minutes, 'regular' as source
+         FROM appointments a
+         WHERE a.dentist_id = $1 
+           AND a.appointment_date = $2
+           AND a.status IN ('Pending', 'Approved', 'Confirmed')
+         ORDER BY a.appointment_time ASC`,
+        [dentistId, appointmentDate]
+      );
+
+      // Combine results
+      const allAppointments = [...compositeResult.rows, ...regularResult.rows];
+
       // Check for overlaps
-      for (const existing of result.rows) {
+      for (const existing of allAppointments) {
         const [existHours, existMinutes] = existing.appointment_time.split(':').map(Number);
         const existStartMin = existHours * 60 + existMinutes;
-        const existEndMin = existStartMin + existing.service_duration_minutes + 10;
+        const durationField = existing.service_duration_minutes || existing.duration_minutes;
+        const existEndMin = existStartMin + durationField + 10;
 
         // Check if time windows overlap
         if (!(endMin <= existStartMin || startMin >= existEndMin)) {
           return {
             hasConflict: true,
             conflictingAppointment: existing,
-            message: `Conflict with existing appointment at ${existing.appointment_time}`
+            message: `Conflict with existing ${existing.source} appointment at ${existing.appointment_time}`
           };
         }
       }
@@ -210,7 +226,9 @@ class CompositeBookingManager {
     const client = await pool.connect();
     
     try {
-      await client.query('BEGIN');
+      // Use SERIALIZABLE isolation level to prevent race conditions
+      // This ensures that concurrent requests cannot create conflicting bookings
+      await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
 
       // 1. Validate request
       const validation = CompositeBookingValidator.validateBookingRequest(request);
@@ -266,9 +284,9 @@ class CompositeBookingManager {
 
         // Find dentist for this service
         const dentistResult = await client.query(
-          `SELECT d.id, u.first_name, u.last_name, d.specialty
+          `SELECT d.dentist_id, u.first_name, u.last_name, d.specialization
            FROM service_dentist_mapping sdm
-           JOIN dentist d ON sdm.dentist_id = d.id
+           JOIN dentist d ON sdm.dentist_id = d.dentist_id
            JOIN users u ON d.user_id = u.id
            WHERE LOWER(sdm.service_name) = LOWER($1) AND sdm.is_primary = TRUE AND sdm.is_active = TRUE
            LIMIT 1`,
@@ -291,9 +309,9 @@ class CompositeBookingManager {
           throw new Error(`Invalid time format for ${service.name}. Use HH:MM format.`);
         }
 
-        // Check for conflicts
+        // Check for conflicts - this now checks BOTH tables
         const conflictCheck = await CompositeBookingValidator.validateAppointmentConflict(
-          dentist.id,
+          dentist.dentist_id,
           appointment.date,
           appointment.time,
           service.duration
@@ -335,9 +353,9 @@ class CompositeBookingManager {
             service.name,
             service.category,
             service.duration,
-            dentist.id,
+            dentist.dentist_id,
             `${dentist.first_name} ${dentist.last_name}`,
-            dentist.specialty,
+            dentist.specialization,
             appointment.date,
             appointment.time,
             endTime,
@@ -385,6 +403,12 @@ class CompositeBookingManager {
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('[CompositeBookingManager] Error creating booking:', error.message);
+      
+      // Handle serialization failures gracefully
+      if (error.code === '40001' || error.message.includes('serialization')) {
+        throw new Error('Booking conflict detected. Please try again.');
+      }
+      
       throw error;
     } finally {
       client.release();
@@ -648,9 +672,9 @@ class CompositeBookingManager {
   static async getAvailableDentistsForService(serviceName) {
     try {
       const result = await pool.query(
-        `SELECT d.id, u.first_name, u.last_name, d.specialty
+        `SELECT d.dentist_id, u.first_name, u.last_name, d.specialization
          FROM service_dentist_mapping sdm
-         JOIN dentist d ON sdm.dentist_id = d.id
+         JOIN dentist d ON sdm.dentist_id = d.dentist_id
          JOIN users u ON d.user_id = u.id
          WHERE sdm.service_name = $1 AND sdm.is_active = TRUE
          ORDER BY sdm.is_primary DESC, u.first_name`,

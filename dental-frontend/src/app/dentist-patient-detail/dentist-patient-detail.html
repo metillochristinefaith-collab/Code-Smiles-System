@@ -1,0 +1,81 @@
+<div class="dentist-shell dp-shell">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="dp-main">
+    <section class="detail-top-card">
+      <div class="detail-header">
+        <div>
+          <p class="dp-kicker">PATIENT OVERVIEW</p>
+          <h1>{{ patient?.name || 'Patient details' }}</h1>
+          <p class="detail-subtitle">A complete profile and treatment snapshot for the selected patient.</p>
+        </div>
+        <a class="detail-back" routerLink="/dentist-patients">← Back to patients</a>
+      </div>
+
+      <div *ngIf="!isLoading && patient" class="detail-summary">
+        <div class="detail-card detail-card-large">
+          <div class="detail-avatar">{{ patient.initials }}</div>
+          <div>
+            <div class="detail-name">{{ patient.name }}</div>
+            <div class="detail-meta">{{ patient.id }} · {{ patient.age }} yrs · {{ patient.gender }}</div>
+          </div>
+          <span class="dp-status-pill" [attr.data-status]="patient.status">{{ patient.status }}</span>
+        </div>
+
+        <div class="detail-grid">
+          <div class="info-box">
+            <span>Phone</span>
+            <strong>{{ patient.phone }}</strong>
+          </div>
+          <div class="info-box">
+            <span>Email</span>
+            <strong>{{ patient.email }}</strong>
+          </div>
+          <div class="info-box">
+            <span>Blood Type</span>
+            <strong>{{ patient.bloodType }}</strong>
+          </div>
+          <div class="info-box">
+            <span>Next Appointment</span>
+            <strong>{{ patient.nextAppointment }}</strong>
+          </div>
+          <div class="info-box wide">
+            <span>Current Treatment</span>
+            <strong>{{ patient.currentTreatment }}</strong>
+          </div>
+          <div class="info-box wide">
+            <span>Address</span>
+            <strong>{{ patient.address }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="isLoading" class="dp-list-empty">Loading patient details…</div>
+      <div *ngIf="notFound && !isLoading" class="dp-list-empty">Patient not found or access denied.</div>
+    </section>
+
+    <section class="detail-history" *ngIf="!isLoading && patient">
+      <div class="detail-segment-head">
+        <div>
+          <p class="dp-kicker">TREATMENT HISTORY</p>
+          <h2>Recent appointments and treatment notes</h2>
+        </div>
+      </div>
+
+      <div *ngIf="history.length === 0" class="dp-list-empty">No treatment history available yet.</div>
+      <div class="history-list" *ngIf="history.length > 0">
+        <div class="history-card" *ngFor="let item of history">
+          <div class="history-row">
+            <div>
+              <strong>{{ item.procedure }}</strong>
+              <p>{{ item.tooth }}</p>
+            </div>
+            <div class="history-date">{{ item.date }}</div>
+          </div>
+          <div class="history-note">{{ item.notes }}</div>
+          <div class="history-footer">Dentist: {{ item.dentist }}</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

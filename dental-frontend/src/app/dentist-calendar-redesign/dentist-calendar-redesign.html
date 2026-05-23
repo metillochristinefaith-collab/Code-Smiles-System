@@ -1,0 +1,113 @@
+<div class="dentist-calendar-page">
+  <app-dentist-sidebar></app-dentist-sidebar>
+
+  <main class="calendar-main">
+    <div class="calendar-container">
+      <!-- Header -->
+      <div class="calendar-header">
+        <div class="header-left">
+          <h1>Calendar</h1>
+          <p>View and manage your schedule</p>
+        </div>
+        <div class="header-controls">
+          <button class="btn-today" (click)="goToToday()">Today</button>
+          <div class="month-nav">
+            <button class="nav-btn" (click)="prevMonth()">‹</button>
+            <span class="month-title">{{ currentMonth | date:'MMMM yyyy' }}</span>
+            <button class="nav-btn" (click)="nextMonth()">›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar Grid -->
+      <div class="calendar-grid">
+        <!-- Weekday Headers -->
+        <div class="weekday-header" *ngFor="let day of weekdays">{{ day }}</div>
+
+        <!-- Calendar Days -->
+        <div class="calendar-day" 
+             *ngFor="let day of calendarDays"
+             [class.other-month]="!day.isCurrentMonth"
+             [class.today]="day.isToday"
+             [class.has-events]="day.appointments.length > 0"
+             (click)="selectDay(day)">
+          
+          <!-- Day Number -->
+          <div class="day-number">{{ day.date }}</div>
+          <div class="day-note-list" *ngIf="getNotesForDay(day).length">
+            <div class="day-note-preview" *ngFor="let note of getNotesForDay(day).slice(0, 2)">
+              {{ note }}
+            </div>
+            <div class="day-note-more" *ngIf="getNotesForDay(day).length > 2">
+              +{{ getNotesForDay(day).length - 2 }} more notes
+            </div>
+          </div>
+
+          <!-- Appointments in this day -->
+          <div class="day-appointments">
+            <div class="appointment-item" 
+                 *ngFor="let appt of day.appointments.slice(0, 2)"
+                 [class]="'status-' + getStatusClass(appt.status)">
+              <span class="appt-time">{{ formatTime(appt.appointment_time) }}</span>
+              <span class="appt-patient">{{ appt.patient_name | slice:0:10 }}</span>
+            </div>
+            <div class="more-appointments" *ngIf="day.appointments.length > 2">
+              +{{ day.appointments.length - 2 }} more
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Day Detail Modal -->
+      <div class="modal-overlay" *ngIf="selectedDay" (click)="closeModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>{{ formatDateLong(selectedDay.dateStr) }}</h2>
+            <button class="close-btn" (click)="closeModal()">✕</button>
+          </div>
+
+          <div class="modal-body">
+            <!-- Appointments for this day -->
+            <div class="appointments-section">
+              <h3>Appointments</h3>
+              <div *ngIf="selectedDay.appointments.length === 0" class="no-appointments">
+                No appointments scheduled for this day
+              </div>
+              <div class="appointment-card" *ngFor="let appt of selectedDay.appointments">
+                <div class="appt-header">
+                  <div class="appt-time-large">{{ formatTime(appt.appointment_time) }}</div>
+                  <span class="status-badge" [class]="'status-' + getStatusClass(appt.status)">
+                    {{ appt.status }}
+                  </span>
+                </div>
+                <div class="appt-details">
+                  <p><strong>Patient:</strong> {{ appt.patient_name }}</p>
+                  <p><strong>Treatment:</strong> {{ appt.treatment }}</p>
+                  <p><strong>Duration:</strong> {{ appt.duration_minutes }} minutes</p>
+                  <p *ngIf="appt.notes"><strong>Notes:</strong> {{ appt.notes }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add Note Section -->
+            <div class="note-section">
+              <h3>Notes</h3>
+              <div class="saved-notes" *ngIf="getNotesForDay(selectedDay).length; else noSavedNotes">
+                <div class="saved-note" *ngFor="let note of getNotesForDay(selectedDay)">
+                  {{ note }}
+                </div>
+              </div>
+              <ng-template #noSavedNotes>
+                <div class="no-notes">No notes saved for this day</div>
+              </ng-template>
+              <textarea [(ngModel)]="noteText" 
+                        placeholder="Add a note for this day..."
+                        class="note-input"></textarea>
+              <button class="btn-save-note" (click)="saveNote()">Save Note</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

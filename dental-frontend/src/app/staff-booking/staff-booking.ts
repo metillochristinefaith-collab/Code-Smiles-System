@@ -45,6 +45,8 @@ export class StaffBookingComponent implements OnInit {
   isSubmitting = false;
   submitError = '';
   submitSuccess = false;
+  private lastSubmitTime: number = 0;
+  private readonly SUBMIT_DEBOUNCE_MS = 1000; // Prevent double-clicks within 1 second
 
   bookingType: 'Walk-in' | 'Registered patient' = 'Walk-in';
   intakePriority: 'Standard' | 'Urgent' = 'Standard';
@@ -64,6 +66,7 @@ export class StaffBookingComponent implements OnInit {
   selectedDate = '';
   selectedTime = '';
   availableSlots: TimeSlot[] = [];
+  isLoadingSlots = false;
 
   // Multi-service booking
   currentServiceIndex: number = 0;
@@ -200,7 +203,7 @@ export class StaffBookingComponent implements OnInit {
 
   get isEmailValid(): boolean {
     const email = this.patientEmail.trim();
-    if (!email) return false; // email is required in staff-booking
+    if (!email) return true; // email is optional - auto-generated if missing
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
@@ -380,25 +383,36 @@ export class StaffBookingComponent implements OnInit {
   }
 
   fetchAvailableSlotsFromAPI(date: string): void {
-    if (!this.selectedCategory) {
+    // BUG FIX: Must use service name, not category name
+    if (this.selectedSubServices.length === 0) {
       this.availableSlots = [];
       return;
     }
 
-    // Call the API to get available times
-    this.api.getAvailableTimes(date, this.selectedCategory).subscribe({
+    const serviceName = this.selectedSubServices[0].name;
+    
+    console.log(`[STAFF-BOOKING] Fetching slots for date: ${date}, service: ${serviceName}`);
+    this.isLoadingSlots = true;
+    this.availableSlots = [];
+
+    // Call the API to get available times - use SERVICE NAME, not category
+    this.api.getAvailableTimes(date, serviceName).subscribe({
       next: (response) => {
+        console.log(`[STAFF-BOOKING] Slots response:`, response);
         // Map all slots, don't filter them out - just mark as full if slotsLeft === 0
         this.availableSlots = (response.availableTimes || [])
           .map((slot: any) => ({
             time: slot.time,
             slotsLeft: slot.slotsLeft, // Keep original count, don't cap at 4
           }));
+        console.log(`[STAFF-BOOKING] Loaded ${this.availableSlots.length} slots`);
+        this.isLoadingSlots = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('Error fetching available slots:', err);
+        console.error('[STAFF-BOOKING] Error fetching available slots:', err);
         this.availableSlots = [];
+        this.isLoadingSlots = false;
         this.cdr.detectChanges();
       },
     });
@@ -509,48 +523,83 @@ export class StaffBookingComponent implements OnInit {
 
   async loadAvailableSlotsForMultiService(): Promise<void> {
     const schedule = this.getCurrentServiceSchedule();
+    console.log(`[STAFF-BOOKING] loadAvailableSlotsForMultiService called for service: ${schedule.service.name}`);
 
     if (!schedule.selectedDate) {
+      console.error('[STAFF-BOOKING] No date selected');
       alert('Please select a date');
       return;
     }
 
     schedule.isLoadingSlots = true;
+    console.log(`[STAFF-BOOKING] Loading slots for date: ${schedule.selectedDate}`);
 
     try {
       // Get available slots for this service on this date
       const slotsResponse = await this.api.getAvailableTimes(schedule.selectedDate, schedule.service.name).toPromise();
+      console.log(`[STAFF-BOOKING] Slots API response:`, slotsResponse);
 
       schedule.availableSlots = (slotsResponse?.availableTimes || []).map((slot: any) => ({
         time: slot.time,
         slotsLeft: slot.slotsLeft
       }));
 
+      console.log(`[STAFF-BOOKING] Processed slots: ${schedule.availableSlots.length} slots available`);
+      console.log('[STAFF-BOOKING] Slot details:', schedule.availableSlots);
+
       if (schedule.availableSlots.length === 0) {
-        console.warn('No available slots for this date and service');
+        console.warn('[STAFF-BOOKING] No available slots for this date and service');
       }
     } catch (error) {
-      console.error('Error loading slots:', error);
+      console.error('[STAFF-BOOKING] Error loading slots:', error);
       alert('Error loading available time slots');
       schedule.availableSlots = [];
     } finally {
       schedule.isLoadingSlots = false;
       this.cdr.detectChanges();
+      console.log('[STAFF-BOOKING] Slots loading complete, change detection triggered');
     }
   }
 
   selectTimeForMultiService(time: string): void {
+    console.log(`[STAFF-BOOKING] selectTimeForMultiService called with time: "${time}"`);
     const schedule = this.getCurrentServiceSchedule();
-    schedule.selectedTime = time;
+    if (!schedule) {
+      console.error('[STAFF-BOOKING] No schedule found!');
+      return;
+    }
+    
+    console.log(`[STAFF-BOOKING] Converting time from 12-hour to 24-hour format`);
+    // Convert 12-hour format (from API) to 24-hour format for storage
+    const time24 = this.convertTo24Hour(time);
+    console.log(`[STAFF-BOOKING] Conversion result: "${time}" → "${time24}"`);
+    
+    if (!time24 || time24 === '') {
+      console.error('[STAFF-BOOKING] Time conversion failed!');
+      return;
+    }
+    
+    schedule.selectedTime = time24;
+    console.log(`[STAFF-BOOKING] Stored selectedTime: "${schedule.selectedTime}"`);
 
     // Calculate end time
-    const [hours, minutes] = time.split(':').map(Number);
+    const [hours, minutes] = time24.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.error('[STAFF-BOOKING] Failed to parse hours/minutes from:', time24);
+      return;
+    }
+    
     const endMin = hours * 60 + minutes + schedule.service.duration;
     const endHours = Math.floor(endMin / 60);
     const endMinutes = endMin % 60;
     schedule.service.endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
     schedule.service.date = schedule.selectedDate;
-    schedule.service.time = time;
+    schedule.service.time = time24;
+    
+    console.log(`[STAFF-BOOKING] Time selected successfully: ${schedule.selectedDate} @ ${time24}`);
+    console.log(`[STAFF-BOOKING] End time: ${schedule.service.endTime}`);
+    
+    this.cdr.detectChanges();
   }
 
   proceedToNextService(): void {
@@ -665,6 +714,14 @@ export class StaffBookingComponent implements OnInit {
   // ═════════════════════════════════════════════════════════════════════════════
 
   submit(): void {
+    // Debounce: prevent multiple submissions within SUBMIT_DEBOUNCE_MS
+    const now = Date.now();
+    if (now - this.lastSubmitTime < this.SUBMIT_DEBOUNCE_MS) {
+      console.warn('[STAFF-BOOKING] Submission debounced - too soon after last attempt');
+      return;
+    }
+    this.lastSubmitTime = now;
+
     if (this.isSubmitting || !this.canSubmit) {
       this.submitError = 'Please complete the required booking details before submitting.';
       return;
@@ -694,81 +751,96 @@ export class StaffBookingComponent implements OnInit {
       this.notes.trim() ? `Notes: ${this.notes.trim()}` : '',
     ].filter(Boolean).join('\n');
 
-    // Prepare appointments based on booking type
-    let appointments: any[];
-
-    if (this.selectedSubServices.length === 1) {
-      // Single service
-      appointments = [{
-        date: this.selectedDate,
-        time: this.convertTo24Hour(this.selectedTime)
-      }];
-    } else {
-      // Multi-service
-      appointments = this.serviceSchedules.map(schedule => ({
-        date: schedule.selectedDate,
-        time: this.convertTo24Hour(schedule.selectedTime)
-      }));
-    }
-
-    const bookingData = {
-      services: this.selectedSubServices.map(s => ({
-        name: s.name,
-        category: s.category,
-        duration: s.duration
-      })),
-      appointments,
-      patientDetails: {
-        firstName: this.patientName.trim().split(' ')[0] || '',
-        lastName: this.patientName.trim().split(' ').slice(1).join(' ') || '',
-        email: this.patientEmail.trim() || `staff-booking-${Date.now()}@codesmiles.local`,
-        phone: this.patientPhone.trim(),
-        age: this.patientAge,
-        notes: staffNotes
-      },
-      bookingType: this.bookingType,
-      intakePriority: this.intakePriority,
-      intakeSource: this.intakeSource
-    };
-
     this.isSubmitting = true;
     this.submitError = '';
 
-    const payload = {
-      patient_id: null,
-      full_name: this.patientName.trim(),
-      phone: this.patientPhone.trim(),
-      email: this.patientEmail.trim() || `staff-booking-${Date.now().toString(36)}@codesmiles.local`,
-      treatment: this.selectedCategory,
-      services: this.selectedSubServices.map(s => s.name),
-      appointment_date: this.selectedDate,
-      appointment_time: this.selectedSubServices.length === 1 ? this.convertTo24Hour(this.selectedTime) : this.convertTo24Hour(this.serviceSchedules[0].selectedTime),
-      duration_minutes: this.totalSelectedDuration,
-      notes: staffNotes,
-      booking_type: this.bookingType
-    };
+    // SINGLE SERVICE BOOKING
+    if (this.selectedSubServices.length === 1) {
+      const payload = {
+        patient_id: null,
+        full_name: this.patientName.trim(),
+        phone: this.patientPhone.trim(),
+        email: this.patientEmail.trim() || `staff-booking-${Date.now().toString(36)}@codesmiles.local`,
+        treatment: this.selectedCategory,
+        services: this.selectedSubServices.map(s => s.name),
+        appointment_date: this.selectedDate,
+        appointment_time: this.convertTo24Hour(this.selectedTime),
+        duration_minutes: this.totalSelectedDuration,
+        notes: staffNotes,
+        booking_type: this.bookingType
+      };
 
-    console.log('[STAFF-BOOKING] Submitting payload:', payload);
+      console.log('[STAFF-BOOKING] Submitting SINGLE service booking:', payload);
+      
+      this.api.bookAppointment(payload).subscribe({
+        next: (response: any) => {
+          console.log('[STAFF-BOOKING] Single booking successful:', response);
+          this.confirmedBooking = {
+            fullName: this.patientName.trim(),
+            date: this.selectedDate,
+            time: this.selectedTime,
+            services: [...this.selectedSubServices],
+          };
+          this.isSubmitting = false;
+          this.submitSuccess = true;
+          this.cdr.detectChanges();
+        },
+        error: (err: any) => {
+          this.isSubmitting = false;
+          console.error('[STAFF-BOOKING] Single booking failed:', err);
+          this.submitError = err?.error?.message || err?.error?.error || 'Booking failed. Please try again.';
+          this.cdr.detectChanges();
+        },
+      });
+    } 
+    // MULTI-SERVICE BOOKING - Use composite API
+    else {
+      const payload = {
+        services: this.selectedSubServices.map((s, idx) => ({
+          name: s.name,
+          category: s.category || this.selectedCategory,
+          duration: s.duration
+        })),
+        appointments: this.serviceSchedules.map(schedule => ({
+          date: schedule.selectedDate,
+          time: schedule.selectedTime  // Already in 24-hour format from selectTimeForMultiService
+        })),
+        patientDetails: {
+          firstName: this.patientName.trim().split(' ')[0] || '',
+          lastName: this.patientName.trim().split(' ').slice(1).join(' ') || '',
+          email: this.patientEmail.trim() || `staff-booking-${Date.now()}@codesmiles.local`,
+          phone: this.patientPhone.trim(),
+          age: this.patientAge,
+          notes: staffNotes
+        },
+        bookingType: this.bookingType,
+        intakePriority: this.intakePriority,
+        intakeSource: this.intakeSource
+      };
 
-    this.api.bookAppointment(payload).subscribe({
-      next: (response: any) => {
-        this.confirmedBooking = {
-          fullName: this.patientName.trim(),
-          date: this.selectedDate,
-          time: this.selectedSubServices.length === 1 ? this.selectedTime : this.serviceSchedules[0].selectedTime,
-          services: [...this.selectedSubServices],
-        };
-        this.isSubmitting = false;
-        this.submitSuccess = true;
-        this.cdr.detectChanges();
-      },
-      error: (err: any) => {
-        this.isSubmitting = false;
-        console.error('[STAFF-BOOKING] Submission error:', err);
-        this.submitError = err?.error?.message || err?.error?.error || 'Booking failed. Please try again.';
-        this.cdr.detectChanges();
-      },
-    });
+      console.log('[STAFF-BOOKING] Submitting MULTI-SERVICE booking:', payload);
+      
+      this.api.createCompositeBooking(payload).subscribe({
+        next: (response: any) => {
+          console.log('[STAFF-BOOKING] Multi-service booking successful:', response);
+          this.confirmedBooking = {
+            fullName: this.patientName.trim(),
+            date: this.serviceSchedules[0].selectedDate,
+            time: this.serviceSchedules[0].selectedTime,
+            services: [...this.selectedSubServices],
+          };
+          this.isSubmitting = false;
+          this.submitSuccess = true;
+          this.cdr.detectChanges();
+        },
+        error: (err: any) => {
+          this.isSubmitting = false;
+          console.error('[STAFF-BOOKING] Multi-service booking failed:', err);
+          this.submitError = err?.error?.message || err?.error?.error || 'Booking failed. Please try again.';
+          this.cdr.detectChanges();
+        },
+      });
+    }
   }
 
   bookAnother(): void {

@@ -3,6 +3,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { StaffSidebar } from '../staff-sidebar/staff-sidebar';
 import { ApiService } from '../services/api.service';
+import { SyncService } from '../services/sync.service';
 
 type NotificationCategory = 'appointments' | 'treatment' | 'messages' | 'medical-vault' | 'clinic-updates';
 type NotificationTone = 'green' | 'amber' | 'blue' | 'purple' | 'slate';
@@ -76,7 +77,11 @@ export class StaffNotificationsComponent implements OnInit, OnDestroy {
 
   notifications: StaffNotification[] = [];
 
-  constructor(private api: ApiService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private api: ApiService,
+    private cdr: ChangeDetectorRef,
+    private syncService: SyncService
+  ) {}
 
   ngOnInit(): void {
     this.loadNotifications();
@@ -135,6 +140,11 @@ export class StaffNotificationsComponent implements OnInit, OnDestroy {
         notif.actionable  = false;
         this.approvingId  = null;
         this.showToast(`${notif.patientName}'s appointment approved.`, 'success');
+        
+        // Trigger sync refresh for dentist portal
+        console.log('[StaffNotifications] Triggering sync refresh after approval');
+        this.syncService.triggerRefresh();
+        
         this.cdr.detectChanges();
       },
       error: (err) => {

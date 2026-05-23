@@ -174,7 +174,7 @@
             <div class="timeslot-label">AVAILABLE SLOTS</div>
             <div *ngIf="selectedDate; else noDateSelected" class="timeslot-list">
               <ng-container *ngIf="!isLoadingSlots && availableSlots.length > 0; else loadingOrEmpty">
-                <button type="button" *ngFor="let slot of availableSlots" class="timeslot-btn" [class.active]="selectedTime === slot.time" [class.full]="slot.slotsLeft === 0" [disabled]="slot.slotsLeft === 0" (click)="selectedTime = slot.time">
+                <button type="button" *ngFor="let slot of availableSlots" class="timeslot-btn" [class.active]="selectedTime === slot.time" [class.full]="slot.slotsLeft === 0" [disabled]="false" (click)="selectedTime = slot.time">
                   <span class="slot-time">{{ slot.time }}</span>
                   <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">{{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' slot' + (slot.slotsLeft > 1 ? 's' : '') + ' left' }}</span>
                 </button>
@@ -239,7 +239,7 @@
             <div class="timeslot-label">AVAILABLE SLOTS</div>
             <div *ngIf="getCurrentServiceSchedule().selectedDate; else noDateSelected" class="timeslot-list">
               <ng-container *ngIf="!getCurrentServiceSchedule().isLoadingSlots && (getCurrentServiceSchedule().availableSlots?.length || 0) > 0; else loadingOrEmpty">
-                <button type="button" *ngFor="let slot of getCurrentServiceSchedule().availableSlots" class="timeslot-btn" [class.active]="getCurrentServiceSchedule().selectedTime === slot.time" [class.full]="slot.slotsLeft === 0" [disabled]="slot.slotsLeft === 0" (click)="selectTimeForMultiService(slot.time)">
+                <button type="button" *ngFor="let slot of getCurrentServiceSchedule().availableSlots" class="timeslot-btn" [class.active]="getCurrentServiceSchedule().selectedTime === slot.time" [class.full]="slot.slotsLeft === 0" [disabled]="false" (click)="selectTimeForMultiService(slot.time)">
                   <span class="slot-time">{{ slot.time }}</span>
                   <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">{{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' slot' + (slot.slotsLeft > 1 ? 's' : '') + ' left' }}</span>
                 </button>
@@ -317,7 +317,6 @@
             <div class="review-row"><span>Date</span><strong>{{ selectedDate | date:'MMMM d, y' }}</strong></div>
             <div class="review-row"><span>Day</span><strong>{{ selectedDate | date:'EEEE' }}</strong></div>
             <div class="review-row"><span>Time</span><strong class="time-highlight">{{ selectedTime }}</strong></div>
-            <div class="review-row"><span>Duration</span><strong>{{ totalSelectedDuration }} minutes</strong></div>
           </div>
           <div class="review-box">
             <div class="review-box-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Patient Details</span></div>
@@ -355,10 +354,6 @@
                   <div class="detail-row">
                     <span class="detail-label">Time</span>
                     <span class="detail-value time-highlight">{{ schedule.selectedTime }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Duration</span>
-                    <span class="detail-value">{{ schedule.service.duration }} minutes</span>
                   </div>
                 </div>
               </div>

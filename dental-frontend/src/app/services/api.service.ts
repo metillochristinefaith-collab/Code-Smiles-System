@@ -165,6 +165,29 @@ export class ApiService {
     return this.http.post(`${this.base}/add-appointment`, data);
   }
 
+  // ── COMPOSITE BOOKING (multi-service) ────────────────────────────────────────
+  createCompositeBooking(data: {
+    services: Array<{ name: string; category: string; duration: number }>;
+    appointments: Array<{ date: string; time: string }>;
+    patientDetails: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string;
+      age: string;
+      notes: string;
+    };
+    bookingType: string;
+    intakePriority: string;
+    intakeSource: string;
+  }, userId?: number | null): Observable<any> {
+    const payload = {
+      ...data,
+      userId: userId || null
+    };
+    return this.http.post(`${this.base}/api/composite-booking/create`, payload);
+  }
+
   getMyAppointments(patientId: number): Observable<any[]> {
     return this.http.get<any[]>(`${this.base}/my-appointments/${patientId}`);
   }
