@@ -1,0 +1,379 @@
+@startuml Code_Smiles_ERD_Final
+!define TABLENAME(x) class x << (T,#FF6B6B) >>
+!define SYSTEM_TABLE(x) class x << (S,#4ECDC4) >>
+
+skinparam backgroundColor #FFFFFF
+skinparam classBackgroundColor #F8F9FA
+skinparam classBorderColor #2C3E50
+skinparam arrowColor #34495E
+skinparam classArrowColor #34495E
+skinparam classFontColor #2C3E50
+skinparam classHeaderBackgroundColor #3498DB
+skinparam classStereotypeFontColor #FFFFFF
+
+' ==================== CORE USER MANAGEMENT ====================
+TABLENAME(USERS) {
+  {field} <b>PK:</b> id : integer
+  {field} first_name : varchar
+  {field} last_name : varchar
+  {field} <b>UK:</b> email : varchar
+  {field} phone : varchar
+  {field} password : varchar (hashed)
+  {field} role : varchar (patient|dentist|staff|admin)
+  {field} status : varchar
+  {field} specialty : text
+  {field} avatar_url : text
+  {field} is_verified : boolean
+  {field} verification_token : varchar
+  {field} verification_token_expires_at : timestamp
+  {field} reset_token : varchar
+  {field} reset_token_expires_at : timestamp
+  {field} created_at : timestamp
+}
+
+TABLENAME(DENTIST) {
+  {field} <b>PK:</b> dentist_id : integer
+  {field} <b>FK,UK:</b> user_id : integer
+  {field} first_name : varchar
+  {field} last_name : varchar
+  {field} email : varchar
+  {field} phone : varchar
+  {field} specialization : varchar
+  {field} license_number : varchar
+  {field} years_experience : integer
+  {field} bio : text
+  {field} working_days : jsonb
+  {field} start_time : time
+  {field} end_time : time
+  {field} status : varchar
+  {field} avatar_url : text
+  {field} created_at : timestamp
+  {field} updated_at : timestamp
+}
+
+TABLENAME(PATIENTS) {
+  {field} <b>PK:</b> patient_id : integer
+  {field} <b>FK,UK:</b> user_id : integer
+  {field} first_name : varchar
+  {field} last_name : varchar
+  {field} <b>UK:</b> email : varchar
+  {field} date_of_birth : date
+  {field} gender : varchar
+  {field} contact_number : varchar
+  {field} address : text
+  {field} emergency_contact_name : varchar
+  {field} emergency_contact_phone : varchar
+  {field} medical_history : text
+  {field} status : varchar
+  {field} avatar_url : text
+  {field} specialty : text
+  {field} created_at : timestamp
+  {field} updated_at : timestamp
+}
+
+TABLENAME(STAFF) {
+  {field} <b>PK:</b> staff_id : integer
+  {field} <b>FK,UK:</b> user_id : integer
+  {field} first_name : varchar
+  {field} last_name : varchar
+  {field} email : varchar
+  {field} phone : varchar
+  {field} position : varchar
+  {field} department : varchar
+  {field} permissions : jsonb
+  {field} hire_date : date
+  {field} status : varchar
+  {field} avatar_url : text
+  {field} created_at : timestamp
+  {field} updated_at : timestamp
+}
+
+' ==================== BOOKING & APPOINTMENTS ====================
+TABLENAME(COMPOSITE_BOOKINGS) {
+  {field} <b>PK:</b> id : integer
+  {field} <b>UK:</b> booking_id : varchar
+  {field} <b>FK:</b> patient_id : integer
+  {field} <b>FK:</b> created_by : integer
+  {field} patient_name : varchar
+  {field} patient_email : varchar
+  {field} patient_phone : varchar
+  {field} booking_type : varchar
+  {field} intake_priority : varchar
+  {field} intake_source : varchar
+  {field} service_count : integer
+  {field} total_duration_minutes : integer
+  {field} patient_notes : text
+  {field} staff_notes : text
+  {field} overall_status : varchar
+  {field} created_at : timestamp
+  {field} updated_at : timestamp
+}
+
+TABLENAME(COMPOSITE_BOOKING_APPOINTMENTS) {
+  {field} <b>PK:</b> id : integer
+  {field} <b>FK:</b> composite_booking_id : integer
+  {field} booking_id : varchar
+  {field} <b>UK:</b> appointment_id : varchar
+  {field} appointment_sequence : integer
+  {field} <b>FK:</b> dentist_id : integer
+  {field} service_name : varchar
+  {field} service_category : varchar
+  {field} service_duration_minutes : integer
+  {field} appointment_date : date
+  {field} appointment_time : varchar
+  {field} appointment_end_time : varchar
+  {field} dentist_name : varchar
+  {field} dentist_specialty : varchar
+  {field} patient_age : varchar
+  {field} appointment_status : varchar
+  {field} confirmation_status : varchar
+  {field} cancellation_reason : text
+  {field} reminder_24h_sent : boolean
+  {field} reminder_3h_sent : boolean
+  {field} created_at : timestamp
+  {field} updated_at : timestamp
+}
+
+TABLENAME(APPOINTMENTS) {
+  {field} <b>PK:</b> id : integer
+  {field} <b>FK:</b> patient_id : integer
+  {field} <b>FK:</b> dentist_id : integer
+  {field} <b>FK:</b> composite_booking_id : integer
+  {field} <b>UK:</b> booking_id : varchar
+  {field} patient_name : varchar
+  {field} email : varchar
+  {field} phone : varchar
+  {field} treatment : varchar
+  {field} services : ARRAY
+  {field} dentist_name : varchar
+  {field} appointment_date : date
+  {field} appointment_time : time
+  {field} duration_minutes : integer
+  {field} status : varchar
+  {field} notes : text
+  {field} urgency : varchar
+  {field} booking_type : varchar
+  {field} intake_priority : varchar
+  {field} intake_source : varchar
+  {field} appointment_id : varchar
+  {field} confirmation_status : varchar
+  {field} rescheduled_by : varchar
+  {field} reminder_24h_sent : boolean
+  {field} reminder_3h_sent : boolean
+  {field} created_at : timestamp
+  {field} updated_at : timestamp
+}
+
+TABLENAME(COMPOSITE_BOOKING_AUDIT_LOG) {
+  {field} <b>PK:</b> id : integer
+  {field} <b>FK:</b> composite_booking_id : integer
+  {field} <b>FK:</b> action_by : integer
+  {field} action : varchar
+  {field} action_details : text
+  {field} created_at : timestamp
+}
+
+' ==================== CLINICAL RECORDS ====================
+TABLENAME(CLINICAL_NOTES) {
+  {field} <b>PK:</b> id : integer
+  {field} patient_id : integer
+  {field} <b>FK:</b> dentist_id : integer
+  {field} type : varchar
+  {field} note : text
+  {field} created_at : timestamp
+}
+
+TABLENAME(PRESCRIPTIONS) {
+  {field} <b>PK:</b> id : integer
+  {field} patient_id : integer
+  {field} <b>FK:</b> dentist_id : integer
+  {field} medication : varchar
+  {field} dosage : varchar
+  {field} frequency : varchar
+  {field} duration : varchar
+  {field} instructions : text
+  {field} status : varchar
+  {field} diagnosis : text
+  {field} condition_note : text
+  {field} patient_name : varchar
+  {field} dentist_name : varchar
+  {field} issued_at : timestamp
+  {field} updated_at : timestamp
+}
+
+TABLENAME(TREATMENT_PLANS) {
+  {field} <b>PK:</b> id : integer
+  {field} patient_id : integer
+  {field} <b>FK:</b> dentist_id : integer
+  {field} title : varchar
+  {field} description : text
+  {field} status : varchar
+  {field} created_at : timestamp
+}
+
+TABLENAME(TREATMENT_SESSIONS) {
+  {field} <b>PK:</b> id : integer
+  {field} plan_id : integer
+  {field} session_no : integer
+  {field} title : varchar
+  {field} session_date : date
+  {field} status : varchar
+  {field} note : text
+}
+
+' ==================== SERVICES ====================
+TABLENAME(SERVICE_DENTIST_MAPPING) {
+  {field} <b>PK:</b> id : integer
+  {field} <b>UK:</b> service_name : varchar
+  {field} service_category : varchar
+  {field} <b>FK,UK:</b> dentist_id : integer
+  {field} is_primary : boolean
+  {field} is_active : boolean
+  {field} created_at : timestamp
+  {field} updated_at : timestamp
+}
+
+' ==================== PATIENT INFORMATION ====================
+TABLENAME(PATIENT_PROFILES) {
+  {field} <b>PK:</b> id : integer
+  {field} user_id : integer
+  {field} <b>FK:</b> patient_id : integer
+  {field} date_of_birth : date
+  {field} gender : varchar
+  {field} blood_type : varchar
+  {field} preferred_language : varchar
+  {field} home_address : text
+  {field} preferred_contact : varchar
+  {field} primary_dentist : varchar
+  {field} emergency_contact_name : varchar
+  {field} emergency_contact_rel : varchar
+  {field} emergency_contact_phone : varchar
+  {field} notif_email : boolean
+  {field} notif_sms : boolean
+  {field} notif_announcements : boolean
+  {field} member_since : timestamp
+  {field} reliability_score : integer
+}
+
+TABLENAME(PATIENT_VAULT_RECORDS) {
+  {field} <b>PK:</b> id : integer
+  {field} patient_id : integer
+  {field} title : varchar
+  {field} description : text
+  {field} record_type : varchar
+  {field} category : varchar
+  {field} file_name : varchar
+  {field} file_size : varchar
+  {field} preview_kind : varchar
+  {field} source : varchar
+  {field} created_at : timestamp
+}
+
+TABLENAME(VAULT_FILE_SHARING) {
+  {field} <b>PK:</b> id : integer
+  {field} <b>FK,UK:</b> vault_record_id : integer
+  {field} <b>FK:</b> patient_id : integer
+  {field} <b>FK:</b> shared_with_user_id : integer
+  {field} <b>UK:</b> shared_with_dentist_name : varchar
+  {field} permission_level : varchar
+  {field} shared_at : timestamp
+  {field} access_revoked_at : timestamp
+}
+
+' ==================== BILLING & NOTIFICATIONS ====================
+TABLENAME(BILLING) {
+  {field} <b>PK:</b> id : integer
+  {field} appointment_id : integer
+  {field} patient_id : integer
+  {field} patient_name : varchar
+  {field} service : varchar
+  {field} dentist_name : varchar
+  {field} amount : numeric
+  {field} amount_paid : numeric
+  {field} discount : numeric
+  {field} status : varchar
+  {field} payment_method : varchar
+  {field} due_date : date
+  {field} invoice_no : varchar
+  {field} notes : text
+  {field} created_at : timestamp
+  {field} updated_at : timestamp
+}
+
+TABLENAME(NOTIFICATIONS) {
+  {field} <b>PK:</b> id : integer
+  {field} user_id : integer
+  {field} appointment_id : integer
+  {field} title : varchar
+  {field} detail : text
+  {field} level : varchar
+  {field} is_read : boolean
+  {field} created_at : timestamp
+}
+
+' ==================== SUPPORT & FAQ ====================
+TABLENAME(SUPPORT_REQUESTS) {
+  {field} <b>PK:</b> id : integer
+  {field} user_id : integer
+  {field} user_name : varchar
+  {field} user_email : varchar
+  {field} user_role : varchar
+  {field} subject : varchar
+  {field} message : text
+  {field} status : varchar
+  {field} created_at : timestamp
+  {field} updated_at : timestamp
+}
+
+TABLENAME(FAQS) {
+  {field} <b>PK:</b> id : integer
+  {field} question : text
+  {field} answer : text
+  {field} category : varchar
+  {field} role : varchar
+  {field} sort_order : integer
+  {field} created_at : timestamp
+}
+
+' ==================== RELATIONSHIPS ====================
+
+' User to Role-Specific Tables (1:1)
+USERS "1" -- "1" DENTIST : "has"
+USERS "1" -- "1" PATIENTS : "has"
+USERS "1" -- "1" STAFF : "has"
+
+' Dentist Relationships (1:N)
+DENTIST "1" -- "N" APPOINTMENTS : "schedules"
+DENTIST "1" -- "N" CLINICAL_NOTES : "writes"
+DENTIST "1" -- "N" PRESCRIPTIONS : "issues"
+DENTIST "1" -- "N" SERVICE_DENTIST_MAPPING : "provides"
+DENTIST "1" -- "N" TREATMENT_PLANS : "creates"
+DENTIST "1" -- "N" COMPOSITE_BOOKING_APPOINTMENTS : "assigned_to"
+
+' Patient Relationships (1:N)
+PATIENTS "1" -- "N" PATIENT_PROFILES : "has"
+PATIENTS "1" -- "N" APPOINTMENTS : "books"
+PATIENTS "1" -- "N" PATIENT_VAULT_RECORDS : "owns"
+PATIENTS "1" -- "N" TREATMENT_PLANS : "receives"
+
+' Composite Booking Relationships
+COMPOSITE_BOOKINGS "1" -- "N" COMPOSITE_BOOKING_APPOINTMENTS : "contains"
+COMPOSITE_BOOKINGS "1" -- "N" COMPOSITE_BOOKING_AUDIT_LOG : "tracked_by"
+USERS "1" -- "N" COMPOSITE_BOOKINGS : "creates"
+USERS "1" -- "N" COMPOSITE_BOOKING_AUDIT_LOG : "performs"
+
+' Vault Relationships
+PATIENT_VAULT_RECORDS "1" -- "N" VAULT_FILE_SHARING : "shared_via"
+VAULT_FILE_SHARING "N" -- "1" USERS : "shared_with"
+
+' Appointment to Other Tables
+APPOINTMENTS "1" -- "N" BILLING : "generates"
+APPOINTMENTS "1" -- "N" NOTIFICATIONS : "triggers"
+
+' Treatment Plan Relationships
+TREATMENT_PLANS "1" -- "N" TREATMENT_SESSIONS : "contains"
+
+' Support
+USERS "1" -- "N" SUPPORT_REQUESTS : "submits"
+
+@enduml

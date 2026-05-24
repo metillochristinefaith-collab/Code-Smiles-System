@@ -1,0 +1,1866 @@
+{
+  "appointments": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('appointments_id_seq'::regclass)"
+      },
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "email",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "phone",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "treatment",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "services",
+        "data_type": "ARRAY",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "dentist_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "appointment_date",
+        "data_type": "date",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "appointment_time",
+        "data_type": "time without time zone",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "duration_minutes",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": "60"
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Pending'::character varying"
+      },
+      {
+        "column_name": "notes",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "urgency",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Standard'::character varying"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "reminder_24h_sent",
+        "data_type": "boolean",
+        "is_nullable": "NO",
+        "column_default": "false"
+      },
+      {
+        "column_name": "reminder_3h_sent",
+        "data_type": "boolean",
+        "is_nullable": "NO",
+        "column_default": "false"
+      },
+      {
+        "column_name": "confirmation_status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Not Confirmed'::character varying"
+      },
+      {
+        "column_name": "rescheduled_by",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "dentist_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "booking_type",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Patient'::character varying"
+      },
+      {
+        "column_name": "intake_priority",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Standard'::character varying"
+      },
+      {
+        "column_name": "intake_source",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Online'::character varying"
+      },
+      {
+        "column_name": "appointment_id",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "composite_booking_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "booking_id",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "dentist_id",
+        "foreign_table_name": "dentist",
+        "foreign_column_name": "dentist_id"
+      },
+      {
+        "column_name": "patient_id",
+        "foreign_table_name": "users",
+        "foreign_column_name": "id"
+      },
+      {
+        "column_name": "composite_booking_id",
+        "foreign_table_name": "composite_bookings",
+        "foreign_column_name": "id"
+      }
+    ],
+    "uniqueConstraints": [
+      "booking_id"
+    ]
+  },
+  "billing": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('billing_id_seq'::regclass)"
+      },
+      {
+        "column_name": "appointment_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "service",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "dentist_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "amount",
+        "data_type": "numeric",
+        "is_nullable": "YES",
+        "column_default": "0"
+      },
+      {
+        "column_name": "amount_paid",
+        "data_type": "numeric",
+        "is_nullable": "YES",
+        "column_default": "0"
+      },
+      {
+        "column_name": "discount",
+        "data_type": "numeric",
+        "is_nullable": "YES",
+        "column_default": "0"
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Unpaid'::character varying"
+      },
+      {
+        "column_name": "payment_method",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "due_date",
+        "data_type": "date",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "notes",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "invoice_no",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [],
+    "uniqueConstraints": []
+  },
+  "clinical_notes": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('clinical_notes_id_seq'::regclass)"
+      },
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "type",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "note",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "dentist_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "dentist_id",
+        "foreign_table_name": "dentist",
+        "foreign_column_name": "dentist_id"
+      }
+    ],
+    "uniqueConstraints": []
+  },
+  "composite_booking_appointments": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('composite_booking_appointments_id_seq'::regclass)"
+      },
+      {
+        "column_name": "composite_booking_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "booking_id",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "appointment_id",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "appointment_sequence",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "service_name",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "service_category",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "service_duration_minutes",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "appointment_date",
+        "data_type": "date",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "appointment_time",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "dentist_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "dentist_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_age",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "appointment_status",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'Pending'::character varying"
+      },
+      {
+        "column_name": "cancellation_reason",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "appointment_end_time",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "dentist_specialty",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "confirmation_status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Not Confirmed'::character varying"
+      },
+      {
+        "column_name": "reminder_24h_sent",
+        "data_type": "boolean",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "column_name": "reminder_3h_sent",
+        "data_type": "boolean",
+        "is_nullable": "YES",
+        "column_default": "false"
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "dentist_id",
+        "foreign_table_name": "dentist",
+        "foreign_column_name": "dentist_id"
+      },
+      {
+        "column_name": "composite_booking_id",
+        "foreign_table_name": "composite_bookings",
+        "foreign_column_name": "id"
+      },
+      {
+        "column_name": "dentist_id",
+        "foreign_table_name": "dentist",
+        "foreign_column_name": "dentist_id"
+      },
+      {
+        "column_name": "dentist_id",
+        "foreign_table_name": "dentist",
+        "foreign_column_name": "dentist_id"
+      }
+    ],
+    "uniqueConstraints": [
+      "appointment_id"
+    ]
+  },
+  "composite_booking_audit_log": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('composite_booking_audit_log_id_seq'::regclass)"
+      },
+      {
+        "column_name": "composite_booking_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "action",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "action_by",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "action_details",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "composite_booking_id",
+        "foreign_table_name": "composite_bookings",
+        "foreign_column_name": "id"
+      },
+      {
+        "column_name": "action_by",
+        "foreign_table_name": "users",
+        "foreign_column_name": "id"
+      }
+    ],
+    "uniqueConstraints": []
+  },
+  "composite_bookings": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('composite_bookings_id_seq'::regclass)"
+      },
+      {
+        "column_name": "booking_id",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_name",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_email",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_phone",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "booking_type",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'Patient'::character varying"
+      },
+      {
+        "column_name": "intake_priority",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'Standard'::character varying"
+      },
+      {
+        "column_name": "intake_source",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'Online'::character varying"
+      },
+      {
+        "column_name": "service_count",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "total_duration_minutes",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_notes",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "overall_status",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'Pending'::character varying"
+      },
+      {
+        "column_name": "created_by",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "staff_notes",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "created_by",
+        "foreign_table_name": "users",
+        "foreign_column_name": "id"
+      },
+      {
+        "column_name": "patient_id",
+        "foreign_table_name": "users",
+        "foreign_column_name": "id"
+      }
+    ],
+    "uniqueConstraints": [
+      "booking_id"
+    ]
+  },
+  "dentist": {
+    "columns": [
+      {
+        "column_name": "dentist_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('dentist_dentist_id_seq'::regclass)"
+      },
+      {
+        "column_name": "user_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "first_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "last_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "email",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "phone",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "specialization",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "license_number",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "years_experience",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "bio",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "working_days",
+        "data_type": "jsonb",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "start_time",
+        "data_type": "time without time zone",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "end_time",
+        "data_type": "time without time zone",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Active'::character varying"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "avatar_url",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "dentist_id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "user_id",
+        "foreign_table_name": "users",
+        "foreign_column_name": "id"
+      }
+    ],
+    "uniqueConstraints": [
+      "user_id"
+    ]
+  },
+  "faqs": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('faqs_id_seq'::regclass)"
+      },
+      {
+        "column_name": "question",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "answer",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "category",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'General'::character varying"
+      },
+      {
+        "column_name": "role",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'Patient'::character varying"
+      },
+      {
+        "column_name": "sort_order",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "0"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [],
+    "uniqueConstraints": []
+  },
+  "notifications": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('notifications_id_seq'::regclass)"
+      },
+      {
+        "column_name": "user_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "title",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "detail",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "level",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'New'::character varying"
+      },
+      {
+        "column_name": "is_read",
+        "data_type": "boolean",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "appointment_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [],
+    "uniqueConstraints": []
+  },
+  "patient_profiles": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('patient_profiles_id_seq'::regclass)"
+      },
+      {
+        "column_name": "user_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "date_of_birth",
+        "data_type": "date",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "gender",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "blood_type",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "preferred_language",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'English'::character varying"
+      },
+      {
+        "column_name": "home_address",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "preferred_contact",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "primary_dentist",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "emergency_contact_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "emergency_contact_rel",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "emergency_contact_phone",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "notif_email",
+        "data_type": "boolean",
+        "is_nullable": "YES",
+        "column_default": "true"
+      },
+      {
+        "column_name": "notif_sms",
+        "data_type": "boolean",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "column_name": "notif_announcements",
+        "data_type": "boolean",
+        "is_nullable": "YES",
+        "column_default": "true"
+      },
+      {
+        "column_name": "member_since",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "reliability_score",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "0"
+      },
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "patient_id",
+        "foreign_table_name": "patients",
+        "foreign_column_name": "patient_id"
+      }
+    ],
+    "uniqueConstraints": []
+  },
+  "patient_vault_records": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('patient_vault_records_id_seq'::regclass)"
+      },
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "title",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "description",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "record_type",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "category",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "file_name",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "file_size",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'Pending review'::character varying"
+      },
+      {
+        "column_name": "preview_kind",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'document'::character varying"
+      },
+      {
+        "column_name": "source",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'Patient'::character varying"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [],
+    "uniqueConstraints": []
+  },
+  "patients": {
+    "columns": [
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('patients_patient_id_seq'::regclass)"
+      },
+      {
+        "column_name": "user_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "first_name",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "last_name",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "date_of_birth",
+        "data_type": "date",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "gender",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "contact_number",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "address",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "emergency_contact_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "emergency_contact_phone",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "medical_history",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Active'::character varying"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "email",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "avatar_url",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "specialty",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "patient_id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "user_id",
+        "foreign_table_name": "users",
+        "foreign_column_name": "id"
+      }
+    ],
+    "uniqueConstraints": [
+      "user_id",
+      "email"
+    ]
+  },
+  "prescriptions": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('prescriptions_id_seq'::regclass)"
+      },
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "medication",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "dosage",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "frequency",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "duration",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "instructions",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Active'::character varying"
+      },
+      {
+        "column_name": "issued_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "patient_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "dentist_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "condition_note",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "diagnosis",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "dentist_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "dentist_id",
+        "foreign_table_name": "dentist",
+        "foreign_column_name": "dentist_id"
+      }
+    ],
+    "uniqueConstraints": []
+  },
+  "service_dentist_mapping": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('service_dentist_mapping_id_seq'::regclass)"
+      },
+      {
+        "column_name": "service_name",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "service_category",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "dentist_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "is_primary",
+        "data_type": "boolean",
+        "is_nullable": "NO",
+        "column_default": "false"
+      },
+      {
+        "column_name": "is_active",
+        "data_type": "boolean",
+        "is_nullable": "NO",
+        "column_default": "true"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "dentist_id",
+        "foreign_table_name": "dentist",
+        "foreign_column_name": "dentist_id"
+      }
+    ],
+    "uniqueConstraints": [
+      "dentist_id",
+      "service_name"
+    ]
+  },
+  "staff": {
+    "columns": [
+      {
+        "column_name": "staff_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('staff_staff_id_seq'::regclass)"
+      },
+      {
+        "column_name": "user_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "first_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "last_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "email",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "phone",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "position",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "department",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "permissions",
+        "data_type": "jsonb",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "hire_date",
+        "data_type": "date",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Active'::character varying"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "avatar_url",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "staff_id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "user_id",
+        "foreign_table_name": "users",
+        "foreign_column_name": "id"
+      }
+    ],
+    "uniqueConstraints": [
+      "user_id"
+    ]
+  },
+  "support_requests": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('support_requests_id_seq'::regclass)"
+      },
+      {
+        "column_name": "user_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "user_name",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "user_email",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "user_role",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "subject",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "message",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'Pending'::character varying"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [],
+    "uniqueConstraints": []
+  },
+  "treatment_plans": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('treatment_plans_id_seq'::regclass)"
+      },
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "title",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "description",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Active'::character varying"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "dentist_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "dentist_id",
+        "foreign_table_name": "dentist",
+        "foreign_column_name": "dentist_id"
+      }
+    ],
+    "uniqueConstraints": []
+  },
+  "treatment_sessions": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('treatment_sessions_id_seq'::regclass)"
+      },
+      {
+        "column_name": "plan_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "session_no",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "title",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "session_date",
+        "data_type": "date",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'pending'::character varying"
+      },
+      {
+        "column_name": "note",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [],
+    "uniqueConstraints": []
+  },
+  "users": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('users_id_seq'::regclass)"
+      },
+      {
+        "column_name": "first_name",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "last_name",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "email",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "phone",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "password",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "role",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "status",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": "'Active'::character varying"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "specialty",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "avatar_url",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "is_verified",
+        "data_type": "boolean",
+        "is_nullable": "NO",
+        "column_default": "false"
+      },
+      {
+        "column_name": "verification_token_expires_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "verification_token",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "reset_token",
+        "data_type": "character varying",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "reset_token_expires_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [],
+    "uniqueConstraints": []
+  },
+  "vault_file_sharing": {
+    "columns": [
+      {
+        "column_name": "id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "nextval('vault_file_sharing_id_seq'::regclass)"
+      },
+      {
+        "column_name": "vault_record_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "patient_id",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "shared_with_dentist_name",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "column_name": "shared_with_user_id",
+        "data_type": "integer",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "column_name": "permission_level",
+        "data_type": "character varying",
+        "is_nullable": "NO",
+        "column_default": "'view'::character varying"
+      },
+      {
+        "column_name": "shared_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      {
+        "column_name": "access_revoked_at",
+        "data_type": "timestamp without time zone",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "primaryKeys": [
+      "id"
+    ],
+    "foreignKeys": [
+      {
+        "column_name": "vault_record_id",
+        "foreign_table_name": "patient_vault_records",
+        "foreign_column_name": "id"
+      },
+      {
+        "column_name": "patient_id",
+        "foreign_table_name": "users",
+        "foreign_column_name": "id"
+      },
+      {
+        "column_name": "shared_with_user_id",
+        "foreign_table_name": "users",
+        "foreign_column_name": "id"
+      }
+    ],
+    "uniqueConstraints": [
+      "shared_with_dentist_name",
+      "vault_record_id"
+    ]
+  }
+}

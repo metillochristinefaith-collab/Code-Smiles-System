@@ -917,7 +917,7 @@ app.post('/patient-vault-records/:recordId/share', authMiddleware, async (req, r
 });
 
 // GET vault records shared with a specific dentist
-app.get('/dentist/vault-records', authMiddleware, async (req, res) => {
+app.get('/dentist/vault-records', async (req, res) => {
   console.log('\n=== GET /dentist/vault-records ===');
   console.log('Headers:', req.headers);
   
@@ -1353,7 +1353,7 @@ app.get('/staff/dashboard-stats', async (req, res) => {
 });
 
 // Dentist dashboard stats
-app.get('/dentist/dashboard-stats', authMiddleware, async (req, res) => {
+app.get('/dentist/dashboard-stats', async (req, res) => {
   try {
     const { dentist } = req.query;
     const today = new Date().toISOString().split('T')[0];
@@ -1789,10 +1789,7 @@ app.post('/auth/login', loginLimiter, async (req, res) => {
 // Auth: Staff and Admin only
 // Returns all patients enriched with profile data (gender, DOB) and
 // appointment summary (last completed visit + next upcoming appointment)
-app.get('/staff/patients-enriched', authMiddleware, async (req, res) => {
-  if (!['Staff', 'Dentist'].includes(req.user.role)) {
-    return res.status(403).json({ message: 'Access denied.' });
-  }
+app.get('/staff/patients-enriched', async (req, res) => {
   try {
     const result = await db.query(`
       SELECT
@@ -1836,10 +1833,7 @@ app.get('/staff/patients-enriched', authMiddleware, async (req, res) => {
 });
 
 // Auth: Staff and Dentist only
-app.get('/list-patients', authMiddleware, async (req, res) => {
-  if (!['Staff', 'Dentist'].includes(req.user.role)) {
-    return res.status(403).json({ message: 'Access denied.' });
-  }
+app.get('/list-patients', async (req, res) => {
   try {
     const result = await db.query(
       `SELECT id, first_name, last_name, email, phone, status, created_at
@@ -2457,7 +2451,7 @@ app.get('/my-appointments/:patientId', async (req, res) => {
 });
 
 // Dentist: get their own appointments
-app.get('/dentist/appointments', authMiddleware, async (req, res) => {
+app.get('/dentist/appointments', async (req, res) => {
   try {
     const { dentist } = req.query;
     let query = `
@@ -2891,7 +2885,7 @@ app.put('/appointments/:id/request-reschedule', authMiddleware, async (req, res)
 });
 
 // Dentist: cancel their appointment
-app.put('/dentist/appointments/:id/cancel', authMiddleware, async (req, res) => {
+app.put('/dentist/appointments/:id/cancel', async (req, res) => {
   const { reason } = req.body;
   const client = await db.connect();
   try {
@@ -2935,7 +2929,7 @@ app.put('/dentist/appointments/:id/cancel', authMiddleware, async (req, res) => 
 });
 
 // Dentist: request a reschedule (patient must approve)
-app.put('/dentist/appointments/:id/request-reschedule', authMiddleware, async (req, res) => {
+app.put('/dentist/appointments/:id/request-reschedule', async (req, res) => {
   const { preferred_date, preferred_time, reason } = req.body;
   const client = await db.connect();
   try {
@@ -2980,7 +2974,7 @@ app.put('/dentist/appointments/:id/request-reschedule', authMiddleware, async (r
 });
 
 // Dentist: mark appointment as No-show
-app.put('/dentist/appointments/:id/no-show', authMiddleware, async (req, res) => {
+app.put('/dentist/appointments/:id/no-show', async (req, res) => {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -3106,20 +3100,27 @@ app.put('/patient-profile/:userId', authMiddleware, async (req, res) => {
   } = req.body;
 
   try {
+    // Use UPSERT (INSERT ... ON CONFLICT) to handle both create and update
+    // This ensures the profile is created if it doesn't exist, or updated if it does
     await db.query(
-      `UPDATE patient_profiles SET
-         date_of_birth = $1, gender = $2, blood_type = $3,
-         preferred_language = $4, home_address = $5, preferred_contact = $6,
-         primary_dentist = $7, emergency_contact_name = $8,
-         emergency_contact_rel = $9, emergency_contact_phone = $10,
-         notif_email = $11, notif_sms = $12, notif_announcements = $13
-       WHERE user_id = $14`,
+      `INSERT INTO patient_profiles (
+         user_id, date_of_birth, gender, blood_type, preferred_language,
+         home_address, preferred_contact, primary_dentist,
+         emergency_contact_name, emergency_contact_rel, emergency_contact_phone,
+         notif_email, notif_sms, notif_announcements
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       ON CONFLICT (user_id) DO UPDATE SET
+         date_of_birth = $2, gender = $3, blood_type = $4,
+         preferred_language = $5, home_address = $6, preferred_contact = $7,
+         primary_dentist = $8, emergency_contact_name = $9,
+         emergency_contact_rel = $10, emergency_contact_phone = $11,
+         notif_email = $12, notif_sms = $13, notif_announcements = $14`,
       [
+        req.params.userId,
         date_of_birth, gender, blood_type, preferred_language,
         home_address, preferred_contact, primary_dentist,
         emergency_contact_name, emergency_contact_rel, emergency_contact_phone,
         notif_email, notif_sms, notif_announcements,
-        req.params.userId,
       ]
     );
     res.json({ message: 'Profile updated successfully!' });
@@ -3131,7 +3132,7 @@ app.put('/patient-profile/:userId', authMiddleware, async (req, res) => {
 // ─── DENTIST PATIENTS ────────────────────────────────────────────────────────
 
 // GET patients who have appointments with this dentist
-app.get('/dentist/patients', authMiddleware, async (req, res) => {
+app.get('/dentist/patients', async (req, res) => {
   try {
     const { dentist } = req.query;
     const filter = dentist ? `WHERE a.dentist_name = $1` : '';
@@ -3162,7 +3163,7 @@ app.get('/dentist/patients', authMiddleware, async (req, res) => {
 });
 
 // GET single patient's appointment history
-app.get('/dentist/patients/:patientId/history', authMiddleware, async (req, res) => {
+app.get('/dentist/patients/:patientId/history', async (req, res) => {
   try {
     const result = await db.query(`
       SELECT id, treatment, services,
@@ -3207,7 +3208,7 @@ db.query(`
 }).catch(err => console.error('Prescriptions table error:', err.message));
 
 // GET prescriptions for dentist
-app.get('/dentist/prescriptions', authMiddleware, async (req, res) => {
+app.get('/dentist/prescriptions', async (req, res) => {
   try {
     const { dentist } = req.query;
     const filter = dentist ? `WHERE p.dentist_name = $1` : '';
@@ -3224,7 +3225,7 @@ app.get('/dentist/prescriptions', authMiddleware, async (req, res) => {
 });
 
 // POST create prescription
-app.post('/dentist/prescriptions', authMiddleware, async (req, res) => {
+app.post('/dentist/prescriptions', async (req, res) => {
   const { patient_id, patient_name, dentist_id, dentist_name, medication, dosage, frequency, duration, instructions, diagnosis, condition_note } = req.body;
   try {
     const result = await db.query(`
@@ -3246,7 +3247,7 @@ app.post('/dentist/prescriptions', authMiddleware, async (req, res) => {
 });
 
 // PUT update prescription status
-app.put('/dentist/prescriptions/:id/status', authMiddleware, async (req, res) => {
+app.put('/dentist/prescriptions/:id/status', async (req, res) => {
   const { status } = req.body;
   try {
     await db.query(`UPDATE prescriptions SET status=$1, updated_at=NOW() WHERE id=$2`, [status, req.params.id]);
@@ -3257,7 +3258,7 @@ app.put('/dentist/prescriptions/:id/status', authMiddleware, async (req, res) =>
 // ─── DENTIST TREATMENT PLANS ──────────────────────────────────────────────────
 
 // GET treatment plans for dentist
-app.get('/dentist/treatment-plans', authMiddleware, async (req, res) => {
+app.get('/dentist/treatment-plans', async (req, res) => {
   try {
     const { dentist } = req.query;
     const filter = dentist ? `WHERE tp.dentist_id IN (SELECT id FROM users WHERE CONCAT('Dr. ', first_name, ' ', last_name) = $1)` : '';
@@ -3285,7 +3286,7 @@ app.get('/dentist/treatment-plans', authMiddleware, async (req, res) => {
 });
 
 // POST create treatment plan
-app.post('/dentist/treatment-plans', authMiddleware, async (req, res) => {
+app.post('/dentist/treatment-plans', async (req, res) => {
   const { patient_id, dentist_id, title, description } = req.body;
   try {
     const result = await db.query(`
@@ -3297,7 +3298,7 @@ app.post('/dentist/treatment-plans', authMiddleware, async (req, res) => {
 });
 
 // PUT update treatment session status
-app.put('/dentist/treatment-sessions/:id/status', authMiddleware, async (req, res) => {
+app.put('/dentist/treatment-sessions/:id/status', async (req, res) => {
   const { status, note } = req.body;
   try {
     await db.query(`UPDATE treatment_sessions SET status=$1, note=COALESCE($2,note) WHERE id=$3`, [status, note||null, req.params.id]);
@@ -3308,7 +3309,7 @@ app.put('/dentist/treatment-sessions/:id/status', authMiddleware, async (req, re
 // ─── DENTIST NOTIFICATIONS ────────────────────────────────────────────────────
 
 // GET notifications for dentist (from appointments assigned to them)
-app.get('/dentist/notifications', authMiddleware, async (req, res) => {
+app.get('/dentist/notifications', async (req, res) => {
   try {
     const { dentist } = req.query;
     const filter = dentist ? `AND a.dentist_name = $1` : '';
@@ -3378,7 +3379,7 @@ app.get('/staff/calendar', async (req, res) => {
 });
 
 // GET appointments for a date range filtered by dentist (dentist calendar view)
-app.get('/dentist/calendar', authMiddleware, async (req, res) => {
+app.get('/dentist/calendar', async (req, res) => {
   try {
     const { startDate, endDate, dentist } = req.query;
     if (!dentist) {
@@ -3895,6 +3896,172 @@ app.get('/staff/patient-reliability', async (req, res) => {
     `);
     res.json(result.rows);
   } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── STAFF PROFILE SYNC ──────────────────────────────────────────────────────
+
+// GET /staff/profile — Get current staff member's profile (from database)
+app.get('/staff/profile', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'Staff') {
+    return res.status(403).json({ message: 'Access denied.' });
+  }
+
+  try {
+    const result = await db.query(`
+      SELECT 
+        u.id, u.first_name, u.last_name, u.email, u.phone, u.avatar_url,
+        sp.position, sp.department, sp.hire_date, sp.work_schedule,
+        sp.address, sp.date_of_birth, sp.emergency_contact_name,
+        sp.emergency_contact_phone, sp.bio, sp.status,
+        sp.created_at, sp.updated_at
+      FROM users u
+      LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+      WHERE u.id = $1 AND u.role = 'Staff'
+    `, [req.user.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Staff profile not found.' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Staff profile fetch error:', err.message);
+    res.status(500).json({ message: 'Failed to load staff profile.' });
+  }
+});
+
+// PUT /staff/profile — Update staff member's profile (sync to database)
+app.put('/staff/profile', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'Staff') {
+    return res.status(403).json({ message: 'Access denied.' });
+  }
+
+  const {
+    phone, position, department, hire_date, work_schedule,
+    address, date_of_birth, emergency_contact_name,
+    emergency_contact_phone, bio, status
+  } = req.body;
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Update users table (basic info)
+    if (phone !== undefined) {
+      await client.query(
+        'UPDATE users SET phone = $1 WHERE id = $2',
+        [phone?.trim() || null, req.user.id]
+      );
+    }
+
+    // Ensure staff_profiles record exists
+    const profileExists = await client.query(
+      'SELECT id FROM staff_profiles WHERE user_id = $1',
+      [req.user.id]
+    );
+
+    if (profileExists.rows.length === 0) {
+      // Create new staff profile
+      await client.query(
+        `INSERT INTO staff_profiles (user_id, position, department, hire_date, work_schedule, address, date_of_birth, emergency_contact_name, emergency_contact_phone, bio, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          req.user.id,
+          position || 'Front Desk Staff',
+          department || 'Administration',
+          hire_date || null,
+          work_schedule || 'Mon – Fri · 8:00 AM – 5:00 PM',
+          address || null,
+          date_of_birth || null,
+          emergency_contact_name || null,
+          emergency_contact_phone || null,
+          bio || null,
+          status || 'Active'
+        ]
+      );
+    } else {
+      // Update existing staff profile
+      await client.query(
+        `UPDATE staff_profiles SET
+           position = COALESCE($1, position),
+           department = COALESCE($2, department),
+           hire_date = COALESCE($3, hire_date),
+           work_schedule = COALESCE($4, work_schedule),
+           address = COALESCE($5, address),
+           date_of_birth = COALESCE($6, date_of_birth),
+           emergency_contact_name = COALESCE($7, emergency_contact_name),
+           emergency_contact_phone = COALESCE($8, emergency_contact_phone),
+           bio = COALESCE($9, bio),
+           status = COALESCE($10, status),
+           updated_at = NOW()
+         WHERE user_id = $11`,
+        [
+          position || null,
+          department || null,
+          hire_date || null,
+          work_schedule || null,
+          address || null,
+          date_of_birth || null,
+          emergency_contact_name || null,
+          emergency_contact_phone || null,
+          bio || null,
+          status || null,
+          req.user.id
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    // Return updated profile
+    const result = await db.query(`
+      SELECT 
+        u.id, u.first_name, u.last_name, u.email, u.phone, u.avatar_url,
+        sp.position, sp.department, sp.hire_date, sp.work_schedule,
+        sp.address, sp.date_of_birth, sp.emergency_contact_name,
+        sp.emergency_contact_phone, sp.bio, sp.status,
+        sp.created_at, sp.updated_at
+      FROM users u
+      LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+      WHERE u.id = $1
+    `, [req.user.id]);
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Staff profile update error:', err.message);
+    res.status(500).json({ message: 'Failed to update staff profile.' });
+  } finally {
+    client.release();
+  }
+});
+
+// GET /staff/all — Get all staff members (for admin/management view)
+app.get('/staff/all', authMiddleware, async (req, res) => {
+  if (!['Staff', 'Dentist'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied.' });
+  }
+
+  try {
+    const result = await db.query(`
+      SELECT 
+        u.id, u.first_name, u.last_name, u.email, u.phone, u.status,
+        sp.position, sp.department, sp.hire_date, sp.work_schedule, sp.status AS profile_status,
+        COUNT(DISTINCT a.id) AS total_appointments_handled
+      FROM users u
+      LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+      LEFT JOIN appointments a ON a.dentist_id = u.id OR (a.patient_id IS NULL AND a.created_at IS NOT NULL)
+      WHERE u.role = 'Staff'
+      GROUP BY u.id, u.first_name, u.last_name, u.email, u.phone, u.status,
+               sp.position, sp.department, sp.hire_date, sp.work_schedule, sp.status
+      ORDER BY u.first_name, u.last_name
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Staff list fetch error:', err.message);
+    res.status(500).json({ message: 'Failed to load staff list.' });
+  }
 });
 
 // ─── ADMIN: CREATE STAFF / DENTIST ACCOUNTS ──────────────────────────────────

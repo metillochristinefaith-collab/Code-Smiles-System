@@ -239,6 +239,31 @@ export class ApiService {
     return this.http.get<any[]>(`${this.base}/staff/patient-reliability`);
   }
 
+  // ── STAFF PROFILE SYNC ──────────────────────────────────────────────────────
+  getStaffProfile(): Observable<any> {
+    return this.http.get(`${this.base}/staff/profile`, { headers: this.authHeaders() });
+  }
+
+  updateStaffProfile(data: {
+    phone?: string;
+    position?: string;
+    department?: string;
+    hire_date?: string;
+    work_schedule?: string;
+    address?: string;
+    date_of_birth?: string;
+    emergency_contact_name?: string;
+    emergency_contact_phone?: string;
+    bio?: string;
+    status?: string;
+  }): Observable<any> {
+    return this.http.put(`${this.base}/staff/profile`, data, { headers: this.authHeaders() });
+  }
+
+  getAllStaff(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.base}/staff/all`, { headers: this.authHeaders() });
+  }
+
   cancelByDentist(id: number, reason: string): Observable<any> {
     return this.http.put(`${this.base}/dentist/appointments/${id}/cancel`,
       { reason }, { headers: this.authHeaders() });

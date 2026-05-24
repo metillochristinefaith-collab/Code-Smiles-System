@@ -1,0 +1,380 @@
+@startuml Code_Smiles_Professional_ERD
+!define TABLENAME(x) class x << (T,#4A90E2) >>
+
+skinparam backgroundColor #FFFFFF
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #4A90E2
+skinparam arrowColor #666666
+skinparam classArrowColor #666666
+skinparam classFontColor #333333
+skinparam classHeaderBackgroundColor #4A90E2
+skinparam classHeaderFontColor #FFFFFF
+skinparam classStereotypeFontColor #FFFFFF
+skinparam classStereotypeBackgroundColor #4A90E2
+skinparam linetype ortho
+
+' ==================== CORE USER MANAGEMENT ====================
+
+TABLENAME(USERS) {
+  <b>PK:</b> id : integer
+  first_name : varchar
+  last_name : varchar
+  <b>UK:</b> email : varchar
+  phone : varchar
+  password : varchar
+  role : varchar
+  status : varchar
+  specialty : text
+  avatar_url : text
+  is_verified : boolean
+  verification_token : varchar
+  verification_token_expires_at : timestamp
+  reset_token : varchar
+  reset_token_expires_at : timestamp
+  created_at : timestamp
+}
+
+TABLENAME(DENTIST) {
+  <b>PK:</b> dentist_id : integer
+  <b>FK,UK:</b> user_id : integer
+  first_name : varchar
+  last_name : varchar
+  email : varchar
+  phone : varchar
+  specialization : varchar
+  license_number : varchar
+  years_experience : integer
+  bio : text
+  working_days : jsonb
+  start_time : time
+  end_time : time
+  status : varchar
+  avatar_url : text
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+TABLENAME(PATIENTS) {
+  <b>PK:</b> patient_id : integer
+  <b>FK,UK:</b> user_id : integer
+  first_name : varchar
+  last_name : varchar
+  <b>UK:</b> email : varchar
+  date_of_birth : date
+  gender : varchar
+  contact_number : varchar
+  address : text
+  emergency_contact_name : varchar
+  emergency_contact_phone : varchar
+  medical_history : text
+  status : varchar
+  avatar_url : text
+  specialty : text
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+TABLENAME(STAFF) {
+  <b>PK:</b> staff_id : integer
+  <b>FK,UK:</b> user_id : integer
+  first_name : varchar
+  last_name : varchar
+  email : varchar
+  phone : varchar
+  position : varchar
+  department : varchar
+  permissions : jsonb
+  hire_date : date
+  status : varchar
+  avatar_url : text
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+' ==================== BOOKING & APPOINTMENTS ====================
+
+TABLENAME(COMPOSITE_BOOKINGS) {
+  <b>PK:</b> id : integer
+  <b>UK:</b> booking_id : varchar
+  <b>FK:</b> patient_id : integer
+  <b>FK:</b> created_by : integer
+  patient_name : varchar
+  patient_email : varchar
+  patient_phone : varchar
+  booking_type : varchar
+  intake_priority : varchar
+  intake_source : varchar
+  service_count : integer
+  total_duration_minutes : integer
+  patient_notes : text
+  staff_notes : text
+  overall_status : varchar
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+TABLENAME(COMPOSITE_BOOKING_APPOINTMENTS) {
+  <b>PK:</b> id : integer
+  <b>FK:</b> composite_booking_id : integer
+  booking_id : varchar
+  <b>UK:</b> appointment_id : varchar
+  appointment_sequence : integer
+  <b>FK:</b> dentist_id : integer
+  service_name : varchar
+  service_category : varchar
+  service_duration_minutes : integer
+  appointment_date : date
+  appointment_time : varchar
+  appointment_end_time : varchar
+  dentist_name : varchar
+  dentist_specialty : varchar
+  patient_age : varchar
+  appointment_status : varchar
+  confirmation_status : varchar
+  cancellation_reason : text
+  reminder_24h_sent : boolean
+  reminder_3h_sent : boolean
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+TABLENAME(APPOINTMENTS) {
+  <b>PK:</b> id : integer
+  <b>FK:</b> patient_id : integer
+  <b>FK:</b> dentist_id : integer
+  <b>FK:</b> composite_booking_id : integer
+  <b>UK:</b> booking_id : varchar
+  patient_name : varchar
+  email : varchar
+  phone : varchar
+  treatment : varchar
+  services : ARRAY
+  dentist_name : varchar
+  appointment_date : date
+  appointment_time : time
+  duration_minutes : integer
+  status : varchar
+  notes : text
+  urgency : varchar
+  booking_type : varchar
+  intake_priority : varchar
+  intake_source : varchar
+  appointment_id : varchar
+  confirmation_status : varchar
+  rescheduled_by : varchar
+  reminder_24h_sent : boolean
+  reminder_3h_sent : boolean
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+TABLENAME(COMPOSITE_BOOKING_AUDIT_LOG) {
+  <b>PK:</b> id : integer
+  <b>FK:</b> composite_booking_id : integer
+  <b>FK:</b> action_by : integer
+  action : varchar
+  action_details : text
+  created_at : timestamp
+}
+
+' ==================== CLINICAL RECORDS ====================
+
+TABLENAME(CLINICAL_NOTES) {
+  <b>PK:</b> id : integer
+  patient_id : integer
+  <b>FK:</b> dentist_id : integer
+  type : varchar
+  note : text
+  created_at : timestamp
+}
+
+TABLENAME(PRESCRIPTIONS) {
+  <b>PK:</b> id : integer
+  patient_id : integer
+  <b>FK:</b> dentist_id : integer
+  medication : varchar
+  dosage : varchar
+  frequency : varchar
+  duration : varchar
+  instructions : text
+  status : varchar
+  diagnosis : text
+  condition_note : text
+  patient_name : varchar
+  dentist_name : varchar
+  issued_at : timestamp
+  updated_at : timestamp
+}
+
+TABLENAME(TREATMENT_PLANS) {
+  <b>PK:</b> id : integer
+  patient_id : integer
+  <b>FK:</b> dentist_id : integer
+  title : varchar
+  description : text
+  status : varchar
+  created_at : timestamp
+}
+
+TABLENAME(TREATMENT_SESSIONS) {
+  <b>PK:</b> id : integer
+  plan_id : integer
+  session_no : integer
+  title : varchar
+  session_date : date
+  status : varchar
+  note : text
+}
+
+' ==================== SERVICES ====================
+
+TABLENAME(SERVICE_DENTIST_MAPPING) {
+  <b>PK:</b> id : integer
+  <b>UK:</b> service_name : varchar
+  service_category : varchar
+  <b>FK,UK:</b> dentist_id : integer
+  is_primary : boolean
+  is_active : boolean
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+' ==================== PATIENT INFORMATION ====================
+
+TABLENAME(PATIENT_PROFILES) {
+  <b>PK:</b> id : integer
+  user_id : integer
+  <b>FK:</b> patient_id : integer
+  date_of_birth : date
+  gender : varchar
+  blood_type : varchar
+  preferred_language : varchar
+  home_address : text
+  preferred_contact : varchar
+  primary_dentist : varchar
+  emergency_contact_name : varchar
+  emergency_contact_rel : varchar
+  emergency_contact_phone : varchar
+  notif_email : boolean
+  notif_sms : boolean
+  notif_announcements : boolean
+  member_since : timestamp
+  reliability_score : integer
+}
+
+TABLENAME(PATIENT_VAULT_RECORDS) {
+  <b>PK:</b> id : integer
+  patient_id : integer
+  title : varchar
+  description : text
+  record_type : varchar
+  category : varchar
+  file_name : varchar
+  file_size : varchar
+  preview_kind : varchar
+  source : varchar
+  created_at : timestamp
+}
+
+TABLENAME(VAULT_FILE_SHARING) {
+  <b>PK:</b> id : integer
+  <b>FK,UK:</b> vault_record_id : integer
+  <b>FK:</b> patient_id : integer
+  <b>FK:</b> shared_with_user_id : integer
+  <b>UK:</b> shared_with_dentist_name : varchar
+  permission_level : varchar
+  shared_at : timestamp
+  access_revoked_at : timestamp
+}
+
+' ==================== BILLING & NOTIFICATIONS ====================
+
+TABLENAME(BILLING) {
+  <b>PK:</b> id : integer
+  appointment_id : integer
+  patient_id : integer
+  patient_name : varchar
+  service : varchar
+  dentist_name : varchar
+  amount : numeric
+  amount_paid : numeric
+  discount : numeric
+  status : varchar
+  payment_method : varchar
+  due_date : date
+  invoice_no : varchar
+  notes : text
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+TABLENAME(NOTIFICATIONS) {
+  <b>PK:</b> id : integer
+  user_id : integer
+  appointment_id : integer
+  title : varchar
+  detail : text
+  level : varchar
+  is_read : boolean
+  created_at : timestamp
+}
+
+' ==================== SUPPORT & FAQ ====================
+
+TABLENAME(SUPPORT_REQUESTS) {
+  <b>PK:</b> id : integer
+  user_id : integer
+  user_name : varchar
+  user_email : varchar
+  user_role : varchar
+  subject : varchar
+  message : text
+  status : varchar
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+TABLENAME(FAQS) {
+  <b>PK:</b> id : integer
+  question : text
+  answer : text
+  category : varchar
+  role : varchar
+  sort_order : integer
+  created_at : timestamp
+}
+
+' ==================== RELATIONSHIPS ====================
+
+USERS "1" -- "1" DENTIST : has
+USERS "1" -- "1" PATIENTS : has
+USERS "1" -- "1" STAFF : has
+
+DENTIST "1" -- "N" APPOINTMENTS : schedules
+DENTIST "1" -- "N" CLINICAL_NOTES : writes
+DENTIST "1" -- "N" PRESCRIPTIONS : issues
+DENTIST "1" -- "N" SERVICE_DENTIST_MAPPING : provides
+DENTIST "1" -- "N" TREATMENT_PLANS : creates
+DENTIST "1" -- "N" COMPOSITE_BOOKING_APPOINTMENTS : assigned_to
+
+PATIENTS "1" -- "N" PATIENT_PROFILES : has
+PATIENTS "1" -- "N" APPOINTMENTS : books
+PATIENTS "1" -- "N" PATIENT_VAULT_RECORDS : owns
+PATIENTS "1" -- "N" TREATMENT_PLANS : receives
+
+COMPOSITE_BOOKINGS "1" -- "N" COMPOSITE_BOOKING_APPOINTMENTS : contains
+COMPOSITE_BOOKINGS "1" -- "N" COMPOSITE_BOOKING_AUDIT_LOG : tracked_by
+USERS "1" -- "N" COMPOSITE_BOOKINGS : creates
+USERS "1" -- "N" COMPOSITE_BOOKING_AUDIT_LOG : performs
+
+PATIENT_VAULT_RECORDS "1" -- "N" VAULT_FILE_SHARING : shared_via
+VAULT_FILE_SHARING "N" -- "1" USERS : shared_with
+
+APPOINTMENTS "1" -- "N" BILLING : generates
+APPOINTMENTS "1" -- "N" NOTIFICATIONS : triggers
+
+TREATMENT_PLANS "1" -- "N" TREATMENT_SESSIONS : contains
+
+USERS "1" -- "N" SUPPORT_REQUESTS : submits
+
+@enduml

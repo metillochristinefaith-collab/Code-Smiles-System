@@ -1,0 +1,69 @@
+@startuml Dentist_Workflow
+skinparam backgroundColor #FFFFFF
+skinparam fontSize 11
+skinparam ArrowColor #333333
+skinparam ActivityBackgroundColor #4A90E2
+skinparam ActivityBorderColor #2C3E50
+skinparam ActivityFontColor #FFFFFF
+skinparam DecisionBackgroundColor #F5A623
+skinparam DecisionBorderColor #2C3E50
+skinparam DecisionFontColor #FFFFFF
+
+start
+:Dentist Logs In;
+:View Dashboard;
+:Check Appointments;
+
+if (Appointments Available?) then (yes)
+  :View Patient List;
+else (no)
+  :No Appointments;
+  stop
+endif
+
+:Select Patient;
+
+if (Patient Selected?) then (yes)
+  :View Patient Profile;
+else (no)
+  :Back to Dashboard;
+  stop
+endif
+
+:Check Medical History;
+:Check Previous Notes;
+
+if (Start Appointment?) then (yes)
+  :Begin Appointment;
+else (no)
+  :Back to Dashboard;
+  stop
+endif
+
+:Examine Patient;
+:Take Clinical Notes;
+
+if (Treatment Needed?) then (yes)
+  :Create Treatment Plan;
+  :Add Treatment Sessions;
+  :Issue Prescription;
+else (no)
+  :Complete Appointment;
+endif
+
+:Update Patient Records;
+:Send Confirmation Email;
+
+if (Upload Documents?) then (yes)
+  :Upload to Medical Vault;
+  :Share with Patient;
+else (no)
+  :Skip Upload;
+endif
+
+:View Notifications;
+:Check Messages;
+
+end
+
+@enduml

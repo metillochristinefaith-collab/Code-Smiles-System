@@ -42,6 +42,7 @@ export class StaffProfile implements OnInit {
   editDob = '';
   isSavingEdit = false;
   editError = '';
+  isLoadingProfile = true;
 
   constructor(
     private auth: AuthService,
@@ -64,8 +65,8 @@ export class StaffProfile implements OnInit {
     // Load avatar - first check localStorage, then database
     this.loadAvatar();
 
-    // Load additional profile data from localStorage
-    this.loadProfileFromStorage();
+    // Load staff profile from database
+    this.loadStaffProfile();
   }
 
   private async loadAvatar(): Promise<void> {
@@ -84,46 +85,33 @@ export class StaffProfile implements OnInit {
     }
   }
 
-  private loadProfileFromStorage(): void {
-    try {
-      const savedProfile = localStorage.getItem('staffProfileData');
-      if (savedProfile) {
-        const data = JSON.parse(savedProfile);
-        // Only load fields that aren't already set from auth service
-        if (data.phone) this.profile.phone = data.phone;
-        if (data.hireDate) this.profile.hireDate = data.hireDate;
-        if (data.address) this.profile.address = data.address;
-        if (data.dateOfBirth) this.profile.dateOfBirth = data.dateOfBirth;
-        if (data.emergencyContact) this.profile.emergencyContact = data.emergencyContact;
-        if (data.emergencyPhone) this.profile.emergencyPhone = data.emergencyPhone;
+  private loadStaffProfile(): void {
+    this.isLoadingProfile = true;
+    this.api.getStaffProfile().subscribe({
+      next: (data: any) => {
+        // Map database fields to profile object
         if (data.position) this.profile.position = data.position;
         if (data.department) this.profile.department = data.department;
-        if (data.workSchedule) this.profile.workSchedule = data.workSchedule;
+        if (data.hire_date) this.profile.hireDate = this.formatDateDisplay(data.hire_date);
+        if (data.work_schedule) this.profile.workSchedule = data.work_schedule;
+        if (data.address) this.profile.address = data.address;
+        if (data.date_of_birth) this.profile.dateOfBirth = this.formatDateDisplay(data.date_of_birth);
+        if (data.emergency_contact_name) this.profile.emergencyContact = data.emergency_contact_name;
+        if (data.emergency_contact_phone) this.profile.emergencyPhone = data.emergency_contact_phone;
         if (data.bio) this.profile.bio = data.bio;
-      }
-    } catch (e) {
-      console.error('Error loading profile from storage:', e);
-    }
-  }
+        if (data.status) this.profile.status = data.status;
+        if (data.phone) this.profile.phone = data.phone;
+        if (data.avatar_url) this.profile.avatarUrl = data.avatar_url;
 
-  private saveProfileToStorage(): void {
-    try {
-      const dataToSave = {
-        phone: this.profile.phone,
-        hireDate: this.profile.hireDate,
-        address: this.profile.address,
-        dateOfBirth: this.profile.dateOfBirth,
-        emergencyContact: this.profile.emergencyContact,
-        emergencyPhone: this.profile.emergencyPhone,
-        position: this.profile.position,
-        department: this.profile.department,
-        workSchedule: this.profile.workSchedule,
-        bio: this.profile.bio,
-      };
-      localStorage.setItem('staffProfileData', JSON.stringify(dataToSave));
-    } catch (e) {
-      console.error('Error saving profile to storage:', e);
-    }
+        this.isLoadingProfile = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Failed to load staff profile:', err);
+        this.isLoadingProfile = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   get fullName(): string {
@@ -149,33 +137,57 @@ export class StaffProfile implements OnInit {
     this.isSavingEdit = true;
     this.editError    = '';
 
+    // Prepare data for API call
+    const updateData = {
+      phone: this.editData.phone?.trim() || undefined,
+      position: this.editData.position,
+      department: this.editData.department,
+      hire_date: this.editData.hireDate ? this.parseISOToDate(this.editData.hireDate) : undefined,
+      work_schedule: this.editData.workSchedule,
+      address: this.editData.address?.trim() || undefined,
+      date_of_birth: this.editDob ? this.parseISOToDate(this.editDob) : undefined,
+      emergency_contact_name: this.editData.emergencyContact?.trim() || undefined,
+      emergency_contact_phone: this.editData.emergencyPhone?.trim() || undefined,
+      bio: this.editData.bio?.trim() || undefined,
+      status: this.editData.status,
+    };
+
+    // Update basic user info
     this.api.updateUserProfile(user.id, {
       first_name: this.editData.firstName.trim(),
       last_name:  this.editData.lastName.trim(),
       phone:      this.editData.phone?.trim() || undefined,
     }).subscribe({
       next: () => {
-        this.profile.firstName = this.editData.firstName;
-        this.profile.lastName = this.editData.lastName;
-        this.profile.phone = this.editData.phone;
-        this.profile.hireDate = this.editData.hireDate ? this.formatDateDisplay(this.editData.hireDate) : this.editData.hireDate;
-        this.profile.address = this.editData.address;
-        this.profile.dateOfBirth = this.editDob ? this.formatDateDisplay(this.editDob) : this.editData.dateOfBirth;
-        this.profile.emergencyContact = this.editData.emergencyContact;
-        this.profile.emergencyPhone = this.editData.emergencyPhone;
-        this.profile.position = this.editData.position;
-        this.profile.department = this.editData.department;
-        this.profile.workSchedule = this.editData.workSchedule;
-        this.profile.bio = this.editData.bio;
-        this.profile.avatarText = (this.profile.firstName[0] + this.profile.lastName[0]).toUpperCase();
+        // Update staff profile in database
+        this.api.updateStaffProfile(updateData).subscribe({
+          next: () => {
+            this.profile.firstName = this.editData.firstName;
+            this.profile.lastName = this.editData.lastName;
+            this.profile.phone = this.editData.phone;
+            this.profile.hireDate = this.editData.hireDate ? this.formatDateDisplay(this.editData.hireDate) : this.editData.hireDate;
+            this.profile.address = this.editData.address;
+            this.profile.dateOfBirth = this.editDob ? this.formatDateDisplay(this.editDob) : this.editData.dateOfBirth;
+            this.profile.emergencyContact = this.editData.emergencyContact;
+            this.profile.emergencyPhone = this.editData.emergencyPhone;
+            this.profile.position = this.editData.position;
+            this.profile.department = this.editData.department;
+            this.profile.workSchedule = this.editData.workSchedule;
+            this.profile.bio = this.editData.bio;
+            this.profile.status = this.editData.status;
+            this.profile.avatarText = (this.profile.firstName[0] + this.profile.lastName[0]).toUpperCase();
 
-        // Save additional fields to localStorage
-        this.saveProfileToStorage();
-
-        this.isSavingEdit = false;
-        this.showEditModal = false;
-        this.showSuccessToast('Profile updated successfully!');
-        this.cdr.detectChanges();
+            this.isSavingEdit = false;
+            this.showEditModal = false;
+            this.showSuccessToast('Profile updated successfully!');
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            this.isSavingEdit = false;
+            this.editError = err?.error?.message ?? 'Failed to save profile. Please try again.';
+            this.cdr.detectChanges();
+          }
+        });
       },
       error: (err) => {
         this.isSavingEdit = false;
@@ -355,6 +367,11 @@ export class StaffProfile implements OnInit {
       if (isNaN(d.getTime())) return '';
       return d.toISOString().split('T')[0];
     } catch { return ''; }
+  }
+
+  private parseISOToDate(iso: string): string {
+    // Convert ISO date (YYYY-MM-DD) to database format
+    return iso;
   }
 
   private formatDateDisplay(iso: string): string {

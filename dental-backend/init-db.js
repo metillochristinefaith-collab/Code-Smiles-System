@@ -95,6 +95,26 @@ async function init() {
       reliability_score       INTEGER       NOT NULL DEFAULT 0
     );
 
+    -- STAFF PROFILES TABLE
+    -- Extended staff information linked 1-to-1 with users (role='Staff')
+    -- Constraints: PRIMARY KEY, UNIQUE (user_id), FOREIGN KEY → users
+    CREATE TABLE IF NOT EXISTS staff_profiles (
+      id                      SERIAL        PRIMARY KEY,
+      user_id                 INTEGER       NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      position                VARCHAR(100)  NOT NULL DEFAULT 'Front Desk Staff',
+      department              VARCHAR(100)  NOT NULL DEFAULT 'Administration',
+      hire_date               DATE,
+      work_schedule           VARCHAR(255)  NOT NULL DEFAULT 'Mon – Fri · 8:00 AM – 5:00 PM',
+      address                 TEXT,
+      date_of_birth           DATE,
+      emergency_contact_name  VARCHAR(100),
+      emergency_contact_phone VARCHAR(20),
+      bio                     TEXT,
+      status                  VARCHAR(20)   NOT NULL DEFAULT 'Active' CHECK (status IN ('Active','Inactive','On Leave')),
+      created_at              TIMESTAMP     NOT NULL DEFAULT NOW(),
+      updated_at              TIMESTAMP     NOT NULL DEFAULT NOW()
+    );
+
     -- APPOINTMENTS TABLE
     -- Core booking table; links patients and dentists
     -- Constraints: PRIMARY KEY, FOREIGN KEY → users (patient, dentist), NOT NULL, CHECK (status)

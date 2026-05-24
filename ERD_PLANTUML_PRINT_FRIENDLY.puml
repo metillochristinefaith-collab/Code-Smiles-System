@@ -1,0 +1,260 @@
+@startuml Code_Smiles_ERD_Print
+!define TABLENAME(x) class x << (T,#4A90E2) >>
+
+skinparam backgroundColor #FFFFFF
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #4A90E2
+skinparam arrowColor #666666
+skinparam classArrowColor #666666
+skinparam classFontColor #333333
+skinparam classHeaderBackgroundColor #4A90E2
+skinparam classHeaderFontColor #FFFFFF
+skinparam classStereotypeFontColor #FFFFFF
+skinparam classStereotypeBackgroundColor #4A90E2
+skinparam linetype ortho
+skinparam fontSize 9
+skinparam classAttributeIconSize 0
+skinparam padding 5
+
+' ==================== CORE USERS ====================
+
+TABLENAME(USERS) {
+  <b>PK:</b> id
+  first_name
+  last_name
+  <b>UK:</b> email
+  phone
+  password
+  role
+  status
+  is_verified
+  created_at
+}
+
+TABLENAME(DENTIST) {
+  <b>PK:</b> dentist_id
+  <b>FK,UK:</b> user_id
+  specialization
+  license_number
+  years_experience
+  working_days
+  start_time
+  end_time
+  status
+}
+
+TABLENAME(PATIENTS) {
+  <b>PK:</b> patient_id
+  <b>FK,UK:</b> user_id
+  first_name
+  last_name
+  <b>UK:</b> email
+  date_of_birth
+  gender
+  medical_history
+  status
+}
+
+TABLENAME(STAFF) {
+  <b>PK:</b> staff_id
+  <b>FK,UK:</b> user_id
+  position
+  department
+  permissions
+  hire_date
+  status
+}
+
+' ==================== BOOKING ====================
+
+TABLENAME(COMPOSITE_BOOKINGS) {
+  <b>PK:</b> id
+  <b>UK:</b> booking_id
+  <b>FK:</b> patient_id
+  <b>FK:</b> created_by
+  booking_type
+  intake_priority
+  service_count
+  overall_status
+  created_at
+}
+
+TABLENAME(COMPOSITE_BOOKING_APPOINTMENTS) {
+  <b>PK:</b> id
+  <b>FK:</b> composite_booking_id
+  <b>UK:</b> appointment_id
+  <b>FK:</b> dentist_id
+  appointment_date
+  appointment_time
+  appointment_status
+  confirmation_status
+}
+
+TABLENAME(APPOINTMENTS) {
+  <b>PK:</b> id
+  <b>FK:</b> patient_id
+  <b>FK:</b> dentist_id
+  <b>UK:</b> booking_id
+  appointment_date
+  appointment_time
+  status
+  notes
+}
+
+TABLENAME(COMPOSITE_BOOKING_AUDIT_LOG) {
+  <b>PK:</b> id
+  <b>FK:</b> composite_booking_id
+  <b>FK:</b> action_by
+  action
+  created_at
+}
+
+' ==================== CLINICAL ====================
+
+TABLENAME(CLINICAL_NOTES) {
+  <b>PK:</b> id
+  patient_id
+  <b>FK:</b> dentist_id
+  type
+  note
+  created_at
+}
+
+TABLENAME(PRESCRIPTIONS) {
+  <b>PK:</b> id
+  patient_id
+  <b>FK:</b> dentist_id
+  medication
+  dosage
+  frequency
+  status
+}
+
+TABLENAME(TREATMENT_PLANS) {
+  <b>PK:</b> id
+  patient_id
+  <b>FK:</b> dentist_id
+  title
+  status
+}
+
+TABLENAME(TREATMENT_SESSIONS) {
+  <b>PK:</b> id
+  plan_id
+  session_no
+  session_date
+  status
+}
+
+' ==================== SERVICES ====================
+
+TABLENAME(SERVICE_DENTIST_MAPPING) {
+  <b>PK:</b> id
+  <b>UK:</b> service_name
+  <b>FK,UK:</b> dentist_id
+  is_primary
+  is_active
+}
+
+' ==================== PATIENT INFO ====================
+
+TABLENAME(PATIENT_PROFILES) {
+  <b>PK:</b> id
+  <b>FK:</b> patient_id
+  date_of_birth
+  gender
+  blood_type
+  home_address
+  reliability_score
+}
+
+TABLENAME(PATIENT_VAULT_RECORDS) {
+  <b>PK:</b> id
+  patient_id
+  title
+  record_type
+  file_name
+  created_at
+}
+
+TABLENAME(VAULT_FILE_SHARING) {
+  <b>PK:</b> id
+  <b>FK,UK:</b> vault_record_id
+  <b>FK:</b> patient_id
+  <b>FK:</b> shared_with_user_id
+  permission_level
+}
+
+' ==================== BILLING & NOTIFICATIONS ====================
+
+TABLENAME(BILLING) {
+  <b>PK:</b> id
+  appointment_id
+  patient_id
+  amount
+  amount_paid
+  discount
+  status
+  payment_method
+}
+
+TABLENAME(NOTIFICATIONS) {
+  <b>PK:</b> id
+  user_id
+  appointment_id
+  title
+  is_read
+  created_at
+}
+
+' ==================== SUPPORT ====================
+
+TABLENAME(SUPPORT_REQUESTS) {
+  <b>PK:</b> id
+  user_id
+  subject
+  message
+  status
+}
+
+TABLENAME(FAQS) {
+  <b>PK:</b> id
+  question
+  answer
+  category
+}
+
+' ==================== RELATIONSHIPS ====================
+
+USERS "1" -- "1" DENTIST
+USERS "1" -- "1" PATIENTS
+USERS "1" -- "1" STAFF
+
+DENTIST "1" -- "N" APPOINTMENTS
+DENTIST "1" -- "N" CLINICAL_NOTES
+DENTIST "1" -- "N" PRESCRIPTIONS
+DENTIST "1" -- "N" SERVICE_DENTIST_MAPPING
+DENTIST "1" -- "N" TREATMENT_PLANS
+DENTIST "1" -- "N" COMPOSITE_BOOKING_APPOINTMENTS
+
+PATIENTS "1" -- "N" PATIENT_PROFILES
+PATIENTS "1" -- "N" APPOINTMENTS
+PATIENTS "1" -- "N" PATIENT_VAULT_RECORDS
+PATIENTS "1" -- "N" TREATMENT_PLANS
+
+COMPOSITE_BOOKINGS "1" -- "N" COMPOSITE_BOOKING_APPOINTMENTS
+COMPOSITE_BOOKINGS "1" -- "N" COMPOSITE_BOOKING_AUDIT_LOG
+USERS "1" -- "N" COMPOSITE_BOOKINGS
+USERS "1" -- "N" COMPOSITE_BOOKING_AUDIT_LOG
+
+PATIENT_VAULT_RECORDS "1" -- "N" VAULT_FILE_SHARING
+VAULT_FILE_SHARING "N" -- "1" USERS
+
+APPOINTMENTS "1" -- "N" BILLING
+APPOINTMENTS "1" -- "N" NOTIFICATIONS
+
+TREATMENT_PLANS "1" -- "N" TREATMENT_SESSIONS
+
+USERS "1" -- "N" SUPPORT_REQUESTS
+
+@enduml

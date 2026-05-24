@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Smiles - Interactive ERD</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+
+        .controls button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls button.active {
+            background: #764ba2;
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+
+        .content {
+            padding: 30px;
+            overflow-x: auto;
+        }
+
+        .diagram-container {
+            display: none;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .diagram-container.active {
+            display: block;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .info-panel {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .info-panel h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .info-panel ul {
+            margin-left: 20px;
+        }
+
+        .info-panel li {
+            margin-bottom: 5px;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-symbol {
+            font-weight: bold;
+            color: #667eea;
+            min-width: 50px;
+        }
+
+        footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+            font-size: 0.9em;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .controls button {
+                width: 100%;
+            }
+
+            .legend {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🦷 Code Smiles ERD</h1>
+            <p>Entity Relationship Diagram - Interactive Visualization</p>
+        </header>
+
+        <div class="controls">
+            <button class="active" onclick="showDiagram('full')">📊 Full ERD</button>
+            <button onclick="showDiagram('users')">👥 User Management</button>
+            <button onclick="showDiagram('booking')">📅 Booking System</button>
+            <button onclick="showDiagram('clinical')">🏥 Clinical Records</button>
+            <button onclick="showDiagram('vault')">🔐 Medical Vault</button>
+            <button onclick="showDiagram('billing')">💳 Billing</button>
+            <button onclick="showDiagram('services')">🔧 Services</button>
+        </div>
+
+        <div class="content">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="number">20</div>
+                    <div class="label">Tables</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">18+</div>
+                    <div class="label">Foreign Keys</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">11</div>
+                    <div class="label">Unique Constraints</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">PostgreSQL</div>
+                    <div class="label">Database</div>
+                </div>
+            </div>
+
+            <!-- Full ERD -->
+            <div id="full" class="diagram-container active">
+                <div class="mermaid">
+erDiagram
+    USERS ||--|| DENTIST : "1:1"
+    USERS ||--|| PATIENTS : "1:1"
+    USERS ||--|| STAFF : "1:1"
+    USERS ||--o{ COMPOSITE_BOOKINGS : "creates"
+    USERS ||--o{ COMPOSITE_BOOKING_AUDIT_LOG : "performs"
+    USERS ||--o{ VAULT_FILE_SHARING : "shares_with"
+    USERS ||--o{ SUPPORT_REQUESTS : "submits"
+    
+    DENTIST ||--o{ APPOINTMENTS : "schedules"
+    DENTIST ||--o{ CLINICAL_NOTES : "writes"
+    DENTIST ||--o{ PRESCRIPTIONS : "issues"
+    DENTIST ||--o{ SERVICE_DENTIST_MAPPING : "provides"
+    DENTIST ||--o{ TREATMENT_PLANS : "creates"
+    DENTIST ||--o{ COMPOSITE_BOOKING_APPOINTMENTS : "assigned_to"
+    
+    PATIENTS ||--|| PATIENT_PROFILES : "1:1"
+    PATIENTS ||--o{ APPOINTMENTS : "books"
+    PATIENTS ||--o{ PATIENT_VAULT_RECORDS : "owns"
+    PATIENTS ||--o{ TREATMENT_PLANS : "receives"
+    
+    COMPOSITE_BOOKINGS ||--o{ COMPOSITE_BOOKING_APPOINTMENTS : "contains"
+    COMPOSITE_BOOKINGS ||--o{ COMPOSITE_BOOKING_AUDIT_LOG : "tracked_by"
+    
+    PATIENT_VAULT_RECORDS ||--o{ VAULT_FILE_SHARING : "shared_via"
+    
+    APPOINTMENTS ||--o{ BILLING : "generates"
+    APPOINTMENTS ||--o{ NOTIFICATIONS : "triggers"
+    
+    TREATMENT_PLANS ||--o{ TREATMENT_SESSIONS : "contains"
+                </div>
+                <div class="info-panel">
+                    <h3>📊 Complete Database Schema</h3>
+                    <p>This diagram shows all 20 tables and their relationships in the Code Smiles dental booking system.</p>
+                    <ul>
+                        <li><strong>User Management:</strong> USERS, DENTIST, PATIENTS, STAFF</li>
+                        <li><strong>Booking System:</strong> COMPOSITE_BOOKINGS, COMPOSITE_BOOKING_APPOINTMENTS, APPOINTMENTS</li>
+                        <li><strong>Clinical Records:</strong> CLINICAL_NOTES, PRESCRIPTIONS, TREATMENT_PLANS, TREATMENT_SESSIONS</li>
+                        <li><strong>Patient Information:</strong> PATIENT_PROFILES, PATIENT_VAULT_RECORDS, VAULT_FILE_SHARING</li>
+                        <li><strong>Billing & Support:</strong> BILLING, NOTIFICATIONS, SUPPORT_REQUESTS, FAQS</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- User Management -->
+            <div id="users" class="diagram-container">
+                <div class="mermaid">
+erDiagram
+    USERS ||--|| DENTIST : "1:1"
+    USERS ||--|| PATIENTS : "1:1"
+    USERS ||--|| STAFF : "1:1"
+
+    USERS {
+        int id PK
+        string email UK
+        string password
+        string role
+        boolean is_verified
+        timestamp created_at
+    }
+
+    DENTIST {
+        int dentist_id PK
+        int user_id FK,UK
+        string specialization
+        string license_number
+        int years_experience
+        jsonb working_days
+    }
+
+    PATIENTS {
+        int patient_id PK
+        int user_id FK,UK
+        string first_name
+        string last_name
+        text medical_history
+        string status
+    }
+
+    STAFF {
+        int staff_id PK
+        int user_id FK,UK
+        string position
+        string department
+        jsonb permissions
+    }
+                </div>
+                <div class="info-panel">
+                    <h3>👥 User Management System</h3>
+                    <p>Core user authentication and role-based profiles.</p>
+                    <ul>
+                        <li><strong>USERS:</strong> Central authentication table with email, password, and role</li>
+                        <li><strong>DENTIST:</strong> Dentist-specific profile with specialization and schedule</li>
+                        <li><strong>PATIENTS:</strong> Patient profile with medical history</li>
+                        <li><strong>STAFF:</strong> Staff profile with permissions and department</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Booking System -->
+            <div id="booking" class="diagram-container">
+                <div class="mermaid">
+erDiagram
+    USERS ||--o{ COMPOSITE_BOOKINGS : "creates"
+    COMPOSITE_BOOKINGS ||--o{ COMPOSITE_BOOKING_APPOINTMENTS : "contains"
+    COMPOSITE_BOOKINGS ||--o{ COMPOSITE_BOOKING_AUDIT_LOG : "tracked_by"
+    DENTIST ||--o{ COMPOSITE_BOOKING_APPOINTMENTS : "assigned_to"
+    PATIENTS ||--o{ COMPOSITE_BOOKINGS : "books"
+
+    COMPOSITE_BOOKINGS {
+        int id PK
+        string booking_id UK
+        int patient_id FK
+        string booking_type
+        string intake_priority
+        string overall_status
+        timestamp created_at
+    }
+
+    COMPOSITE_BOOKING_APPOINTMENTS {
+        int id PK
+        int composite_booking_id FK
+        string appointment_id UK
+        int dentist_id FK
+        date appointment_date
+        string appointment_time
+        string appointment_status
+    }
+
+    COMPOSITE_BOOKING_AUDIT_LOG {
+        int id PK
+        int composite_booking_id FK
+        int action_by FK
+        string action
+        timestamp created_at
+    }
+
+    DENTIST {
+        int dentist_id PK
+        string specialization
+    }
+
+    PATIENTS {
+        int patient_id PK
+        string first_name
+    }
+
+    USERS {
+        int id PK
+        string email
+    }
+                </div>
+                <div class="info-panel">
+                    <h3>📅 Booking & Appointment Management</h3>
+                    <p>Multi-appointment booking system with audit trail.</p>
+                    <ul>
+                        <li><strong>COMPOSITE_BOOKINGS:</strong> Groups multiple appointments into single booking</li>
+                        <li><strong>COMPOSITE_BOOKING_APPOINTMENTS:</strong> Individual appointments within booking</li>
+                        <li><strong>COMPOSITE_BOOKING_AUDIT_LOG:</strong> Tracks all changes for compliance</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Clinical Records -->
+            <div id="clinical" class="diagram-container">
+                <div class="mermaid">
+erDiagram
+    DENTIST ||--o{ CLINICAL_NOTES : "writes"
+    DENTIST ||--o{ PRESCRIPTIONS : "issues"
+    DENTIST ||--o{ TREATMENT_PLANS : "creates"
+    TREATMENT_PLANS ||--o{ TREATMENT_SESSIONS : "contains"
+    PATIENTS ||--o{ TREATMENT_PLANS : "receives"
+
+    CLINICAL_NOTES {
+        int id PK
+        int patient_id
+        int dentist_id FK
+        string type
+        text note
+        timestamp created_at
+    }
+
+    PRESCRIPTIONS {
+        int id PK
+        int patient_id
+        int dentist_id FK
+        string medication
+        string dosage
+        string frequency
+        string status
+    }
+
+    TREATMENT_PLANS {
+        int id PK
+        int patient_id
+        int dentist_id FK
+        string title
+        string status
+    }
+
+    TREATMENT_SESSIONS {
+        int id PK
+        int plan_id
+        int session_no
+        date session_date
+        string status
+    }
+
+    DENTIST {
+        int dentist_id PK
+        string specialization
+    }
+
+    PATIENTS {
+        int patient_id PK
+        string first_name
+    }
+                </div>
+                <div class="info-panel">
+                    <h3>🏥 Clinical Records & Treatment</h3>
+                    <p>Medical records, prescriptions, and treatment planning.</p>
+                    <ul>
+                        <li><strong>CLINICAL_NOTES:</strong> Doctor's notes and observations</li>
+                        <li><strong>PRESCRIPTIONS:</strong> Medication prescriptions with dosage</li>
+                        <li><strong>TREATMENT_PLANS:</strong> Long-term treatment planning</li>
+                        <li><strong>TREATMENT_SESSIONS:</strong> Individual treatment sessions</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Medical Vault -->
+            <div id="vault" class="diagram-container">
+                <div class="mermaid">
+erDiagram
+    PATIENTS ||--o{ PATIENT_VAULT_RECORDS : "owns"
+    PATIENT_VAULT_RECORDS ||--o{ VAULT_FILE_SHARING : "shared_via"
+    VAULT_FILE_SHARING ||--o{ USERS : "shared_with"
+
+    PATIENTS {
+        int patient_id PK
+        int user_id FK,UK
+        string first_name
+        string last_name
+    }
+
+    PATIENT_VAULT_RECORDS {
+        int id PK
+        int patient_id
+        string title
+        string record_type
+        string file_name
+        string file_size
+        timestamp created_at
+    }
+
+    VAULT_FILE_SHARING {
+        int id PK
+        int vault_record_id FK,UK
+        int patient_id FK
+        int shared_with_user_id FK
+        string permission_level
+        timestamp shared_at
+    }
+
+    USERS {
+        int id PK
+        string email
+    }
+                </div>
+                <div class="info-panel">
+                    <h3>🔐 Medical Vault & Document Sharing</h3>
+                    <p>Secure document storage and sharing system.</p>
+                    <ul>
+                        <li><strong>PATIENT_VAULT_RECORDS:</strong> Medical documents and records</li>
+                        <li><strong>VAULT_FILE_SHARING:</strong> Sharing permissions and access control</li>
+                        <li>Supports multiple record types and categories</li>
+                        <li>Tracks sharing dates and access revocation</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Billing -->
+            <div id="billing" class="diagram-container">
+                <div class="mermaid">
+erDiagram
+    APPOINTMENTS ||--o{ BILLING : "generates"
+    APPOINTMENTS ||--o{ NOTIFICATIONS : "triggers"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+
+    APPOINTMENTS {
+        int id PK
+        int patient_id FK
+        int dentist_id FK
+        date appointment_date
+        string status
+    }
+
+    BILLING {
+        int id PK
+        int appointment_id
+        int patient_id
+        numeric amount
+        numeric amount_paid
+        string status
+        string payment_method
+    }
+
+    NOTIFICATIONS {
+        int id PK
+        int user_id
+        int appointment_id
+        string title
+        string level
+        boolean is_read
+    }
+
+    USERS {
+        int id PK
+        string email
+    }
+                </div>
+                <div class="info-panel">
+                    <h3>💳 Billing & Notifications</h3>
+                    <p>Invoice tracking and user notifications.</p>
+                    <ul>
+                        <li><strong>BILLING:</strong> Invoice and payment tracking</li>
+                        <li><strong>NOTIFICATIONS:</strong> User notifications and alerts</li>
+                        <li>Tracks payment status and methods</li>
+                        <li>Supports discounts and partial payments</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Services -->
+            <div id="services" class="diagram-container">
+                <div class="mermaid">
+erDiagram
+    DENTIST ||--o{ SERVICE_DENTIST_MAPPING : "provides"
+
+    DENTIST {
+        int dentist_id PK
+        string specialization
+        string license_number
+    }
+
+    SERVICE_DENTIST_MAPPING {
+        int id PK
+        string service_name UK
+        string service_category
+        int dentist_id FK,UK
+        boolean is_primary
+        boolean is_active
+    }
+                </div>
+                <div class="info-panel">
+                    <h3>🔧 Services & Dentist Mapping</h3>
+                    <p>Service availability and dentist specialization mapping.</p>
+                    <ul>
+                        <li><strong>SERVICE_DENTIST_MAPPING:</strong> Links services to dentists</li>
+                        <li>Tracks primary services and active status</li>
+                        <li>Enables service-to-dentist assignment</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-symbol">PK</div>
+                    <div>Primary Key - Unique identifier</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-symbol">FK</div>
+                    <div>Foreign Key - References another table</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-symbol">UK</div>
+                    <div>Unique Key - Must be unique</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-symbol">||--||</div>
+                    <div>One-to-One relationship</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-symbol">||--o{</div>
+                    <div>One-to-Many relationship</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-symbol">}o--o{</div>
+                    <div>Many-to-Many relationship</div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Code Smiles ERD - Generated May 24, 2026 | PostgreSQL Database | 20 Tables</p>
+            <p>For more information, see CODE_SMILES_ERD.md and ERD_MERMAID_LIVE.md</p>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+
+        function showDiagram(diagramId) {
+            // Hide all diagrams
+            document.querySelectorAll('.diagram-container').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Remove active class from all buttons
+            document.querySelectorAll('.controls button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected diagram
+            document.getElementById(diagramId).classList.add('active');
+
+            // Add active class to clicked button
+            event.target.classList.add('active');
+
+            // Re-render mermaid diagrams
+            mermaid.contentLoaded();
+        }
+    </script>
+</body>
+</html>

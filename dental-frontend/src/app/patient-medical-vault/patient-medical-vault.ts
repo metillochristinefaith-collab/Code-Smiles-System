@@ -390,7 +390,7 @@ export class PatientMedicalVault implements OnInit {
         const savedRecord = this.withPreviewData(this.mapVaultRecord(row), preview);
         this.records = this.mergeRecords([savedRecord], this.records);
         if (user?.id) this.saveCachedRecords(user.id);
-        this.toastMessage = `${savedRecord.title} was added to your upload queue.`;
+        this.toastMessage = `${savedRecord.title} uploaded successfully to your vault.`;
         this.closeModal();
         this.clearToastLater();
       },
@@ -678,12 +678,12 @@ export class PatientMedicalVault implements OnInit {
       type: row.record_type as RecordType,
       category,
       fileName: row.file_name,
-      fileSize: row.file_size || 'Pending review',
+      fileSize: row.file_size || 'Ready',
       source: row.source || 'Patient',
-      summary: 'This document was added by the patient and is waiting for clinic review.',
+      summary: 'Your file is safely stored in your medical vault. Share it with your dentist whenever you\'re ready.',
       notes: [
-        'Upload received in the medical vault.',
-        'Clinic staff can review the file from the patient record workspace.',
+        'File uploaded and ready to use.',
+        'Only you can see this file until you share it.',
       ],
       addedAtRank: Number(row.added_rank || this.nextAddedRank++),
       previewKind,
@@ -722,12 +722,12 @@ export class PatientMedicalVault implements OnInit {
       type,
       category,
       fileName: this.uploadDraft.fileName.trim(),
-      fileSize: 'Pending review',
+      fileSize: 'Ready',
       source: 'Patient',
-      summary: 'This document was added by the patient and is waiting for clinic review.',
+      summary: 'Your file is safely stored in your medical vault. Share it with your dentist whenever you\'re ready.',
       notes: [
-        'Upload received in the medical vault.',
-        'Clinic staff can review the file from the patient record workspace.',
+        'File uploaded and ready to use.',
+        'Only you can see this file until you share it.',
       ],
       addedAtRank: this.nextAddedRank++,
       previewKind: preview.previewKind,

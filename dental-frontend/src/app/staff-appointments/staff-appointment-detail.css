@@ -212,14 +212,30 @@
   gap: 14px;
   padding: 20px;
   background: linear-gradient(135deg, #f5f7fa 0%, #e8f0f8 100%);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #c5d5e8 transparent;
 }
 
-/* Main content area - NO SCROLL, FIT TO SCREEN */
+.detail-main::-webkit-scrollbar {
+  width: 6px;
+}
+
+.detail-main::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.detail-main::-webkit-scrollbar-thumb {
+  background: #c5d5e8;
+  border-radius: 10px;
+}
+
+/* Main content area - ALLOW SCROLL */
 .detail-main-content {
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   gap: 12px;

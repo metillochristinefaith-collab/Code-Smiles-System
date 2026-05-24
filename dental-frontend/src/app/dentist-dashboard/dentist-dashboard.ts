@@ -58,14 +58,33 @@ export class DentistDashboard implements OnInit {
 
     const user = this.auth.getUser();
     const dentistName = user ? `Dr. ${user.first_name} ${user.last_name}` : '';
+    
+    // Debug: Log the token and user info
+    const token = localStorage.getItem('auth_token') ?? sessionStorage.getItem('auth_token');
+    console.log('Dashboard Init - User:', user);
+    console.log('Dashboard Init - Dentist Name:', dentistName);
+    console.log('Dashboard Init - Token exists:', !!token);
+    
+    if (!dentistName) {
+      console.error('No dentist name available');
+      this.isLoading = false;
+      this.cdr.detectChanges();
+      return;
+    }
+    
     this.api.getDentistDashboardStats(dentistName).subscribe({
       next: (data) => {
+        console.log('Dashboard stats received:', data);
         this.dbStats  = data;
         this.dbRecent = data.recentAppointments || [];
         this.isLoading = false;
         this.cdr.detectChanges();
       },
-      error: () => { this.isLoading = false; this.cdr.detectChanges(); }
+      error: (err) => { 
+        console.error('Dashboard stats error:', err);
+        this.isLoading = false; 
+        this.cdr.detectChanges(); 
+      }
     });
   }
 
