@@ -190,8 +190,10 @@ export class MyAppointments implements OnInit {
 
     const services: string[] = Array.isArray(a.services) ? a.services : [];
 
+    const isComposite = !!a.composite_booking_ref;
+
     return {
-      id: `APT-${a.id}`,
+      id: isComposite ? `CBA-${a.id}` : `APT-${a.id}`,
       dbId: a.id,
       service: services[0] || a.treatment || 'Appointment',
       category: a.treatment || '—',

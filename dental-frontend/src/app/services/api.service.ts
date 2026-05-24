@@ -162,7 +162,9 @@ export class ApiService {
     notes:            string;
     booking_type?:    string;
   }): Observable<any> {
-    return this.http.post(`${this.base}/add-appointment`, data);
+    return this.http.post(`${this.base}/add-appointment`, data, {
+      headers: this.authHeaders(),
+    });
   }
 
   // ── UNIFIED BOOKING (single or multiple services) ────────────────────────────
@@ -340,6 +342,19 @@ export class ApiService {
   // ── APPOINTMENTS (dentist) ─────────────────────────────────────────────────
   getDentistAppointments(dentistName: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.base}/dentist/appointments?dentist=${encodeURIComponent(dentistName)}`);
+  }
+
+  /** Uses JWT — resolves dentist from logged-in account (preferred) */
+  getMyDentistAppointments(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.base}/dentist/me/appointments`, { headers: this.authHeaders() });
+  }
+
+  getMyDentistDashboardStats(): Observable<any> {
+    return this.http.get(`${this.base}/dentist/me/dashboard-stats`, { headers: this.authHeaders() });
+  }
+
+  getMyDentistPatients(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.base}/dentist/me/patients`, { headers: this.authHeaders() });
   }
 
   updateAppointmentStatus(id: number, status: string, notes?: string): Observable<any> {

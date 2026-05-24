@@ -336,6 +336,27 @@
 }
 
 /* ── Schedule ───────────────────────────────────────────── */
+.sd-schedule-hint {
+  margin: -4px 0 12px;
+  font-size: 0.82rem;
+  color: #5a7a9a;
+  line-height: 1.4;
+}
+
+.sd-schedule-when {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 88px;
+}
+
+.sd-schedule-date {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #5a7a9a;
+  white-space: nowrap;
+}
+
 .sd-schedule-list {
   display: flex;
   flex-direction: column;
@@ -346,7 +367,7 @@
 
 .sd-schedule-row {
   display: grid;
-  grid-template-columns: 80px 38px minmax(0, 1fr) auto;
+  grid-template-columns: 96px 38px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   padding: 14px 0;

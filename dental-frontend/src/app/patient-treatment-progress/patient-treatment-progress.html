@@ -33,7 +33,7 @@
         <span>Loading your treatment progress…</span>
       </div>
       <div *ngIf="!isLoading && hasError" class="error-banner">
-        <span>Unable to load treatment progress. Please refresh or try again later.</span>
+        <span>Unable to load treatment progress. Make sure the backend is running on port 3000, then refresh.</span>
       </div>
     </section>
 
@@ -87,6 +87,7 @@
           <option value="pending">Pending</option>
           <option value="completed">Completed</option>
           <option value="upcoming">Upcoming</option>
+          <option value="cancelled">Cancelled</option>
         </select>
         <svg class="select-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
       </div>
@@ -106,7 +107,8 @@
           *ngFor="let plan of activePlans; let last = last"
           class="treatment-row"
           [class.row-last]="last"
-          [class.row-expanded]="isExpanded(plan.id)">
+          [class.row-expanded]="isExpanded(plan.id)"
+          [class.cancelled-row]="plan.statusClass === 'cancelled'">
 
           <!-- Collapsed row -->
           <button type="button" class="row-btn" (click)="toggleExpand(plan.id)" [attr.aria-expanded]="isExpanded(plan.id)">
@@ -312,6 +314,92 @@
                     <svg viewBox="0 0 24 24"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M15 3.5v4h4"/></svg>
                     View Files
                   </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Cancelled Treatments ───────────────────────────────── -->
+    <section class="group-section" *ngIf="cancelledPlans.length > 0">
+      <p class="group-label">CANCELLED TREATMENTS</p>
+      <div class="group-card">
+        <div
+          *ngFor="let plan of cancelledPlans; let last = last"
+          class="treatment-row"
+          [class.row-last]="last"
+          [class.row-expanded]="isExpanded(plan.id)">
+
+          <button type="button" class="row-btn" (click)="toggleExpand(plan.id)" [attr.aria-expanded]="isExpanded(plan.id)">
+            <!-- Icon -->
+            <div class="row-icon icon-{{ plan.icon }}">
+              <svg viewBox="0 0 24 24" *ngIf="plan.icon === 'orthodontics' || plan.icon === 'filling' || plan.icon === 'consultation'">
+                <path d="M12 4c-3.8 0-6 2.2-6 5.8 0 4.1 2.2 9.7 5.2 9.7 1.8 0 1.6-2.8 2.8-2.8s1 2.8 2.8 2.8c3 0 5.2-5.6 5.2-9.7C18 6.2 15.8 4 12 4Z"/>
+              </svg>
+              <svg viewBox="0 0 24 24" *ngIf="plan.icon === 'whitening'">
+                <path d="M12 3.5 13.8 9l5.7 1.2-5.7 1.2L12 17l-1.8-5.6L4.5 10.2 10.2 9 12 3.5Z"/>
+              </svg>
+              <svg viewBox="0 0 24 24" *ngIf="plan.icon === 'retainer'">
+                <path d="M4.5 13c1.6-2.5 4.3-4 7.5-4s5.9 1.5 7.5 4"/>
+                <path d="M6.5 13.2c.6 2.5 2.6 4.3 5.5 4.3s4.9-1.8 5.5-4.3"/>
+              </svg>
+            </div>
+
+            <!-- Name -->
+            <div class="row-name">
+              <strong>{{ plan.title }}</strong>
+              <span>{{ plan.subtitle }}</span>
+            </div>
+
+            <!-- Cancelled badge -->
+            <div class="row-completed-info">
+              <span class="cancelled-badge">Cancelled</span>
+              <span class="completed-date">Was scheduled for {{ plan.nextStepDate }}</span>
+            </div>
+
+            <!-- Spacer -->
+            <div class="row-appt-empty"></div>
+
+            <!-- Arrow -->
+            <svg class="row-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+
+          <!-- Expanded detail for cancelled -->
+          <div class="row-detail" *ngIf="isExpanded(plan.id)">
+            <div class="detail-inner">
+              <div class="detail-steps">
+                <p class="detail-section-label">Treatment Steps</p>
+                <div class="steps-list">
+                  <div class="step-item" *ngFor="let step of plan.steps" [ngClass]="'stage-' + step.stage">
+                    <div class="step-dot">
+                      <svg *ngIf="step.stage === 'done'" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                      <svg *ngIf="step.stage === 'current'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>
+                      <svg *ngIf="step.stage === 'next'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                    </div>
+                    <div class="step-text">
+                      <strong>{{ step.title }}</strong>
+                      <span>{{ step.date }} · {{ step.dentist }}</span>
+                    </div>
+                    <span class="step-badge sb-{{ step.statusClass }}">{{ step.status }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="detail-strip">
+                <div class="strip-block">
+                  <span class="strip-label">Assigned Dentist</span>
+                  <strong class="strip-val">{{ plan.nextStepDoctor }}</strong>
+                </div>
+                <div class="strip-block" *ngIf="getLinkedRecords(plan).length > 0">
+                  <span class="strip-label">Linked Files</span>
+                  <div class="strip-files">
+                    <button *ngFor="let r of getLinkedRecords(plan)" type="button" class="file-chip" (click)="viewLinkedRecord(r)">
+                      <svg viewBox="0 0 24 24"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z"/><path d="M15 3.5v4h4"/></svg>
+                      {{ r.title }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

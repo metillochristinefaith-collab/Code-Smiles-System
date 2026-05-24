@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
+import { NavigationEnd, Router, RouterModule } from '@angular/router';
+import { filter } from 'rxjs';
 import { PatientSidebarComponent } from '../patient-sidebar/patient-sidebar';
 import { ApiService } from '../services/api.service';
 import { AuthService } from '../services/auth.service';
@@ -97,6 +98,8 @@ export class PatientNotificationsComponent implements OnInit {
   ];
 
   protected notifications: NotificationItem[] = [];
+  protected isLoadingNotifications = true;
+  protected notificationsLoadError = false;
 
   protected preferences: NotificationPreference[] = [
     {
@@ -159,7 +162,6 @@ export class PatientNotificationsComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Load avatar
     this.avatarUrl = this.avatarSvc.getAvatar();
     if (!this.avatarUrl) {
       this.avatarSvc.loadAvatarFromDB().then(() => {
@@ -168,74 +170,95 @@ export class PatientNotificationsComponent implements OnInit {
       }).catch(() => {});
     }
 
+    this.loadNotifications();
+
+    // Re-fetch when navigating to this page again (sidebar link while already here)
+    this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe((e) => {
+        if (e.urlAfterRedirects.includes('patient-notifications')) {
+          this.loadNotifications();
+        }
+      });
+  }
+
+  private loadNotifications(): void {
     const user = this.auth.getUser();
-    if (!user?.id) return;
+    if (!user?.id) {
+      this.isLoadingNotifications = false;
+      return;
+    }
+
+    this.isLoadingNotifications = true;
+    this.notificationsLoadError = false;
+
     this.api.getNotifications(user.id).subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          // Map real DB notifications into the NotificationItem shape
-          const dbNotifs: NotificationItem[] = data.map((n: any) => {
-            const isReminder     = n.title?.includes('Reminder') || n.title?.includes('3 Hours');
-            const isNoShow       = n.title?.includes('No-show') || n.title?.includes('Missed');
-            const isPrescription = n.title === 'Prescription Issued';
-            const alreadyConfirmed    = n.confirmation_status === 'Confirmed';
-            const alreadyRescheduled  = n.confirmation_status === 'Reschedule Requested';
-
-            // Determine filter category
-            const filter: Exclude<NotificationFilterKey, 'all'> = isPrescription
-              ? 'messages'
-              : 'appointments';
-
-            // Build actions
-            const actions: NotificationAction[] = [];
-            if (isPrescription) {
-              actions.push({ label: 'View Prescriptions', kind: 'view-details', style: 'primary' });
-            } else if (isReminder && n.appointment_id && !alreadyConfirmed && !alreadyRescheduled) {
-              actions.push({ label: '✓ Confirm Attendance', kind: 'confirm-attendance', style: 'confirm' });
-              actions.push({ label: 'Request Reschedule', kind: 'request-reschedule-reminder', style: 'reschedule' });
-            } else if (isReminder && alreadyConfirmed) {
-              actions.push({ label: 'View Appointment', kind: 'view-appointment', style: 'primary' });
-            } else {
-              actions.push({ label: 'View Appointment', kind: 'view-appointment', style: 'primary' });
-            }
-
-            // Icon paths
-            const prescriptionIconPaths = [
-              'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2',
-              'M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2Z',
-              'M9 12h6M9 16h4',
-            ];
-            const calendarIconPaths = [
-              'M7 3v3M17 3v3M4 8h16',
-              'M5.5 5.5h13A1.5 1.5 0 0 1 20 7v11.5A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5V7A1.5 1.5 0 0 1 5.5 5.5Z',
-            ];
-
-            return {
-              id:                String(n.id),
-              dbId:              n.id,
-              appointmentId:     n.appointment_id || undefined,
-              confirmationStatus: n.confirmation_status || 'Not Confirmed',
-              section:           n.is_read ? 'recent' : 'needs-action',
-              filter,
-              type:              isPrescription ? 'message' as const : 'appointment' as const,
-              title:             n.title,
-              subtitle:          new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-              description:       n.detail,
-              status:            (n.level === 'Update' ? 'approved' : n.level === 'Warning' ? 'pending' : 'info') as NotificationStatus,
-              isRead:            n.is_read,
-              createdAt:         new Date(n.created_at),
-              badge:             isPrescription ? 'Prescription' : isReminder ? 'Reminder' : isNoShow ? 'No-show' : n.title,
-              tone:              (isPrescription ? 'teal' : isReminder ? 'blue' : n.level === 'Update' ? 'green' : n.level === 'Warning' ? 'orange' : 'blue') as NotificationTone,
-              actions,
-              iconViewBox: '0 0 24 24',
-              iconPaths:   isPrescription ? prescriptionIconPaths : calendarIconPaths,
-            };
-          });
-          this.notifications = dbNotifs;
-        }
+        const rows = Array.isArray(data) ? data : [];
+        this.notifications = rows.map((n: any) => this.mapDbNotification(n));
+        this.isLoadingNotifications = false;
+        this.cdr.detectChanges();
       },
-      error: () => {}
+      error: () => {
+        this.notifications = [];
+        this.isLoadingNotifications = false;
+        this.notificationsLoadError = true;
+        this.cdr.detectChanges();
+      },
     });
+  }
+
+  private mapDbNotification(n: any): NotificationItem {
+    const isReminder     = n.title?.includes('Reminder') || n.title?.includes('3 Hours');
+    const isNoShow       = n.title?.includes('No-show') || n.title?.includes('Missed');
+    const isPrescription = n.title === 'Prescription Issued';
+    const alreadyConfirmed   = n.confirmation_status === 'Confirmed';
+    const alreadyRescheduled = n.confirmation_status === 'Reschedule Requested';
+
+    const filterKey: Exclude<NotificationFilterKey, 'all'> = isPrescription ? 'messages' : 'appointments';
+
+    const actions: NotificationAction[] = [];
+    if (isPrescription) {
+      actions.push({ label: 'View Prescriptions', kind: 'view-details', style: 'primary' });
+    } else if (isReminder && n.appointment_id && !alreadyConfirmed && !alreadyRescheduled) {
+      actions.push({ label: '✓ Confirm Attendance', kind: 'confirm-attendance', style: 'confirm' });
+      actions.push({ label: 'Request Reschedule', kind: 'request-reschedule-reminder', style: 'reschedule' });
+    } else {
+      actions.push({ label: 'View Appointment', kind: 'view-appointment', style: 'primary' });
+    }
+
+    const prescriptionIconPaths = [
+      'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2',
+      'M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2Z',
+      'M9 12h6M9 16h4',
+    ];
+    const calendarIconPaths = [
+      'M7 3v3M17 3v3M4 8h16',
+      'M5.5 5.5h13A1.5 1.5 0 0 1 20 7v11.5A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5V7A1.5 1.5 0 0 1 5.5 5.5Z',
+    ];
+
+    const createdAt = n.created_at ? new Date(n.created_at) : new Date();
+
+    return {
+      id: String(n.id),
+      dbId: n.id,
+      appointmentId: n.appointment_id || undefined,
+      confirmationStatus: n.confirmation_status || 'Not Confirmed',
+      section: n.is_read ? 'recent' : 'needs-action',
+      filter: filterKey,
+      type: isPrescription ? 'message' : 'appointment',
+      title: n.title || 'Notification',
+      subtitle: createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      description: n.detail || '',
+      status: (n.level === 'Update' ? 'approved' : n.level === 'Warning' ? 'pending' : 'info') as NotificationStatus,
+      isRead: !!n.is_read,
+      createdAt,
+      badge: isPrescription ? 'Prescription' : isReminder ? 'Reminder' : isNoShow ? 'No-show' : n.title,
+      tone: (isPrescription ? 'teal' : isReminder ? 'blue' : n.level === 'Update' ? 'green' : n.level === 'Warning' ? 'orange' : 'blue') as NotificationTone,
+      actions,
+      iconViewBox: '0 0 24 24',
+      iconPaths: isPrescription ? prescriptionIconPaths : calendarIconPaths,
+    };
   }
 
   protected setFilter(filter: NotificationFilterKey): void {

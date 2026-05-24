@@ -758,6 +758,220 @@ function authMiddleware(req, res, next) {
   }
 }
 
+function requireRoles(...roles) {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+    next();
+  };
+}
+
+/** Service duration + 10 min buffer — single source for overlap check and INSERT */
+function resolveAppointmentDurationMinutes(duration_minutes, treatment) {
+  const { getServiceDuration } = require('./scheduling-engine');
+  if (duration_minutes != null && duration_minutes !== '') {
+    return Number(duration_minutes) + 10;
+  }
+  if (treatment) {
+    return getServiceDuration(treatment) + 10;
+  }
+  return 70;
+}
+
+/** ISO-like timestamp in SQL without fragile TO_CHAR literal "T" in JS strings */
+const SQL_COL_ISO_TS = (col) =>
+  `(TO_CHAR(${col}, 'YYYY-MM-DD') || 'T' || TO_CHAR(${col}, 'HH24:MI:SS'))`;
+
+/** Resolve a dentist display name (e.g. "Dr. Raphoncel Eduria") to a users row via dentist table */
+async function resolveDentistDbIdFromDisplayName(executor, dentistName) {
+  const user = await findDentistUserByDisplayName(executor, dentistName);
+  if (!user) return null;
+  const d = await executor.query('SELECT dentist_id FROM dentist WHERE user_id = $1', [user.id]);
+  return d.rows[0]?.dentist_id ?? null;
+}
+
+async function getCompositeAppointmentByNumericId(executor, numericId) {
+  const result = await executor.query(
+    `SELECT cba.*, cb.patient_id, cb.patient_name, cb.patient_email, cb.patient_phone
+     FROM composite_booking_appointments cba
+     JOIN composite_bookings cb ON cb.id = cba.composite_booking_id
+     WHERE cba.id = $1`,
+    [numericId]
+  );
+  return result.rows[0] || null;
+}
+
+async function findDentistUserByDisplayName(executor, rawName) {
+  if (!rawName?.trim()) return null;
+
+  let normalized = rawName.trim().replace(/^dr\.?\s+/i, '').trim();
+
+  const byDentistTable = await executor.query(
+    `SELECT u.id, u.first_name, u.last_name
+     FROM dentist d
+     INNER JOIN users u ON u.id = d.user_id
+     WHERE LOWER(TRIM(u.first_name || ' ' || u.last_name)) = LOWER($1)
+        OR LOWER(TRIM('Dr. ' || u.first_name || ' ' || u.last_name)) = LOWER(TRIM($2))
+     LIMIT 1`,
+    [normalized, rawName.trim()]
+  );
+  if (byDentistTable.rowCount > 0) return byDentistTable.rows[0];
+
+  const byRole = await executor.query(
+    `SELECT id, first_name, last_name FROM users
+     WHERE role = 'Dentist'
+       AND LOWER(TRIM(first_name || ' ' || last_name)) = LOWER($1)
+     LIMIT 1`,
+    [normalized]
+  );
+  if (byRole.rows[0]) return byRole.rows[0];
+
+  const parts = normalized.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    const firstPart = parts[0];
+    const lastPart = parts[parts.length - 1];
+    const fuzzy = await executor.query(
+      `SELECT u.id, u.first_name, u.last_name
+       FROM dentist d
+       INNER JOIN users u ON u.id = d.user_id
+       WHERE LOWER(TRIM(u.last_name)) = LOWER($1)
+         AND LOWER(TRIM(u.first_name)) LIKE LOWER($2) || '%'
+       LIMIT 1`,
+      [lastPart, firstPart]
+    );
+    if (fuzzy.rows[0]) return fuzzy.rows[0];
+  }
+
+  return null;
+}
+
+/** All stored spellings that refer to the same dentist (Dr. prefix, middle names, etc.) */
+async function resolveDentistNameAliases(executor, rawName) {
+  if (!rawName?.trim()) return [];
+  const aliases = new Set();
+  const trimmed = rawName.trim();
+  const stripped = trimmed.replace(/^dr\.?\s+/i, '').trim();
+
+  for (const v of [trimmed, stripped, `Dr. ${stripped}`]) {
+    if (v) aliases.add(v);
+  }
+
+  const user = await findDentistUserByDisplayName(executor, trimmed);
+  if (user) {
+    const full = `${user.first_name} ${user.last_name}`;
+    aliases.add(full);
+    aliases.add(`Dr. ${full}`);
+  }
+
+  return [...aliases];
+}
+
+async function canonicalDentistDisplayName(executor, rawName) {
+  if (!rawName?.trim()) return rawName;
+  const user = await findDentistUserByDisplayName(executor, rawName);
+  if (user) return `Dr. ${user.first_name} ${user.last_name}`;
+  const t = rawName.trim();
+  return /^dr\.?\s/i.test(t) ? t : `Dr. ${t}`;
+}
+
+async function getDentistAliasesForUserId(executor, userId) {
+  const u = await executor.query(
+    'SELECT id, first_name, last_name, email FROM users WHERE id = $1',
+    [userId]
+  );
+  if (!u.rows[0]) return [];
+  const row = u.rows[0];
+  return resolveDentistNameAliases(executor, `Dr. ${row.first_name} ${row.last_name}`);
+}
+
+const DENTIST_ACTIVE_STATUSES = `('Approved','Completed','Rescheduled','Rescheduled by Staff','Rescheduled by Dentist','Cancelled','Cancelled by Staff','Cancelled by Patient','Cancelled by Dentist','No-show')`;
+
+async function fetchMergedDentistAppointments(executor, aliases) {
+  let regularQuery = `
+    SELECT
+      a.id, a.patient_id, a.patient_name, a.email, a.phone,
+      a.treatment, a.services,
+      TO_CHAR(a.appointment_date, 'YYYY-MM-DD') AS appointment_date,
+      TO_CHAR(a.appointment_time, 'HH24:MI')    AS appointment_time,
+      a.duration_minutes, a.status, a.notes,
+      a.dentist_name, a.urgency, a.created_at, a.updated_at,
+      'regular' AS appointment_source
+    FROM appointments a
+    WHERE a.status IN ${DENTIST_ACTIVE_STATUSES}
+  `;
+  const regularParams = [];
+  if (aliases?.length) {
+    regularQuery += ` AND a.dentist_name = ANY($1::text[])`;
+    regularParams.push(aliases);
+  }
+
+  const regularResult = await executor.query(regularQuery, regularParams);
+
+  let compositeRows = [];
+  try {
+    let compositeQuery = `
+      SELECT
+        cba.id, cb.patient_id, cb.patient_name, cb.patient_email AS email, cb.patient_phone AS phone,
+        cba.service_name AS treatment, ARRAY[cba.service_name] AS services,
+        cba.appointment_date::text AS appointment_date,
+        CASE WHEN char_length(cba.appointment_time) = 5
+             THEN cba.appointment_time || ':00'
+             ELSE cba.appointment_time END AS appointment_time,
+        cba.service_duration_minutes AS duration_minutes,
+        cba.appointment_status AS status,
+        COALESCE(cb.patient_notes, '') AS notes,
+        cba.dentist_name, 'Standard' AS urgency, cba.created_at, cba.updated_at,
+        'composite' AS appointment_source
+      FROM composite_booking_appointments cba
+      JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+      WHERE cba.appointment_status IN ${DENTIST_ACTIVE_STATUSES}
+    `;
+    const compositeParams = [];
+    if (aliases?.length) {
+      compositeQuery += ` AND cba.dentist_name = ANY($1::text[])`;
+      compositeParams.push(aliases);
+    }
+    const compositeResult = await executor.query(compositeQuery, compositeParams);
+    compositeRows = compositeResult.rows;
+  } catch (compositeErr) {
+    console.warn('[dentist/appointments] Composite skipped:', compositeErr.message);
+  }
+
+  return [...regularResult.rows, ...compositeRows].sort((a, b) => {
+    const da = `${a.appointment_date}T${a.appointment_time || '00:00'}`;
+    const dbDate = `${b.appointment_date}T${b.appointment_time || '00:00'}`;
+    return da.localeCompare(dbDate);
+  });
+}
+
+async function insertNotification(executor, { userId, title, detail, level, appointmentId = null }) {
+  if (appointmentId != null) {
+    await executor.query(
+      `INSERT INTO notifications (user_id, title, detail, level, appointment_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [userId, title, detail, level, appointmentId]
+    );
+  } else {
+    await executor.query(
+      `INSERT INTO notifications (user_id, title, detail, level) VALUES ($1, $2, $3, $4)`,
+      [userId, title, detail, level]
+    );
+  }
+}
+
+/** Optional Bearer token — returns patient user id when role is Patient */
+function getJwtPatientId(req) {
+  try {
+    const header = req.headers['authorization'];
+    if (!header?.startsWith('Bearer ')) return null;
+    const decoded = jwt.verify(header.split(' ')[1], SECRET);
+    return decoded?.role === 'Patient' ? decoded.id : null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── AVATAR / PROFILE PHOTO ──────────────────────────────────────────────────
 
 // Ensure avatar_url column exists on users table
@@ -903,25 +1117,13 @@ app.post('/patient-vault-records/:recordId/share', authMiddleware, async (req, r
       return res.status(404).json({ message: 'Record not found or access denied.' });
     }
 
-    // FIX: Verify dentist exists in system
-    let dentistName = dentist_name.trim();
-    if (dentistName.startsWith('Dr. ')) {
-      dentistName = dentistName.substring(4); // Remove "Dr. " prefix
-    }
-    
-    const dentistCheck = await db.query(
-      `SELECT id, first_name, last_name FROM users 
-       WHERE (first_name || ' ' || last_name = $1 OR first_name = $1)
-         AND role = 'Dentist'`,
-      [dentistName]
-    );
-
-    if (dentistCheck.rows.length === 0) {
+    const dentistRow = await findDentistUserByDisplayName(db, dentist_name);
+    if (!dentistRow) {
       return res.status(404).json({ message: 'Dentist not found in system.' });
     }
 
-    const dentistUserId = dentistCheck.rows[0].id;
-    const fullDentistName = `${dentistCheck.rows[0].first_name} ${dentistCheck.rows[0].last_name}`;
+    const dentistUserId = dentistRow.id;
+    const fullDentistName = `${dentistRow.first_name} ${dentistRow.last_name}`;
 
     // FIX: Verify patient has relationship with this dentist (optional but recommended)
     const relationshipCheck = await db.query(
@@ -969,8 +1171,12 @@ app.get('/dentist/vault-records', authMiddleware, async (req, res) => {
   console.log('User:', req.user.id, req.user.role);
   
   try {
-    // FIX: Verify user is a dentist
-    if (req.user.role !== 'Dentist') {
+    // Dentists log in with role 'Admin' but are linked in the dentist table
+    const dentistAccount = await db.query(
+      'SELECT dentist_id FROM dentist WHERE user_id = $1',
+      [req.user.id]
+    );
+    if (req.user.role !== 'Dentist' && dentistAccount.rowCount === 0) {
       console.log('ERROR: User is not a dentist');
       return res.status(403).json({ message: 'Only dentists can access vault records.' });
     }
@@ -1360,85 +1566,167 @@ app.get('/auth/validate-reset-token', async (req, res) => {
 
 // ─── DASHBOARD STATS ─────────────────────────────────────────────────────────
 
-// Staff dashboard stats
+// Staff dashboard stats (regular + composite bookings)
 app.get('/staff/dashboard-stats', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const [total, pending, approved, cancelled, todayAppts, patients, recentAppts] = await Promise.all([
+    const cancelStatuses = `('Cancelled', 'Cancelled by Staff', 'Cancelled by Patient', 'Cancelled by Dentist')`;
+
+    const [
+      totalReg, pendingReg, approvedReg, cancelledReg, todayReg, patients, recentReg,
+    ] = await Promise.all([
       db.query(`SELECT COUNT(*) FROM appointments`),
       db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'Pending'`),
       db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'Approved'`),
-      db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'Cancelled'`),
+      db.query(`SELECT COUNT(*) FROM appointments WHERE status IN ${cancelStatuses}`),
       db.query(`SELECT COUNT(*) FROM appointments WHERE appointment_date = $1`, [today]),
       db.query(`SELECT COUNT(*) FROM users WHERE role = 'Patient'`),
       db.query(`
         SELECT id, patient_name, treatment, services,
                TO_CHAR(appointment_date,'YYYY-MM-DD') AS appointment_date,
                TO_CHAR(appointment_time,'HH24:MI') AS appointment_time,
-               status, dentist_name
+               status, dentist_name, created_at
         FROM appointments
-        ORDER BY created_at DESC LIMIT 5`),
+        ORDER BY created_at DESC LIMIT 20`),
     ]);
+
+    let compositeCounts = { total: 0, pending: 0, approved: 0, cancelled: 0, today: 0 };
+    let recentComposite = [];
+    try {
+      const [totalC, pendingC, approvedC, cancelledC, todayC, recentC] = await Promise.all([
+        db.query(`SELECT COUNT(*) FROM composite_booking_appointments`),
+        db.query(`SELECT COUNT(*) FROM composite_booking_appointments WHERE appointment_status = 'Pending'`),
+        db.query(`SELECT COUNT(*) FROM composite_booking_appointments WHERE appointment_status = 'Approved'`),
+        db.query(`SELECT COUNT(*) FROM composite_booking_appointments WHERE appointment_status IN ${cancelStatuses}`),
+        db.query(`SELECT COUNT(*) FROM composite_booking_appointments WHERE appointment_date::text = $1`, [today]),
+        db.query(`
+          SELECT cba.id, cb.patient_name, cba.service_name AS treatment,
+                 ARRAY[cba.service_name] AS services,
+                 cba.appointment_date::text AS appointment_date,
+                 CASE WHEN char_length(cba.appointment_time) = 5
+                      THEN cba.appointment_time || ':00'
+                      ELSE cba.appointment_time END AS appointment_time,
+                 cba.appointment_status AS status, cba.dentist_name, cba.created_at
+          FROM composite_booking_appointments cba
+          JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+          ORDER BY cba.created_at DESC LIMIT 20`),
+      ]);
+      compositeCounts = {
+        total: parseInt(totalC.rows[0].count),
+        pending: parseInt(pendingC.rows[0].count),
+        approved: parseInt(approvedC.rows[0].count),
+        cancelled: parseInt(cancelledC.rows[0].count),
+        today: parseInt(todayC.rows[0].count),
+      };
+      recentComposite = recentC.rows;
+    } catch (compositeErr) {
+      console.warn('[staff/dashboard-stats] Composite skipped:', compositeErr.message);
+    }
+
+    const recentMerged = [...recentReg.rows, ...recentComposite]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5)
+      .map(({ created_at, ...rest }) => rest);
+
     res.json({
-      total:      parseInt(total.rows[0].count),
-      pending:    parseInt(pending.rows[0].count),
-      approved:   parseInt(approved.rows[0].count),
-      cancelled:  parseInt(cancelled.rows[0].count),
-      today:      parseInt(todayAppts.rows[0].count),
+      total:      parseInt(totalReg.rows[0].count) + compositeCounts.total,
+      pending:    parseInt(pendingReg.rows[0].count) + compositeCounts.pending,
+      approved:   parseInt(approvedReg.rows[0].count) + compositeCounts.approved,
+      cancelled:  parseInt(cancelledReg.rows[0].count) + compositeCounts.cancelled,
+      today:      parseInt(todayReg.rows[0].count) + compositeCounts.today,
       patients:   parseInt(patients.rows[0].count),
-      recentAppointments: recentAppts.rows,
+      recentAppointments: recentMerged,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Dentist dashboard stats
+// Dentist dashboard stats (regular + composite, flexible dentist name)
 app.get('/dentist/dashboard-stats', async (req, res) => {
   try {
     const { dentist } = req.query;
     const today = new Date().toISOString().split('T')[0];
+    const aliases = dentist ? await resolveDentistNameAliases(db, dentist) : null;
 
-    let todayAppts, upcoming, completed, patients, recentAppts;
+    let todayCount = 0;
+    let upcomingCount = 0;
+    let completedCount = 0;
+    let patientIds = new Set();
+    let recentRows = [];
 
-    if (dentist) {
-      [todayAppts, upcoming, completed, patients, recentAppts] = await Promise.all([
-        db.query(`SELECT COUNT(*) FROM appointments WHERE appointment_date = $1 AND status = 'Approved' AND dentist_name = $2`, [today, dentist]),
-        db.query(`SELECT COUNT(*) FROM appointments WHERE appointment_date > $1 AND status = 'Approved' AND dentist_name = $2`, [today, dentist]),
-        db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'Completed' AND dentist_name = $1`, [dentist]),
-        db.query(`SELECT COUNT(DISTINCT patient_id) FROM appointments WHERE patient_id IS NOT NULL AND dentist_name = $1`, [dentist]),
-        db.query(`
-          SELECT id, patient_name, treatment, services,
-                 TO_CHAR(appointment_date,'YYYY-MM-DD') AS appointment_date,
-                 TO_CHAR(appointment_time,'HH24:MI') AS appointment_time,
-                 status, phone
-          FROM appointments
-          WHERE status IN ('Approved','Completed') AND dentist_name = $1
-          ORDER BY appointment_date ASC, appointment_time ASC LIMIT 5`, [dentist]),
-      ]);
-    } else {
-      [todayAppts, upcoming, completed, patients, recentAppts] = await Promise.all([
-        db.query(`SELECT COUNT(*) FROM appointments WHERE appointment_date = $1 AND status = 'Approved'`, [today]),
-        db.query(`SELECT COUNT(*) FROM appointments WHERE appointment_date > $1 AND status = 'Approved'`, [today]),
-        db.query(`SELECT COUNT(*) FROM appointments WHERE status = 'Completed'`),
-        db.query(`SELECT COUNT(DISTINCT patient_id) FROM appointments WHERE patient_id IS NOT NULL`),
-        db.query(`
-          SELECT id, patient_name, treatment, services,
-                 TO_CHAR(appointment_date,'YYYY-MM-DD') AS appointment_date,
-                 TO_CHAR(appointment_time,'HH24:MI') AS appointment_time,
-                 status, phone
-          FROM appointments
-          WHERE status IN ('Approved','Completed')
-          ORDER BY appointment_date ASC, appointment_time ASC LIMIT 5`),
-      ]);
-    }
+    const runForSource = async (isComposite) => {
+      const params = aliases?.length ? [aliases] : [];
+      const todayQ = isComposite
+        ? `SELECT COUNT(*) FROM composite_booking_appointments cba WHERE cba.appointment_date::text = $1 AND cba.appointment_status = 'Approved' ${aliases?.length ? 'AND cba.dentist_name = ANY($2::text[])' : ''}`
+        : `SELECT COUNT(*) FROM appointments WHERE appointment_date = $1 AND status = 'Approved' ${aliases?.length ? 'AND dentist_name = ANY($2::text[])' : ''}`;
+      const todayP = aliases?.length ? [today, aliases] : [today];
+
+      const upQ = isComposite
+        ? `SELECT COUNT(*) FROM composite_booking_appointments cba WHERE cba.appointment_date::text > $1 AND cba.appointment_status = 'Approved' ${aliases?.length ? 'AND cba.dentist_name = ANY($2::text[])' : ''}`
+        : `SELECT COUNT(*) FROM appointments WHERE appointment_date > $1 AND status = 'Approved' ${aliases?.length ? 'AND dentist_name = ANY($2::text[])' : ''}`;
+
+      const doneQ = isComposite
+        ? `SELECT COUNT(*) FROM composite_booking_appointments cba WHERE cba.appointment_status = 'Completed' ${aliases?.length ? 'AND cba.dentist_name = ANY($1::text[])' : ''}`
+        : `SELECT COUNT(*) FROM appointments WHERE status = 'Completed' ${aliases?.length ? 'AND dentist_name = ANY($1::text[])' : ''}`;
+
+      const patientsQ = isComposite
+        ? `SELECT DISTINCT cb.patient_id AS patient_id FROM composite_booking_appointments cba JOIN composite_bookings cb ON cb.id = cba.composite_booking_id WHERE cb.patient_id IS NOT NULL ${aliases?.length ? 'AND cba.dentist_name = ANY($1::text[])' : ''}`
+        : `SELECT DISTINCT patient_id FROM appointments WHERE patient_id IS NOT NULL ${aliases?.length ? 'AND dentist_name = ANY($1::text[])' : ''}`;
+
+      const recentQ = isComposite
+        ? `SELECT cba.id, cb.patient_name, cba.service_name AS treatment, ARRAY[cba.service_name] AS services,
+                  cba.appointment_date::text AS appointment_date,
+                  CASE WHEN char_length(cba.appointment_time) = 5 THEN cba.appointment_time || ':00' ELSE cba.appointment_time END AS appointment_time,
+                  cba.appointment_status AS status, cb.patient_phone AS phone
+           FROM composite_booking_appointments cba
+           JOIN composite_bookings cb ON cb.id = cba.composite_booking_id
+           WHERE cba.appointment_status IN ('Approved','Completed')
+           ${aliases?.length ? 'AND cba.dentist_name = ANY($1::text[])' : ''}
+           ORDER BY cba.appointment_date ASC, cba.appointment_time ASC LIMIT 10`
+        : `SELECT id, patient_name, treatment, services,
+                  TO_CHAR(appointment_date,'YYYY-MM-DD') AS appointment_date,
+                  TO_CHAR(appointment_time,'HH24:MI') AS appointment_time,
+                  status, phone
+           FROM appointments
+           WHERE status IN ('Approved','Completed')
+           ${aliases?.length ? 'AND dentist_name = ANY($1::text[])' : ''}
+           ORDER BY appointment_date ASC, appointment_time ASC LIMIT 10`;
+
+      try {
+        const [t, u, c, p, r] = await Promise.all([
+          db.query(todayQ, todayP),
+          db.query(upQ, todayP),
+          db.query(doneQ, params),
+          db.query(patientsQ, params),
+          db.query(recentQ, params),
+        ]);
+        todayCount += parseInt(t.rows[0].count);
+        upcomingCount += parseInt(u.rows[0].count);
+        completedCount += parseInt(c.rows[0].count);
+        p.rows.forEach((row) => { if (row.patient_id) patientIds.add(row.patient_id); });
+        recentRows.push(...r.rows);
+      } catch (e) {
+        if (!isComposite) throw e;
+        console.warn('[dentist/dashboard-stats] composite skipped:', e.message);
+      }
+    };
+
+    await runForSource(false);
+    await runForSource(true);
+
+    recentRows.sort((a, b) => {
+      const da = `${a.appointment_date}T${a.appointment_time || '00:00'}`;
+      const dbDate = `${b.appointment_date}T${b.appointment_time || '00:00'}`;
+      return da.localeCompare(dbDate);
+    });
 
     res.json({
-      today:     parseInt(todayAppts.rows[0].count),
-      upcoming:  parseInt(upcoming.rows[0].count),
-      completed: parseInt(completed.rows[0].count),
-      patients:  parseInt(patients.rows[0].count),
-      recentAppointments: recentAppts.rows,
+      today: todayCount,
+      upcoming: upcomingCount,
+      completed: completedCount,
+      patients: patientIds.size,
+      recentAppointments: recentRows.slice(0, 5),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1448,12 +1736,25 @@ app.get('/dentist/dashboard-stats', async (req, res) => {
 // Patient dashboard stats
 app.get('/patient/dashboard-stats/:patientId', async (req, res) => {
   try {
-    const id = req.params.patientId;
+    const userId = req.params.patientId;
+    
+    // The appointments table uses user_id as patient_id, so we use userId directly
+    // But also check if there's a patient record for backward compatibility
+    const patientLookup = await db.query(
+      'SELECT patient_id FROM patients WHERE user_id = $1',
+      [userId]
+    );
+    
+    // Use user_id as patient_id (appointments are stored with user_id)
+    const patientId = userId;
+    
     const today = new Date().toISOString().split('T')[0];
+    
+    // Get regular appointments stats
     const [pending, upcoming, completed, nextAppt] = await Promise.all([
-      db.query(`SELECT COUNT(*) FROM appointments WHERE patient_id=$1 AND status='Pending'`, [id]),
-      db.query(`SELECT COUNT(*) FROM appointments WHERE patient_id=$1 AND status='Approved' AND appointment_date >= $2`, [id, today]),
-      db.query(`SELECT COUNT(*) FROM appointments WHERE patient_id=$1 AND status='Completed'`, [id]),
+      db.query(`SELECT COUNT(*) FROM appointments WHERE patient_id=$1 AND status='Pending'`, [patientId]),
+      db.query(`SELECT COUNT(*) FROM appointments WHERE patient_id=$1 AND status='Approved' AND appointment_date >= $2`, [patientId, today]),
+      db.query(`SELECT COUNT(*) FROM appointments WHERE patient_id=$1 AND status='Completed'`, [patientId]),
       db.query(`
         SELECT id, treatment, services,
                TO_CHAR(appointment_date,'YYYY-MM-DD') AS appointment_date,
@@ -1461,13 +1762,59 @@ app.get('/patient/dashboard-stats/:patientId', async (req, res) => {
                status, dentist_name
         FROM appointments
         WHERE patient_id=$1 AND status IN ('Approved','Pending') AND appointment_date >= $2
-        ORDER BY appointment_date ASC, appointment_time ASC LIMIT 1`, [id, today]),
+        ORDER BY appointment_date ASC, appointment_time ASC LIMIT 1`, [patientId, today]),
     ]);
+
+    // Get composite booking stats
+    const [compositePending, compositeUpcoming, compositeCompleted, nextCompositeAppt] = await Promise.all([
+      db.query(`
+        SELECT COUNT(*) FROM composite_booking_appointments cba
+        JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+        WHERE cb.patient_id=$1 AND cba.appointment_status='Pending'`, [patientId]),
+      db.query(`
+        SELECT COUNT(*) FROM composite_booking_appointments cba
+        JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+        WHERE cb.patient_id=$1 AND cba.appointment_status='Approved' AND cba.appointment_date >= $2`, [patientId, today]),
+      db.query(`
+        SELECT COUNT(*) FROM composite_booking_appointments cba
+        JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+        WHERE cb.patient_id=$1 AND cba.appointment_status='Completed'`, [patientId]),
+      db.query(`
+        SELECT cba.id, cba.service_name as treatment, ARRAY[cba.service_name] as services,
+               cba.appointment_date::text AS appointment_date,
+               CASE WHEN char_length(cba.appointment_time) = 5
+                    THEN cba.appointment_time || ':00'
+                    ELSE cba.appointment_time END AS appointment_time,
+               cba.appointment_status AS status, cba.dentist_name
+        FROM composite_booking_appointments cba
+        JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+        WHERE cb.patient_id=$1 AND cba.appointment_status IN ('Approved','Pending') AND cba.appointment_date >= $2
+        ORDER BY cba.appointment_date ASC, cba.appointment_time ASC LIMIT 1`, [patientId, today]),
+    ]);
+
+    // Combine stats
+    const totalPending = parseInt(pending.rows[0].count) + parseInt(compositePending.rows[0].count);
+    const totalUpcoming = parseInt(upcoming.rows[0].count) + parseInt(compositeUpcoming.rows[0].count);
+    const totalCompleted = parseInt(completed.rows[0].count) + parseInt(compositeCompleted.rows[0].count);
+    
+    // Get next appointment (whichever comes first)
+    const nextRegular = nextAppt.rows[0];
+    const nextComposite = nextCompositeAppt.rows[0];
+    let nextAppointment = null;
+    
+    if (nextRegular && nextComposite) {
+      const regDate = new Date(`${nextRegular.appointment_date}T${nextRegular.appointment_time}`);
+      const compDate = new Date(`${nextComposite.appointment_date}T${nextComposite.appointment_time}`);
+      nextAppointment = regDate <= compDate ? nextRegular : nextComposite;
+    } else {
+      nextAppointment = nextRegular || nextComposite;
+    }
+
     res.json({
-      pending:   parseInt(pending.rows[0].count),
-      upcoming:  parseInt(upcoming.rows[0].count),
-      completed: parseInt(completed.rows[0].count),
-      nextAppointment: nextAppt.rows[0] || null,
+      pending:   totalPending,
+      upcoming:  totalUpcoming,
+      completed: totalCompleted,
+      nextAppointment: nextAppointment || null,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -2021,8 +2368,24 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
   console.log('=== BOOKING REQUEST RECEIVED ===');
   console.log('Request body:', JSON.stringify(req.body, null, 2));
 
-  const { full_name, phone, email, treatment, appointment_date, appointment_time,
+  const jwtPatientId = getJwtPatientId(req);
+
+  let { full_name, phone, email, treatment, appointment_date, appointment_time,
           services, duration_minutes, notes, patient_id, booking_type } = req.body;
+
+  // Logged-in patients: use profile from DB, not spoofable body fields
+  if (jwtPatientId) {
+    const patientUser = await db.query(
+      `SELECT first_name, last_name, email, phone FROM users WHERE id = $1 AND role = 'Patient'`,
+      [jwtPatientId]
+    );
+    if (patientUser.rowCount > 0) {
+      const u = patientUser.rows[0];
+      full_name = `${u.first_name || ''} ${u.last_name || ''}`.trim();
+      email = u.email;
+      phone = u.phone || phone;
+    }
+  }
 
   // ── INPUT VALIDATION ───────────────────────────────────────────────────────
   // Validate required fields
@@ -2108,46 +2471,27 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
   const closingMinute = closingTimeInMinutes % 60;
   const closingTimeStr = `${String(closingHour % 12 || 12).padStart(2, '0')}:${String(closingMinute).padStart(2, '0')} ${closingHour >= 12 ? 'PM' : 'AM'}`;
   
+  const { timeToMinutes: timeToMinutesHelper, minutesToTime: minutesToTimeHelper, getServiceDuration, isWithinOperatingHours } = require('./scheduling-engine');
+  const totalDuration = resolveAppointmentDurationMinutes(duration_minutes, treatment);
+  const startTimeMinutes = timeToMinutesHelper(appointment_time);
+  const endTimeMinutes = startTimeMinutes + totalDuration;
+
   if (appointmentTimeInMinutes < operatingHours.start || appointmentTimeInMinutes >= closingTimeInMinutes) {
     console.log('ERROR: Appointment time outside operating hours');
     return res.status(400).json({ message: `Appointments must be between 8:00 AM and ${closingTimeStr}.` });
   }
 
-  // Validate not during lunch break (12:00 PM - 1:00 PM)
   if (hours === 12) {
     console.log('ERROR: Appointment during lunch break');
     return res.status(400).json({ message: 'Appointments cannot be scheduled during lunch break (12:00 PM - 1:00 PM).' });
   }
 
-  // ── VALIDATE END TIME DOESN'T GO PAST CLOSING ──────────────────────────────
-  // Import helper to calculate end time
-  const { timeToMinutes: timeToMinutesHelper, minutesToTime: minutesToTimeHelper, getServiceDuration } = require('./scheduling-engine');
-  
-  // Get service duration (will be used to calculate end time)
-  const serviceDuration = getServiceDuration(treatment);
-  const totalDuration = serviceDuration + 10; // +10 min buffer
-  
-  // Calculate end time in minutes
-  const startTimeMinutes = timeToMinutesHelper(appointment_time);
-  const endTimeMinutes = startTimeMinutes + totalDuration;
-  
-  // Get clinic closing time for this day
-  const closingTimeMinutes = operatingHours.end;
-  
-  if (endTimeMinutes > closingTimeMinutes) {
+  if (!isWithinOperatingHours(appointment_date, startTimeMinutes, endTimeMinutes)) {
+    const closingTime = minutesToTimeHelper(closingTimeInMinutes);
     const endTime = minutesToTimeHelper(endTimeMinutes);
-    const closingTime = minutesToTimeHelper(closingTimeMinutes);
-    console.log(`ERROR: Appointment end time (${endTime}) goes past clinic closing time (${closingTime})`);
-    return res.status(400).json({ 
+    console.log(`ERROR: Appointment end (${endTime}) past closing (${closingTime})`);
+    return res.status(400).json({
       message: `Appointment would end at ${endTime}, which is after clinic closing time (${closingTime}). Please select an earlier time.`,
-      details: {
-        start_time: appointment_time,
-        end_time: endTime,
-        service_duration: serviceDuration,
-        buffer_time: 10,
-        total_duration: totalDuration,
-        clinic_closing: closingTime
-      }
     });
   }
 
@@ -2174,17 +2518,9 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
     // Side effect: May get occasional serialization failures, handled by retry logic
     await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
 
-    // ── DYNAMIC DURATION CALCULATION ───────────────────────────────────────
-    // Import scheduling engine helpers
-    const { getServiceDuration, findDentistForService, timeToMinutes, minutesToTime } = require('./scheduling-engine');
-    
-    // Calculate duration: service duration + 10 min buffer
-    let calculatedDuration = duration_minutes;
-    if (!calculatedDuration && treatment) {
-      const serviceDuration = getServiceDuration(treatment);
-      calculatedDuration = serviceDuration + 10; // +10 min buffer
-      console.log(`Calculated duration for "${treatment}": ${serviceDuration} + 10 = ${calculatedDuration} min`);
-    }
+    const { findDentistForService } = require('./scheduling-engine');
+    const calculatedDuration = totalDuration;
+    console.log(`Booking duration (incl. buffer): ${calculatedDuration} min`);
 
     // ── WALK-IN DENTIST ASSIGNMENT ─────────────────────────────────────────
     // For walk-in appointments, resolve dentist based on treatment category
@@ -2347,7 +2683,11 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
       console.log(`[OVERLAP CHECK] ✓ No conflicts found. Proceeding with booking.`);
     }
 
+    // Prefer logged-in patient (JWT) over any client-sent patient_id.
+    const finalPatientId = (jwtPatientId ?? (patient_id && patient_id !== 'null' ? patient_id : null));
+
     console.log('Inserting appointment into database...');
+    console.log(`Patient ID being saved: ${finalPatientId} (original: ${patient_id})`);
     
     // Use the dentist that was checked for overlaps
     let finalDentistId = assignedDentistId || dentistToCheck;
@@ -2380,7 +2720,7 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
           confirmation_status, dentist_id, dentist_name)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING id`,
-      [patient_id || null, full_name, phone, email, treatment,
+      [finalPatientId, full_name, phone, email, treatment,
        services || [], appointment_date, appointment_time,
        calculatedDuration || 60, notes || '', status, confirmation_status,
        finalDentistId, finalDentistName]
@@ -2398,21 +2738,24 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
         ? `✓ Walk-in: ${full_name} confirmed for ${treatment} on ${appointment_date} at ${appointment_time}.`
         : `${full_name} requested a ${treatment} appointment on ${appointment_date} at ${appointment_time}.`;
       
-      await client.query(
-        `INSERT INTO notifications (user_id, title, detail, level)
-         VALUES ($1, $2, $3, $4)`,
-        [
-          staff.id,
-          notificationTitle,
-          notificationDetail,
-          normalizedBookingType === 'Walk-in' ? 'Update' : 'New'
-        ]
-      );
+      await insertNotification(client, {
+        userId: staff.id,
+        title: notificationTitle,
+        detail: notificationDetail,
+        level: normalizedBookingType === 'Walk-in' ? 'Update' : 'New',
+        appointmentId,
+      });
     }
 
     // ── COMMIT TRANSACTION ─────────────────────────────────────────────────
     await client.query('COMMIT');
     console.log('SUCCESS: Booking transaction committed. ID:', appointmentId);
+
+    setImmediate(() => {
+      SlotManager.decreaseSlot(appointment_date, appointment_time).catch(err => {
+        console.error('[SlotManager] Failed to decrease slot after booking:', err.message);
+      });
+    });
     
     // Send confirmation email asynchronously (don't wait for it)
     if (email) {
@@ -2473,7 +2816,11 @@ app.post('/add-appointment', bookingLimiter, async (req, res) => {
 // Get appointments for a specific patient
 app.get('/my-appointments/:patientId', async (req, res) => {
   try {
-    const result = await db.query(
+    // The appointments table uses user_id as patient_id
+    const patientId = req.params.patientId;
+    
+    // Get regular appointments
+    const regularAppointments = await db.query(
       `SELECT
          id, patient_name, email, phone, treatment, services,
          TO_CHAR(appointment_date, 'YYYY-MM-DD') AS appointment_date,
@@ -2483,37 +2830,151 @@ app.get('/my-appointments/:patientId', async (req, res) => {
        FROM appointments
        WHERE patient_id = $1
        ORDER BY appointment_date DESC, appointment_time DESC`,
-      [req.params.patientId]
+      [patientId]
     );
-    res.json(result.rows);
+
+    // Composite bookings are optional — don't fail the whole request if tables are missing
+    let compositeRows = [];
+    try {
+      const compositeAppointments = await db.query(
+        `SELECT
+           cba.id,
+           cb.patient_id,
+           cb.patient_name,
+           cb.patient_email AS email,
+           cb.patient_phone AS phone,
+           cba.service_name AS treatment,
+           ARRAY[cba.service_name] AS services,
+           cba.appointment_date::text AS appointment_date,
+           CASE WHEN char_length(cba.appointment_time) = 5
+                THEN cba.appointment_time || ':00'
+                ELSE cba.appointment_time END AS appointment_time,
+           cba.service_duration_minutes AS duration_minutes,
+           cba.appointment_status AS status,
+           COALESCE(cba.confirmation_status, 'Not Confirmed') AS confirmation_status,
+           cb.patient_notes AS notes,
+           cba.dentist_name,
+           cba.booking_id AS composite_booking_ref,
+           NULL AS rescheduled_by,
+           cba.created_at,
+           cba.updated_at
+         FROM composite_booking_appointments cba
+         JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+         WHERE cb.patient_id = $1
+         ORDER BY cba.appointment_date DESC, cba.appointment_time DESC`,
+        [patientId]
+      );
+      compositeRows = compositeAppointments.rows;
+    } catch (compositeErr) {
+      console.warn('[my-appointments] Composite query skipped:', compositeErr.message);
+    }
+
+    const allAppointments = [...regularAppointments.rows, ...compositeRows];
+    
+    // Sort by date descending
+    allAppointments.sort((a, b) => {
+      const dateA = new Date(`${a.appointment_date}T${a.appointment_time}`);
+      const dateB = new Date(`${b.appointment_date}T${b.appointment_time}`);
+      return dateB - dateA;
+    });
+
+    res.json(allAppointments);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Dentist: get their own appointments
+// Dentist: get their own appointments (regular + composite, flexible dentist name)
 app.get('/dentist/appointments', async (req, res) => {
   try {
     const { dentist } = req.query;
-    let query = `
-      SELECT
-        a.id, a.patient_id, a.patient_name, a.email, a.phone,
-        a.treatment, a.services,
-        TO_CHAR(a.appointment_date, 'YYYY-MM-DD') AS appointment_date,
-        TO_CHAR(a.appointment_time, 'HH24:MI')    AS appointment_time,
-        a.duration_minutes, a.status, a.notes,
-        a.dentist_name, a.urgency, a.created_at, a.updated_at
-      FROM appointments a
-      WHERE a.status IN ('Approved','Completed','Rescheduled','Cancelled')
-    `;
-    const params = [];
-    if (dentist) {
-      query += ` AND a.dentist_name = $1`;
-      params.push(dentist);
+    const aliases = dentist ? await resolveDentistNameAliases(db, dentist) : null;
+    const merged = await fetchMergedDentistAppointments(db, aliases);
+    res.json(merged);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Dentist: appointments for the logged-in user (JWT — no name query needed)
+app.get('/dentist/me/appointments', authMiddleware, requireRoles('Admin'), async (req, res) => {
+  try {
+    const aliases = await getDentistAliasesForUserId(db, req.user.id);
+    const merged = await fetchMergedDentistAppointments(db, aliases);
+    res.json(merged);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Dentist: dashboard stats for the logged-in user
+app.get('/dentist/me/dashboard-stats', authMiddleware, requireRoles('Admin'), async (req, res) => {
+  try {
+    const aliases = await getDentistAliasesForUserId(db, req.user.id);
+    if (!aliases.length) {
+      return res.json({ today: 0, upcoming: 0, completed: 0, patients: 0, recentAppointments: [] });
     }
-    query += ` ORDER BY a.appointment_date ASC, a.appointment_time ASC`;
-    const result = await db.query(query, params);
-    res.json(result.rows);
+    const today = new Date().toISOString().split('T')[0];
+    let todayCount = 0;
+    let upcomingCount = 0;
+    let completedCount = 0;
+    const patientIds = new Set();
+    let recentRows = [];
+
+    const runForSource = async (isComposite) => {
+      const params = [aliases];
+      const todayQ = isComposite
+        ? `SELECT COUNT(*) FROM composite_booking_appointments cba WHERE cba.appointment_date::text = $1 AND cba.appointment_status = 'Approved' AND cba.dentist_name = ANY($2::text[])`
+        : `SELECT COUNT(*) FROM appointments WHERE appointment_date = $1 AND status = 'Approved' AND dentist_name = ANY($2::text[])`;
+      const upQ = isComposite
+        ? `SELECT COUNT(*) FROM composite_booking_appointments cba WHERE cba.appointment_date::text > $1 AND cba.appointment_status = 'Approved' AND cba.dentist_name = ANY($2::text[])`
+        : `SELECT COUNT(*) FROM appointments WHERE appointment_date > $1 AND status = 'Approved' AND dentist_name = ANY($2::text[])`;
+      const doneQ = isComposite
+        ? `SELECT COUNT(*) FROM composite_booking_appointments cba WHERE cba.appointment_status = 'Completed' AND cba.dentist_name = ANY($1::text[])`
+        : `SELECT COUNT(*) FROM appointments WHERE status = 'Completed' AND dentist_name = ANY($1::text[])`;
+      const patientsQ = isComposite
+        ? `SELECT DISTINCT cb.patient_id FROM composite_booking_appointments cba JOIN composite_bookings cb ON cb.id = cba.composite_booking_id WHERE cb.patient_id IS NOT NULL AND cba.dentist_name = ANY($1::text[])`
+        : `SELECT DISTINCT patient_id FROM appointments WHERE patient_id IS NOT NULL AND dentist_name = ANY($1::text[])`;
+      const recentQ = isComposite
+        ? `SELECT cba.id, cb.patient_name, cba.service_name AS treatment, ARRAY[cba.service_name] AS services,
+                  cba.appointment_date::text AS appointment_date,
+                  CASE WHEN char_length(cba.appointment_time) = 5 THEN cba.appointment_time || ':00' ELSE cba.appointment_time END AS appointment_time,
+                  cba.appointment_status AS status, cb.patient_phone AS phone
+           FROM composite_booking_appointments cba JOIN composite_bookings cb ON cb.id = cba.composite_booking_id
+           WHERE cba.appointment_status IN ('Approved','Completed') AND cba.dentist_name = ANY($1::text[])
+           ORDER BY cba.appointment_date ASC LIMIT 10`
+        : `SELECT id, patient_name, treatment, services,
+                  TO_CHAR(appointment_date,'YYYY-MM-DD') AS appointment_date,
+                  TO_CHAR(appointment_time,'HH24:MI') AS appointment_time, status, phone
+           FROM appointments WHERE status IN ('Approved','Completed') AND dentist_name = ANY($1::text[])
+           ORDER BY appointment_date ASC LIMIT 10`;
+      try {
+        const [t, u, c, p, r] = await Promise.all([
+          db.query(todayQ, [today, aliases]),
+          db.query(upQ, [today, aliases]),
+          db.query(doneQ, params),
+          db.query(patientsQ, params),
+          db.query(recentQ, params),
+        ]);
+        todayCount += parseInt(t.rows[0].count);
+        upcomingCount += parseInt(u.rows[0].count);
+        completedCount += parseInt(c.rows[0].count);
+        p.rows.forEach((row) => { if (row.patient_id) patientIds.add(row.patient_id); });
+        recentRows.push(...r.rows);
+      } catch (e) {
+        if (!isComposite) throw e;
+      }
+    };
+    await runForSource(false);
+    await runForSource(true);
+    recentRows.sort((a, b) => `${a.appointment_date}T${a.appointment_time || ''}`.localeCompare(`${b.appointment_date}T${b.appointment_time || ''}`));
+    res.json({
+      today: todayCount,
+      upcoming: upcomingCount,
+      completed: completedCount,
+      patients: patientIds.size,
+      recentAppointments: recentRows.slice(0, 5),
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -2547,9 +3008,41 @@ app.put('/staff/appointments/:id/status', authMiddleware, async (req, res) => {
   }
 });
 
-// Staff: get a single appointment by ID
+// Staff: get a single appointment by ID (regular or composite)
 app.get('/staff/appointments/:id', async (req, res) => {
   try {
+    const id = req.params.id;
+    const composite = await getCompositeAppointmentByNumericId(db, id);
+    if (composite) {
+      const pp = await db.query(
+        'SELECT reliability_score FROM patient_profiles WHERE user_id = $1',
+        [composite.patient_id]
+      );
+      return res.json({
+        id: composite.id,
+        patient_id: composite.patient_id,
+        patient_name: composite.patient_name,
+        email: composite.patient_email,
+        phone: composite.patient_phone,
+        treatment: composite.service_name,
+        services: [composite.service_name],
+        appointment_date: String(composite.appointment_date),
+        appointment_time: String(composite.appointment_time).length === 5
+          ? `${composite.appointment_time}:00` : composite.appointment_time,
+        duration_minutes: composite.service_duration_minutes,
+        status: composite.appointment_status,
+        confirmation_status: composite.confirmation_status || 'Not Confirmed',
+        notes: '',
+        dentist_name: composite.dentist_name,
+        urgency: 'Standard',
+        created_at: composite.created_at,
+        updated_at: composite.updated_at,
+        reliability_score: pp.rows[0]?.reliability_score ?? 0,
+        appointment_source: 'composite',
+        composite_appointment_ref: composite.appointment_id,
+      });
+    }
+
     const result = await db.query(`
       SELECT
         a.id, a.patient_id, a.patient_name, a.email, a.phone, a.treatment,
@@ -2558,42 +3051,87 @@ app.get('/staff/appointments/:id', async (req, res) => {
         TO_CHAR(a.appointment_time, 'HH24:MI')    AS appointment_time,
         a.duration_minutes, a.status, a.confirmation_status, a.notes,
         a.dentist_name, a.urgency,
-        TO_CHAR(a.created_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS created_at,
-        TO_CHAR(a.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS updated_at,
-        COALESCE(pp.reliability_score, 0) AS reliability_score
+        ${SQL_COL_ISO_TS('a.created_at')} AS created_at,
+        ${SQL_COL_ISO_TS('a.updated_at')} AS updated_at,
+        COALESCE(pp.reliability_score, 0) AS reliability_score,
+        'regular' AS appointment_source,
+        NULL::text AS composite_appointment_ref
       FROM appointments a
       LEFT JOIN patient_profiles pp ON pp.user_id = a.patient_id
       WHERE a.id = $1
-    `, [req.params.id]);
+    `, [id]);
     if (result.rowCount === 0) return res.status(404).json({ message: 'Appointment not found.' });
     res.json(result.rows[0]);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// Staff: get all appointments
+// Staff: get all appointments (regular + composite bookings)
 app.get('/staff/appointments', async (req, res) => {
   try {
     const { status } = req.query;
-    let query = `
+    const params = status ? [status] : [];
+
+    const regularQuery = `
       SELECT
         a.id, a.patient_id, a.patient_name, a.email, a.phone, a.treatment,
         COALESCE(a.services, ARRAY[]::TEXT[]) AS services,
         TO_CHAR(a.appointment_date, 'YYYY-MM-DD') AS appointment_date,
-        TO_CHAR(a.appointment_time, 'HH24:MI')    AS appointment_time,
+        TO_CHAR(a.appointment_time, 'HH24:MI') AS appointment_time,
         a.duration_minutes, a.status, a.confirmation_status, a.notes,
         a.dentist_name, a.urgency, a.created_at,
-        COALESCE(pp.reliability_score, 0) AS reliability_score
+        COALESCE(pp.reliability_score, 0) AS reliability_score,
+        'regular' AS appointment_source,
+        NULL::text AS composite_appointment_ref
       FROM appointments a
       LEFT JOIN patient_profiles pp ON pp.user_id = a.patient_id
+      ${status ? 'WHERE a.status = $1' : ''}
     `;
-    const params = [];
-    if (status) {
-      query += ` WHERE a.status = $1`;
-      params.push(status);
-    }
-    query += ` ORDER BY a.appointment_date ASC, a.appointment_time ASC`;
-    const result = await db.query(query, params);
-    res.json(result.rows);
+
+    const compositeQuery = `
+      SELECT
+        cba.id,
+        cb.patient_id,
+        cb.patient_name,
+        cb.patient_email AS email,
+        cb.patient_phone AS phone,
+        cba.service_name AS treatment,
+        ARRAY[cba.service_name] AS services,
+        cba.appointment_date::text AS appointment_date,
+        CASE WHEN char_length(cba.appointment_time) = 5
+             THEN cba.appointment_time || ':00'
+             ELSE cba.appointment_time END AS appointment_time,
+        cba.service_duration_minutes AS duration_minutes,
+        cba.appointment_status AS status,
+        COALESCE(cba.confirmation_status, 'Not Confirmed') AS confirmation_status,
+        COALESCE(cb.patient_notes, '') AS notes,
+        cba.dentist_name,
+        'Standard' AS urgency,
+        cba.created_at,
+        COALESCE(pp.reliability_score, 0) AS reliability_score,
+        'composite' AS appointment_source,
+        cba.appointment_id AS composite_appointment_ref
+      FROM composite_booking_appointments cba
+      JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+      LEFT JOIN patient_profiles pp ON pp.user_id = cb.patient_id
+      ${status ? 'WHERE cba.appointment_status = $1' : ''}
+    `;
+
+    const [regularResult, compositeResult] = await Promise.all([
+      db.query(regularQuery, params),
+      db.query(compositeQuery, params).catch((err) => {
+        console.warn('[staff/appointments] Composite query skipped:', err.message);
+        return { rows: [] };
+      }),
+    ]);
+
+    const merged = [...regularResult.rows, ...compositeResult.rows];
+    merged.sort((a, b) => {
+      const da = `${a.appointment_date}T${a.appointment_time || '00:00'}`;
+      const dbDate = `${b.appointment_date}T${b.appointment_time || '00:00'}`;
+      return da.localeCompare(dbDate);
+    });
+
+    res.json(merged);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -2606,30 +3144,75 @@ app.put('/staff/appointments/:id/approve', authMiddleware, async (req, res) => {
   const { dentist_name, notes } = req.body;
   const client = await db.connect();
   try {
-    // ── BEGIN TRANSACTION ──────────────────────────────────────────────────
     await client.query('BEGIN');
 
-    // ── RESOLVE DENTIST ID FROM NAME ───────────────────────────────────────
-    let dentistId = null;
-    if (dentist_name) {
-      // Try to find dentist by full name (first_name + last_name)
-      const dentistQuery = await client.query(
-        `SELECT id FROM users 
-         WHERE (first_name || ' ' || last_name = $1 OR first_name || ' ' || last_name = $2)
-         AND role = 'Admin'`,
-        [dentist_name, dentist_name.replace('Dr. ', '')]
+    const compositeAppt = await getCompositeAppointmentByNumericId(client, req.params.id);
+    if (compositeAppt) {
+      const dentistDbId = await resolveDentistDbIdFromDisplayName(client, dentist_name || compositeAppt.dentist_name);
+      const dentistDisplayName = await canonicalDentistDisplayName(client, dentist_name || compositeAppt.dentist_name);
+
+      await client.query(
+        `UPDATE composite_booking_appointments
+         SET appointment_status = 'Approved',
+             dentist_name = $1,
+             dentist_id = COALESCE($2, dentist_id),
+             confirmation_status = 'Confirmed',
+             updated_at = NOW()
+         WHERE id = $3`,
+        [dentistDisplayName, dentistDbId, req.params.id]
       );
-      if (dentistQuery.rows.length > 0) {
-        dentistId = dentistQuery.rows[0].id;
-        console.log(`Resolved dentist "${dentist_name}" to ID: ${dentistId}`);
+
+      if (compositeAppt.patient_id) {
+        await insertNotification(client, {
+          userId: compositeAppt.patient_id,
+          title: 'Appointment Approved',
+          detail: `Your ${compositeAppt.service_name} appointment has been approved by the clinic.`,
+          level: 'Update',
+          appointmentId: Number(req.params.id),
+        });
       }
+
+      await client.query('COMMIT');
+
+      if (compositeAppt.patient_email) {
+        setImmediate(() => {
+          sendAppointmentConfirmationEmail(
+            compositeAppt.patient_email,
+            compositeAppt.patient_name,
+            {
+              treatment: compositeAppt.service_name,
+              appointment_date: compositeAppt.appointment_date,
+              appointment_time: compositeAppt.appointment_time,
+              dentist_name: dentistDisplayName,
+              duration_minutes: compositeAppt.service_duration_minutes,
+              status: 'Approved',
+            }
+          ).catch((err) => console.error('[Email] Failed to send approval confirmation:', err.message));
+        });
+      }
+
+      return res.json({
+        message: 'Appointment approved!',
+        dentist_id: dentistDbId,
+        dentist_name: dentistDisplayName,
+        appointment_source: 'composite',
+      });
+    }
+
+    const dentistDisplayName = dentist_name
+      ? await canonicalDentistDisplayName(client, dentist_name)
+      : null;
+    let dentistId = null;
+    if (dentistDisplayName) {
+      const dentistUser = await findDentistUserByDisplayName(client, dentistDisplayName);
+      if (dentistUser) dentistId = dentistUser.id;
     }
 
     await client.query(
       `UPDATE appointments
        SET status = 'Approved', dentist_name = $1, dentist_id = $2, notes = $3, updated_at = NOW()
        WHERE id = $4`,
-      [dentist_name || null, dentistId, notes || null, req.params.id]
+      [dentistDisplayName, dentistId, notes || null, req.params.id]
     );
 
     const appt = await client.query('SELECT * FROM appointments WHERE id = $1', [req.params.id]);
@@ -2692,7 +3275,57 @@ app.put('/staff/appointments/:id/cancel', authMiddleware, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Get appointment details BEFORE cancelling (need date/time for slot management)
+    const compositeAppt = await getCompositeAppointmentByNumericId(client, req.params.id);
+    if (compositeAppt) {
+      const appointmentDate = compositeAppt.appointment_date;
+      const appointmentTime = compositeAppt.appointment_time;
+
+      await client.query(
+        `UPDATE composite_booking_appointments
+         SET appointment_status = 'Cancelled by Staff', updated_at = NOW()
+         WHERE id = $1`,
+        [req.params.id]
+      );
+
+      if (compositeAppt.patient_id) {
+        await insertNotification(client, {
+          userId: compositeAppt.patient_id,
+          title: 'Appointment Cancelled by Clinic',
+          detail: `Your ${compositeAppt.service_name} appointment was cancelled by the clinic. Reason: ${reason || 'No reason provided.'}`,
+          level: 'Warning',
+          appointmentId: Number(req.params.id),
+        });
+      }
+
+      await client.query('COMMIT');
+
+      if (appointmentDate && appointmentTime) {
+        setImmediate(() => {
+          SlotManager.increaseSlot(String(appointmentDate), String(appointmentTime)).catch((err) => {
+            console.error('[SlotManager] Failed to increase slot:', err.message);
+          });
+        });
+      }
+
+      if (compositeAppt.patient_email) {
+        setImmediate(() => {
+          sendAppointmentCancellationEmail(
+            compositeAppt.patient_email,
+            compositeAppt.patient_name,
+            {
+              treatment: compositeAppt.service_name,
+              appointment_date: appointmentDate,
+              appointment_time: appointmentTime,
+              reason: reason || 'No reason provided',
+            },
+            'Staff'
+          ).catch((err) => console.error('[Email] Failed to send cancellation email:', err.message));
+        });
+      }
+
+      return res.json({ message: 'Appointment cancelled.', appointment_source: 'composite' });
+    }
+
     const apptBefore = await client.query('SELECT appointment_date, appointment_time FROM appointments WHERE id = $1', [req.params.id]);
     const appointmentDate = apptBefore.rows[0]?.appointment_date;
     const appointmentTime = apptBefore.rows[0]?.appointment_time;
@@ -2704,11 +3337,13 @@ app.put('/staff/appointments/:id/cancel', authMiddleware, async (req, res) => {
 
     const appt = await client.query('SELECT patient_id, patient_name, email, treatment, appointment_date, appointment_time FROM appointments WHERE id = $1', [req.params.id]);
     if (appt.rows[0]?.patient_id) {
-      await client.query(
-        `INSERT INTO notifications (user_id, title, detail, level) VALUES ($1, $2, $3, 'Warning')`,
-        [appt.rows[0].patient_id, 'Appointment Cancelled by Clinic',
-         `Your ${appt.rows[0].treatment} appointment was cancelled by the clinic. Reason: ${reason || 'No reason provided.'}`]
-      );
+      await insertNotification(client, {
+        userId: appt.rows[0].patient_id,
+        title: 'Appointment Cancelled by Clinic',
+        detail: `Your ${appt.rows[0].treatment} appointment was cancelled by the clinic. Reason: ${reason || 'No reason provided.'}`,
+        level: 'Warning',
+        appointmentId: Number(req.params.id),
+      });
     }
 
     await client.query('COMMIT');
@@ -2926,11 +3561,18 @@ app.put('/appointments/:id/request-reschedule', authMiddleware, async (req, res)
 });
 
 // Dentist: cancel their appointment
-app.put('/dentist/appointments/:id/cancel', async (req, res) => {
+app.put('/dentist/appointments/:id/cancel', authMiddleware, requireRoles('Dentist'), async (req, res) => {
   const { reason } = req.body;
   const client = await db.connect();
   try {
     await client.query('BEGIN');
+
+    const apptBefore = await client.query(
+      'SELECT appointment_date, appointment_time FROM appointments WHERE id = $1',
+      [req.params.id]
+    );
+    const appointmentDate = apptBefore.rows[0]?.appointment_date;
+    const appointmentTime = apptBefore.rows[0]?.appointment_time;
 
     await client.query(
       `UPDATE appointments SET status = 'Cancelled by Dentist', notes = $1, updated_at = NOW() WHERE id = $2`,
@@ -2939,27 +3581,39 @@ app.put('/dentist/appointments/:id/cancel', async (req, res) => {
 
     const appt = await client.query('SELECT patient_id, patient_name, treatment FROM appointments WHERE id = $1', [req.params.id]);
     const a = appt.rows[0];
+    const appointmentId = Number(req.params.id);
     if (a) {
-      // Notify patient
       if (a.patient_id) {
-        await client.query(
-          `INSERT INTO notifications (user_id, title, detail, level) VALUES ($1, $2, $3, 'Warning')`,
-          [a.patient_id, 'Appointment Cancelled by Dentist',
-           `Your ${a.treatment} appointment was cancelled by your dentist. Reason: ${reason || 'No reason provided.'}`]
-        );
+        await insertNotification(client, {
+          userId: a.patient_id,
+          title: 'Appointment Cancelled by Dentist',
+          detail: `Your ${a.treatment} appointment was cancelled by your dentist. Reason: ${reason || 'No reason provided.'}`,
+          level: 'Warning',
+          appointmentId,
+        });
       }
-      // Notify staff
       const staffUsers = await client.query(`SELECT id FROM users WHERE role = 'Staff'`);
       for (const staff of staffUsers.rows) {
-        await client.query(
-          `INSERT INTO notifications (user_id, title, detail, level) VALUES ($1, $2, $3, 'Warning')`,
-          [staff.id, 'Dentist Cancelled Appointment',
-           `${a.patient_name}'s ${a.treatment} appointment was cancelled by the dentist. Reason: ${reason || 'No reason provided.'}`]
-        );
+        await insertNotification(client, {
+          userId: staff.id,
+          title: 'Dentist Cancelled Appointment',
+          detail: `${a.patient_name}'s ${a.treatment} appointment was cancelled by the dentist. Reason: ${reason || 'No reason provided.'}`,
+          level: 'Warning',
+          appointmentId,
+        });
       }
     }
 
     await client.query('COMMIT');
+
+    if (appointmentDate && appointmentTime) {
+      setImmediate(() => {
+        SlotManager.increaseSlot(appointmentDate, appointmentTime).catch(err => {
+          console.error('[SlotManager] Failed to increase slot after dentist cancel:', err.message);
+        });
+      });
+    }
+
     res.json({ message: 'Appointment cancelled by dentist.' });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -2970,7 +3624,7 @@ app.put('/dentist/appointments/:id/cancel', async (req, res) => {
 });
 
 // Dentist: request a reschedule (patient must approve)
-app.put('/dentist/appointments/:id/request-reschedule', async (req, res) => {
+app.put('/dentist/appointments/:id/request-reschedule', authMiddleware, requireRoles('Dentist'), async (req, res) => {
   const { preferred_date, preferred_time, reason } = req.body;
   const client = await db.connect();
   try {
@@ -2984,23 +3638,26 @@ app.put('/dentist/appointments/:id/request-reschedule', async (req, res) => {
 
     const appt = await client.query('SELECT patient_id, patient_name, treatment FROM appointments WHERE id = $1', [req.params.id]);
     const a = appt.rows[0];
+    const appointmentId = Number(req.params.id);
     if (a) {
-      // Notify patient
       if (a.patient_id) {
-        await client.query(
-          `INSERT INTO notifications (user_id, title, detail, level) VALUES ($1, $2, $3, 'Update')`,
-          [a.patient_id, 'Dentist Requested Reschedule',
-           `Your dentist has requested to reschedule your ${a.treatment} appointment to ${preferred_date || 'TBD'} at ${preferred_time || 'TBD'}. Please contact the clinic to confirm.`]
-        );
+        await insertNotification(client, {
+          userId: a.patient_id,
+          title: 'Dentist Requested Reschedule',
+          detail: `Your dentist has requested to reschedule your ${a.treatment} appointment to ${preferred_date || 'TBD'} at ${preferred_time || 'TBD'}. Please contact the clinic to confirm.`,
+          level: 'Update',
+          appointmentId,
+        });
       }
-      // Notify staff
       const staffUsers = await client.query(`SELECT id FROM users WHERE role = 'Staff'`);
       for (const staff of staffUsers.rows) {
-        await client.query(
-          `INSERT INTO notifications (user_id, title, detail, level) VALUES ($1, $2, $3, 'Update')`,
-          [staff.id, 'Dentist Requested Reschedule',
-           `Dentist requested to reschedule ${a.patient_name}'s ${a.treatment} appointment to ${preferred_date || 'TBD'}.`]
-        );
+        await insertNotification(client, {
+          userId: staff.id,
+          title: 'Dentist Requested Reschedule',
+          detail: `Dentist requested to reschedule ${a.patient_name}'s ${a.treatment} appointment to ${preferred_date || 'TBD'}.`,
+          level: 'Update',
+          appointmentId,
+        });
       }
     }
 
@@ -3015,7 +3672,7 @@ app.put('/dentist/appointments/:id/request-reschedule', async (req, res) => {
 });
 
 // Dentist: mark appointment as No-show
-app.put('/dentist/appointments/:id/no-show', async (req, res) => {
+app.put('/dentist/appointments/:id/no-show', authMiddleware, requireRoles('Dentist'), async (req, res) => {
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -3025,11 +3682,13 @@ app.put('/dentist/appointments/:id/no-show', async (req, res) => {
     );
     const appt = await client.query('SELECT patient_id, treatment FROM appointments WHERE id = $1', [req.params.id]);
     if (appt.rows[0]?.patient_id) {
-      await client.query(
-        `INSERT INTO notifications (user_id, title, detail, level) VALUES ($1, $2, $3, 'Warning')`,
-        [appt.rows[0].patient_id, 'Missed Appointment',
-         `You were marked as a no-show for your ${appt.rows[0].treatment} appointment. Please contact the clinic to reschedule.`]
-      );
+      await insertNotification(client, {
+        userId: appt.rows[0].patient_id,
+        title: 'Missed Appointment',
+        detail: `You were marked as a no-show for your ${appt.rows[0].treatment} appointment. Please contact the clinic to reschedule.`,
+        level: 'Warning',
+        appointmentId: Number(req.params.id),
+      });
     }
     await client.query('COMMIT');
     res.json({ message: 'Appointment marked as no-show.' });
@@ -3184,13 +3843,68 @@ app.put('/patient-profile/:userId', authMiddleware, async (req, res) => {
 
 // ─── DENTIST PATIENTS ────────────────────────────────────────────────────────
 
-// GET patients who have appointments with this dentist
+// GET patients for logged-in dentist
+app.get('/dentist/me/patients', authMiddleware, requireRoles('Admin'), async (req, res) => {
+  try {
+    const aliases = await getDentistAliasesForUserId(db, req.user.id);
+    if (!aliases.length) return res.json([]);
+    const regularParams = [aliases];
+    const regularPatients = await db.query(`
+      SELECT DISTINCT
+        u.id, u.first_name, u.last_name, u.email, u.phone, u.status,
+        pp.date_of_birth, pp.gender, pp.blood_type, pp.home_address,
+        pp.preferred_language, pp.emergency_contact_name, pp.emergency_contact_phone,
+        (SELECT TO_CHAR(MAX(a2.appointment_date),'YYYY-MM-DD')
+         FROM appointments a2 WHERE a2.patient_id = u.id AND a2.status = 'Completed') AS last_visit,
+        (SELECT TO_CHAR(MIN(a3.appointment_date),'YYYY-MM-DD')
+         FROM appointments a3 WHERE a3.patient_id = u.id AND a3.status = 'Approved'
+           AND a3.appointment_date >= CURRENT_DATE) AS next_appointment,
+        (SELECT a4.treatment FROM appointments a4 WHERE a4.patient_id = u.id
+         ORDER BY a4.created_at DESC LIMIT 1) AS current_treatment,
+        (SELECT a5.status FROM appointments a5 WHERE a5.patient_id = u.id
+         ORDER BY a5.created_at DESC LIMIT 1) AS treatment_status
+      FROM users u
+      JOIN appointments a ON a.patient_id = u.id
+      LEFT JOIN patient_profiles pp ON pp.user_id = u.id
+      WHERE u.role = 'Patient' AND a.dentist_name = ANY($1::text[])
+    `, regularParams);
+    let compositePatients = { rows: [] };
+    try {
+      compositePatients = await db.query(`
+        SELECT DISTINCT u.id, u.first_name, u.last_name, u.email, u.phone, u.status,
+          pp.date_of_birth, pp.gender, pp.blood_type, pp.home_address,
+          pp.preferred_language, pp.emergency_contact_name, pp.emergency_contact_phone,
+          NULL::text AS last_visit, NULL::text AS next_appointment,
+          cba.service_name AS current_treatment, cba.appointment_status AS treatment_status
+        FROM users u
+        JOIN composite_bookings cb ON cb.patient_id = u.id
+        JOIN composite_booking_appointments cba ON cba.composite_booking_id = cb.id
+        LEFT JOIN patient_profiles pp ON pp.user_id = u.id
+        WHERE u.role = 'Patient' AND cba.dentist_name = ANY($1::text[])
+      `, [aliases]);
+    } catch (e) {
+      console.warn('[dentist/me/patients] Composite skipped:', e.message);
+    }
+    const byId = new Map();
+    for (const row of [...regularPatients.rows, ...compositePatients.rows]) {
+      if (!byId.has(row.id)) byId.set(row.id, row);
+    }
+    res.json([...byId.values()].sort((a, b) =>
+      `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+    ));
+  } catch (err) { res.status(500).json({ message: err.message }); }
+});
+
+// GET patients who have appointments with this dentist (regular + composite)
 app.get('/dentist/patients', async (req, res) => {
   try {
     const { dentist } = req.query;
-    const filter = dentist ? `WHERE a.dentist_name = $1` : '';
-    const params = dentist ? [dentist] : [];
-    const result = await db.query(`
+    const aliases = dentist ? await resolveDentistNameAliases(db, dentist) : null;
+
+    const regularParams = aliases?.length ? [aliases] : [];
+    const regularFilter = aliases?.length ? 'AND a.dentist_name = ANY($1::text[])' : '';
+
+    const regularPatients = await db.query(`
       SELECT DISTINCT
         u.id, u.first_name, u.last_name, u.email, u.phone, u.status,
         pp.date_of_birth, pp.gender, pp.blood_type, pp.home_address,
@@ -3208,10 +3922,38 @@ app.get('/dentist/patients', async (req, res) => {
       JOIN appointments a ON a.patient_id = u.id
       LEFT JOIN patient_profiles pp ON pp.user_id = u.id
       WHERE u.role = 'Patient'
-      ${dentist ? 'AND a.dentist_name = $1' : ''}
-      ORDER BY u.first_name ASC
-    `, params);
-    res.json(result.rows);
+      ${regularFilter}
+    `, regularParams);
+
+    let compositePatients = { rows: [] };
+    if (aliases?.length) {
+      try {
+        compositePatients = await db.query(`
+          SELECT DISTINCT
+            u.id, u.first_name, u.last_name, u.email, u.phone, u.status,
+            pp.date_of_birth, pp.gender, pp.blood_type, pp.home_address,
+            pp.preferred_language, pp.emergency_contact_name, pp.emergency_contact_phone,
+            NULL::text AS last_visit, NULL::text AS next_appointment,
+            cba.service_name AS current_treatment, cba.appointment_status AS treatment_status
+          FROM users u
+          JOIN composite_bookings cb ON cb.patient_id = u.id
+          JOIN composite_booking_appointments cba ON cba.composite_booking_id = cb.id
+          LEFT JOIN patient_profiles pp ON pp.user_id = u.id
+          WHERE u.role = 'Patient' AND cba.dentist_name = ANY($1::text[])
+        `, [aliases]);
+      } catch (e) {
+        console.warn('[dentist/patients] Composite skipped:', e.message);
+      }
+    }
+
+    const byId = new Map();
+    for (const row of [...regularPatients.rows, ...compositePatients.rows]) {
+      if (!byId.has(row.id)) byId.set(row.id, row);
+    }
+    const merged = [...byId.values()].sort((a, b) =>
+      `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+    );
+    res.json(merged);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
@@ -3361,101 +4103,251 @@ app.put('/dentist/treatment-sessions/:id/status', async (req, res) => {
 
 // ─── DENTIST NOTIFICATIONS ────────────────────────────────────────────────────
 
-// GET notifications for dentist (from appointments assigned to them)
+// GET notifications for dentist (regular + composite, flexible dentist name)
 app.get('/dentist/notifications', async (req, res) => {
   try {
     const { dentist } = req.query;
-    const filter = dentist ? `AND a.dentist_name = $1` : '';
-    const params = dentist ? [dentist] : [];
-    const result = await db.query(`
+    const aliases = dentist ? await resolveDentistNameAliases(db, dentist) : null;
+    const activeStatuses = `('Approved','Rescheduled','Rescheduled by Staff','Rescheduled by Dentist','Cancelled','Cancelled by Staff','Cancelled by Patient','Cancelled by Dentist','Completed','No-show')`;
+
+    let regularQuery = `
       SELECT a.id, a.patient_name, a.treatment, a.status,
              TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS appointment_date,
              TO_CHAR(a.appointment_time,'HH24:MI') AS appointment_time,
              a.notes, a.urgency,
-             TO_CHAR(a.updated_at,'YYYY-MM-DD"T"HH24:MI:SS') AS updated_at,
-             TO_CHAR(a.created_at,'YYYY-MM-DD"T"HH24:MI:SS') AS created_at
+             ${SQL_COL_ISO_TS('a.updated_at')} AS updated_at,
+             ${SQL_COL_ISO_TS('a.created_at')} AS created_at,
+             'regular' AS appointment_source
       FROM appointments a
-      WHERE a.status IN ('Approved','Rescheduled','Cancelled','Completed')
-      ${filter}
-      ORDER BY a.updated_at DESC
-      LIMIT 30
-    `, params);
-    res.json(result.rows);
+      WHERE a.status IN ${activeStatuses}
+    `;
+    const regularParams = [];
+    if (aliases?.length) {
+      regularQuery += ` AND a.dentist_name = ANY($1::text[])`;
+      regularParams.push(aliases);
+    }
+    regularQuery += ` ORDER BY a.updated_at DESC LIMIT 30`;
+    const regularResult = await db.query(regularQuery, regularParams);
+
+    let compositeRows = [];
+    try {
+      let compositeQuery = `
+        SELECT cba.id, cb.patient_name, cba.service_name AS treatment, cba.appointment_status AS status,
+               cba.appointment_date::text AS appointment_date,
+               CASE WHEN char_length(cba.appointment_time) = 5
+                    THEN cba.appointment_time || ':00'
+                    ELSE cba.appointment_time END AS appointment_time,
+               COALESCE(cb.patient_notes, '') AS notes, 'Standard' AS urgency,
+               ${SQL_COL_ISO_TS('cba.updated_at')} AS updated_at,
+               ${SQL_COL_ISO_TS('cba.created_at')} AS created_at,
+               'composite' AS appointment_source
+        FROM composite_booking_appointments cba
+        JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+        WHERE cba.appointment_status IN ${activeStatuses}
+      `;
+      const compositeParams = [];
+      if (aliases?.length) {
+        compositeQuery += ` AND cba.dentist_name = ANY($1::text[])`;
+        compositeParams.push(aliases);
+      }
+      compositeQuery += ` ORDER BY cba.updated_at DESC LIMIT 30`;
+      const compositeResult = await db.query(compositeQuery, compositeParams);
+      compositeRows = compositeResult.rows;
+    } catch (compositeErr) {
+      console.warn('[dentist/notifications] Composite skipped:', compositeErr.message);
+    }
+
+    const merged = [...regularResult.rows, ...compositeRows]
+      .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))
+      .slice(0, 30);
+
+    res.json(merged);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // ─── STAFF NOTIFICATIONS ──────────────────────────────────────────────────────
 
-// GET all staff notifications (from appointment activity)
+// GET all staff notifications (regular + composite appointment activity)
 app.get('/staff/notifications', async (req, res) => {
   try {
-    const result = await db.query(`
+    const regularResult = await db.query(`
       SELECT 
         a.id, a.patient_name, a.treatment, a.status,
         TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS appointment_date,
         TO_CHAR(a.appointment_time,'HH24:MI') AS appointment_time,
         a.dentist_name, a.notes, a.urgency,
-        TO_CHAR(a.updated_at,'YYYY-MM-DD"T"HH24:MI:SS') AS updated_at,
-        TO_CHAR(a.created_at,'YYYY-MM-DD"T"HH24:MI:SS') AS created_at
+        ${SQL_COL_ISO_TS('a.updated_at')} AS updated_at,
+        ${SQL_COL_ISO_TS('a.created_at')} AS created_at,
+        'regular' AS appointment_source
       FROM appointments a
       ORDER BY a.updated_at DESC
       LIMIT 50
     `);
-    res.json(result.rows);
+
+    let compositeRows = [];
+    try {
+      const compositeResult = await db.query(`
+        SELECT
+          cba.id,
+          cb.patient_name,
+          cba.service_name AS treatment,
+          cba.appointment_status AS status,
+          cba.appointment_date::text AS appointment_date,
+          CASE WHEN char_length(cba.appointment_time) = 5
+               THEN cba.appointment_time || ':00'
+               ELSE cba.appointment_time END AS appointment_time,
+          cba.dentist_name,
+          COALESCE(cb.patient_notes, '') AS notes,
+          'Standard' AS urgency,
+          ${SQL_COL_ISO_TS('cba.updated_at')} AS updated_at,
+          ${SQL_COL_ISO_TS('cba.created_at')} AS created_at,
+          'composite' AS appointment_source
+        FROM composite_booking_appointments cba
+        JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+        ORDER BY cba.updated_at DESC
+        LIMIT 50
+      `);
+      compositeRows = compositeResult.rows;
+    } catch (compositeErr) {
+      console.warn('[staff/notifications] Composite skipped:', compositeErr.message);
+    }
+
+    const merged = [...regularResult.rows, ...compositeRows]
+      .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))
+      .slice(0, 50);
+
+    res.json(merged);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
 // ─── CALENDAR ─────────────────────────────────────────────────────────────────
 
-// GET appointments for a date range (calendar view) — staff sees all
+// GET appointments for a date range (calendar view) — staff sees all (regular + composite)
 app.get('/staff/calendar', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    let query = `
+    const cancelStatuses = `('Cancelled', 'Cancelled by Staff', 'Cancelled by Patient', 'Cancelled by Dentist')`;
+
+    let regularQuery = `
       SELECT
         a.id, a.patient_name, a.treatment, a.services,
         TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS appointment_date,
         TO_CHAR(a.appointment_time,'HH24:MI') AS appointment_time,
         a.duration_minutes, a.status, a.dentist_name, a.notes
       FROM appointments a
-      WHERE a.status NOT IN ('Cancelled')
+      WHERE a.status NOT IN ${cancelStatuses}
     `;
     const params = [];
     if (startDate && endDate) {
-      query += ` AND a.appointment_date BETWEEN $1 AND $2`;
+      regularQuery += ` AND a.appointment_date BETWEEN $1 AND $2`;
       params.push(startDate, endDate);
     }
-    query += ` ORDER BY a.appointment_date ASC, a.appointment_time ASC`;
-    const result = await db.query(query, params);
-    res.json(result.rows);
+
+    const regularResult = await db.query(regularQuery, params);
+
+    let compositeRows = [];
+    try {
+      let compositeQuery = `
+        SELECT
+          cba.id, cb.patient_name, cba.service_name AS treatment,
+          ARRAY[cba.service_name] AS services,
+          cba.appointment_date::text AS appointment_date,
+          CASE WHEN char_length(cba.appointment_time) = 5
+               THEN cba.appointment_time || ':00'
+               ELSE cba.appointment_time END AS appointment_time,
+          cba.service_duration_minutes AS duration_minutes,
+          cba.appointment_status AS status, cba.dentist_name,
+          COALESCE(cb.patient_notes, '') AS notes
+        FROM composite_booking_appointments cba
+        JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+        WHERE cba.appointment_status NOT IN ${cancelStatuses}
+      `;
+      const compositeParams = [];
+      if (startDate && endDate) {
+        compositeQuery += ` AND cba.appointment_date::text BETWEEN $1 AND $2`;
+        compositeParams.push(startDate, endDate);
+      }
+      compositeQuery += ` ORDER BY cba.appointment_date ASC, cba.appointment_time ASC`;
+      const compositeResult = await db.query(compositeQuery, compositeParams);
+      compositeRows = compositeResult.rows;
+    } catch (compositeErr) {
+      console.warn('[staff/calendar] Composite skipped:', compositeErr.message);
+    }
+
+    const merged = [...regularResult.rows, ...compositeRows].sort((a, b) => {
+      const da = `${a.appointment_date}T${a.appointment_time || '00:00'}`;
+      const dbDate = `${b.appointment_date}T${b.appointment_time || '00:00'}`;
+      return da.localeCompare(dbDate);
+    });
+
+    res.json(merged);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 
-// GET appointments for a date range filtered by dentist (dentist calendar view)
+// GET appointments for a date range filtered by dentist (regular + composite)
 app.get('/dentist/calendar', async (req, res) => {
   try {
     const { startDate, endDate, dentist } = req.query;
     if (!dentist) {
       return res.status(400).json({ message: 'dentist query parameter is required.' });
     }
-    const params = [dentist];
-    let query = `
+    const aliases = await resolveDentistNameAliases(db, dentist);
+    const cancelStatuses = `('Cancelled', 'Cancelled by Staff', 'Cancelled by Patient', 'Cancelled by Dentist')`;
+
+    let regularQuery = `
       SELECT
         a.id, a.patient_name, a.treatment, a.services,
         TO_CHAR(a.appointment_date,'YYYY-MM-DD') AS appointment_date,
         TO_CHAR(a.appointment_time,'HH24:MI') AS appointment_time,
         a.duration_minutes, a.status, a.dentist_name, a.notes
       FROM appointments a
-      WHERE a.status NOT IN ('Cancelled')
-        AND a.dentist_name = $1
+      WHERE a.status NOT IN ${cancelStatuses}
+        AND a.dentist_name = ANY($1::text[])
     `;
+    const regularParams = [aliases];
     if (startDate && endDate) {
-      query += ` AND a.appointment_date BETWEEN $2 AND $3`;
-      params.push(startDate, endDate);
+      regularQuery += ` AND a.appointment_date BETWEEN $2 AND $3`;
+      regularParams.push(startDate, endDate);
     }
-    query += ` ORDER BY a.appointment_date ASC, a.appointment_time ASC`;
-    const result = await db.query(query, params);
-    res.json(result.rows);
+    const regularResult = await db.query(regularQuery, regularParams);
+
+    let compositeRows = [];
+    try {
+      let compositeQuery = `
+        SELECT
+          cba.id, cb.patient_name, cba.service_name AS treatment,
+          ARRAY[cba.service_name] AS services,
+          cba.appointment_date::text AS appointment_date,
+          CASE WHEN char_length(cba.appointment_time) = 5
+               THEN cba.appointment_time || ':00'
+               ELSE cba.appointment_time END AS appointment_time,
+          cba.service_duration_minutes AS duration_minutes,
+          cba.appointment_status AS status, cba.dentist_name,
+          COALESCE(cb.patient_notes, '') AS notes
+        FROM composite_booking_appointments cba
+        JOIN composite_bookings cb ON cba.composite_booking_id = cb.id
+        WHERE cba.appointment_status NOT IN ${cancelStatuses}
+          AND cba.dentist_name = ANY($1::text[])
+      `;
+      const compositeParams = [aliases];
+      if (startDate && endDate) {
+        compositeQuery += ` AND cba.appointment_date::text BETWEEN $2 AND $3`;
+        compositeParams.push(startDate, endDate);
+      }
+      compositeQuery += ` ORDER BY cba.appointment_date ASC, cba.appointment_time ASC`;
+      const compositeResult = await db.query(compositeQuery, compositeParams);
+      compositeRows = compositeResult.rows;
+    } catch (compositeErr) {
+      console.warn('[dentist/calendar] Composite skipped:', compositeErr.message);
+    }
+
+    const merged = [...regularResult.rows, ...compositeRows].sort((a, b) => {
+      const da = `${a.appointment_date}T${a.appointment_time || '00:00'}`;
+      const dbDate = `${b.appointment_date}T${b.appointment_time || '00:00'}`;
+      return da.localeCompare(dbDate);
+    });
+
+    res.json(merged);
   } catch (err) { res.status(500).json({ message: err.message }); }
 });
 

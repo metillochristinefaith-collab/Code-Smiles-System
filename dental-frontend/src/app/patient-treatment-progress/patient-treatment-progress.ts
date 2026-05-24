@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { catchError, of } from 'rxjs';
 import { PatientSidebarComponent } from '../patient-sidebar/patient-sidebar';
 import { AuthService } from '../services/auth.service';
 import { ApiService } from '../services/api.service';
@@ -10,6 +9,7 @@ import { AvatarService } from '../services/avatar.service';
 import {
   LinkedRecord,
   TreatmentPlan,
+  TreatmentStatus,
 } from './patient-treatment-plan-data';
 
 @Component({
@@ -51,34 +51,50 @@ export class PatientTreatmentProgress implements OnInit {
       return;
     }
 
-    this.api.getMyAppointments(user.id)
-      .pipe(catchError(() => {
+    this.loadTreatmentPlans(user.id);
+  }
+
+  private loadTreatmentPlans(patientId: number): void {
+    this.isLoading = true;
+    this.hasError = false;
+
+    this.api.getMyAppointments(patientId).subscribe({
+      next: (appointments) => {
+        const rows = Array.isArray(appointments) ? appointments : [];
+        this.treatmentPlans = rows
+          .map((a) => {
+            try {
+              return this.appointmentToTreatmentPlan(a);
+            } catch (err) {
+              console.warn('[TreatmentProgress] Skipping appointment', a?.id, err);
+              return null;
+            }
+          })
+          .filter((p): p is TreatmentPlan => p != null);
+        this.hasError = false;
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.treatmentPlans = [];
         this.hasError = true;
-        return of([] as any[]);
-      }))
-      .subscribe({
-        next: (appointments) => {
-          this.treatmentPlans = appointments.map((a) => this.appointmentToTreatmentPlan(a));
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        },
-        error: () => {
-          this.hasError = true;
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        }
-      });
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   private appointmentToTreatmentPlan(a: any): TreatmentPlan {
     const status = this.mapAppointmentStatus(a.status);
     const statusClass = this.mapStatusClass(a.status);
-    const progress = statusClass === 'completed' ? 100 : statusClass === 'active' ? 50 : 0;
+    const progress = statusClass === 'completed' ? 100 : statusClass === 'active' ? 50 : statusClass === 'cancelled' ? 0 : 0;
     const stepsCompleted = statusClass === 'completed' ? 1 : 0;
     const totalSteps = 1;
 
+    const isComposite = !!a.composite_booking_ref;
+
     return {
-      id: `APT-${a.id}`,
+      id: isComposite ? `CBA-${a.id}` : `APT-${a.id}`,
       appointmentId: a.id,
       title: a.treatment || 'Appointment',
       shortTitle: a.treatment || 'Appointment',
@@ -90,12 +106,13 @@ export class PatientTreatmentProgress implements OnInit {
       totalSteps: totalSteps,
       icon: 'consultation' as const,
       cardDescription: a.notes || `Appointment for ${a.treatment || 'dental care'}`,
-      nextStepTitle: statusClass === 'pending' ? 'Awaiting Approval' : statusClass === 'active' ? 'Appointment Scheduled' : 'Completed',
+      nextStepTitle: statusClass === 'pending' ? 'Awaiting Approval' : statusClass === 'active' ? 'Appointment Scheduled' : statusClass === 'cancelled' ? 'Cancelled' : 'Completed',
       nextStepDate: this.formatDate(a.appointment_date),
       nextStepTime: this.formatTime(a.appointment_time),
       nextStepDoctor: a.dentist_name || 'TBD',
       nextStepDescription: statusClass === 'pending' ? 'Your appointment request is being reviewed by our staff.' : 
                           statusClass === 'active' ? 'Your appointment is confirmed and scheduled.' : 
+                          statusClass === 'cancelled' ? 'This appointment has been cancelled.' :
                           'Appointment completed successfully.',
       steps: [{
         order: 1,
@@ -104,8 +121,8 @@ export class PatientTreatmentProgress implements OnInit {
         dentist: a.dentist_name || 'TBD',
         note: a.notes || '',
         status: status,
-        statusClass: statusClass === 'completed' ? 'completed' : statusClass === 'active' ? 'upcoming' : 'pending',
-        stage: statusClass === 'completed' ? 'done' : statusClass === 'active' ? 'current' : 'next',
+        statusClass: statusClass === 'completed' ? 'completed' : statusClass === 'active' ? 'upcoming' : statusClass === 'cancelled' ? 'cancelled' : 'pending',
+        stage: statusClass === 'completed' ? 'done' : statusClass === 'active' ? 'current' : statusClass === 'cancelled' ? 'cancelled' : 'next',
         appointment: {
           date: this.formatDate(a.appointment_date),
           time: this.formatTime(a.appointment_time),
@@ -128,10 +145,11 @@ export class PatientTreatmentProgress implements OnInit {
     return map[status] || status;
   }
 
-  private mapStatusClass(status: string): 'active' | 'completed' | 'pending' | 'upcoming' {
+  private mapStatusClass(status: string): TreatmentStatus {
     if (status === 'Approved') return 'active';
     if (status === 'Completed') return 'completed';
     if (status === 'Pending') return 'pending';
+    if (status === 'Cancelled by Patient' || status === 'Cancelled by Staff' || status === 'Cancelled by Dentist' || status === 'No-show') return 'cancelled';
     return 'upcoming';
   }
 
@@ -146,8 +164,11 @@ export class PatientTreatmentProgress implements OnInit {
 
   private formatTime(timeStr: string): string {
     if (!timeStr) return '—';
-    const [h, m] = timeStr.split(':').map(Number);
-    return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+    const parts = timeStr.trim().split(':');
+    const h = Number(parts[0]);
+    const m = Number(parts[1] ?? 0);
+    if (Number.isNaN(h) || Number.isNaN(m)) return '—';
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
   }
 
   // ── Search / filter ──────────────────────────────────────────
@@ -174,6 +195,10 @@ export class PatientTreatmentProgress implements OnInit {
 
   protected get completedPlans(): TreatmentPlan[] {
     return this.filteredPlans.filter(p => p.statusClass === 'completed');
+  }
+
+  protected get cancelledPlans(): TreatmentPlan[] {
+    return this.filteredPlans.filter(p => p.statusClass === 'cancelled');
   }
 
   protected get activeCount(): number {

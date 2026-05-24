@@ -194,7 +194,9 @@ export class PatientAppointmentDetailsComponent implements OnInit {
 
   protected get canManageAppointment(): boolean {
     if (!this.appointment) return false;
-    const unmanageable = ['Completed', 'Cancelled by Patient', 'Cancelled by Staff', 'Cancelled by Dentist', 'No-show'];
-    return !unmanageable.includes(this.appointment.status as string);
+    // Check the raw status from the appointment object
+    const rawStatus = this.appointment.status;
+    const unmanageable = ['Completed', 'Cancelled by You', 'Cancelled by Clinic', 'Cancelled by Dentist', 'No-show'];
+    return !unmanageable.includes(rawStatus as string);
   }
 }

@@ -271,11 +271,18 @@ function minutesToTime(minutes) {
 }
 
 /**
- * Get day of week name from date
+ * Get day of week name from a Date or YYYY-MM-DD string
  */
 function getDayOfWeek(date) {
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  return days[date.getDay()];
+  if (typeof date === 'string') {
+    const dateObj = new Date(`${date}T00:00:00`);
+    return days[dateObj.getDay()];
+  }
+  if (date instanceof Date) {
+    return days[date.getDay()];
+  }
+  return days[new Date(date).getDay()];
 }
 
 /**

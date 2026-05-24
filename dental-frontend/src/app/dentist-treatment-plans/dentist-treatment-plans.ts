@@ -81,8 +81,7 @@ export class DentistTreatmentPlansComponent implements OnInit {
 
   ngOnInit() {
     const user = this.auth.getUser();
-    const dentistName = user ? `Dr. ${user.first_name} ${user.last_name}` : '';
-    this.api.getDentistAppointments(dentistName).subscribe({
+    this.api.getMyDentistAppointments().subscribe({
       next: (data) => {
         this.plans = data.map(a => this.mapAppointmentToPlan(a));
         this.isLoading = false;

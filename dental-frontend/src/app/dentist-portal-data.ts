@@ -55,5 +55,19 @@ export const DENTIST_ROSTER: DentistInfo[] = [
 ];
 
 export function getDentistInfo(email: string): DentistInfo | undefined {
-  return DENTIST_ROSTER.find((dentist) => dentist.email === email);
+  const normalized = (email || '').trim().toLowerCase();
+  return DENTIST_ROSTER.find((dentist) => dentist.email.toLowerCase() === normalized);
+}
+
+/** Canonical display name for API queries — matches roster / DB after staff approval */
+export function getDentistDisplayName(user: {
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+} | null | undefined): string {
+  if (!user) return '';
+  const roster = getDentistInfo(user.email ?? '');
+  if (roster?.fullName) return roster.fullName;
+  if (user.first_name && user.last_name) return `Dr. ${user.first_name} ${user.last_name}`;
+  return '';
 }

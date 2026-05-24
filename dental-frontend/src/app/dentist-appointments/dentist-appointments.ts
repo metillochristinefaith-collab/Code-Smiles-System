@@ -8,7 +8,7 @@ import { ApiService } from '../services/api.service';
 import { AuthService } from '../services/auth.service';
 import { AvatarService } from '../services/avatar.service';
 import { SyncService } from '../services/sync.service';
-import { getDentistInfo } from '../dentist-portal-data';
+import { getDentistInfo, getDentistDisplayName } from '../dentist-portal-data';
 
 export interface Appointment {
   id: number;
@@ -132,8 +132,7 @@ export class DentistAppointmentsComponent implements OnInit, OnDestroy {
   }
 
   get dentistDisplayName(): string {
-    const user = this.auth.getUser();
-    return user ? `Dr. ${user.first_name} ${user.last_name}` : 'Dentist';
+    return getDentistDisplayName(this.auth.getUser()) || 'Dentist';
   }
 
   get dentistInitials(): string {
@@ -149,10 +148,7 @@ export class DentistAppointmentsComponent implements OnInit, OnDestroy {
 
   loadAppointments() {
     this.isLoading = true;
-    const user = this.auth.getUser();
-    const dentistName = user ? `Dr. ${user.first_name} ${user.last_name}` : '';
-
-    this.api.getDentistAppointments(dentistName).subscribe({
+    this.api.getMyDentistAppointments().subscribe({
       next: (data) => {
         this.allAppointments = data.map(a => ({
           ...a,

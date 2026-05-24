@@ -52,10 +52,11 @@
           <div class="sd-card-head">
             <div class="sd-card-title-group">
               <span class="sd-card-dot blue"></span>
-              <h2 class="sd-card-title">Today's Schedule</h2>
+              <h2 class="sd-card-title">{{ scheduleTitle }}</h2>
             </div>
             <a class="sd-link" routerLink="/staff-calendar">View Calendar →</a>
           </div>
+          <p class="sd-schedule-hint" *ngIf="scheduleSubtitle">{{ scheduleSubtitle }}</p>
           <div class="sd-schedule-list">
             <!-- Loading skeleton -->
             <div class="sd-schedule-skeleton" *ngIf="isLoading">
@@ -64,11 +65,14 @@
             <!-- Empty state -->
             <div class="sd-empty-state" *ngIf="!isLoading && todaySchedule.length === 0">
               <span>📭</span>
-              <p>No appointments scheduled for today.</p>
+              <p>No upcoming appointments in the next 6 months.</p>
             </div>
             <!-- Real data -->
             <div class="sd-schedule-row" *ngFor="let item of todaySchedule">
-              <span class="sd-schedule-time">{{ item.time }}</span>
+              <div class="sd-schedule-when">
+                <span class="sd-schedule-time">{{ item.time }}</span>
+                <small class="sd-schedule-date" *ngIf="scheduleMode === 'upcoming'">{{ item.date }}</small>
+              </div>
               <div class="sd-avatar">{{ item.initials }}</div>
               <div class="sd-schedule-copy">
                 <strong>{{ item.patient }}</strong>

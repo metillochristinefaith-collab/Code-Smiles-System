@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { DentistSidebar } from '../dentist-sidebar/dentist-sidebar';
 import { ApiService } from '../services/api.service';
 import { AuthService } from '../services/auth.service';
+import { getDentistDisplayName } from '../dentist-portal-data';
 
 export interface PatientRecord {
   id: string;
@@ -82,9 +83,7 @@ export class DentistPatientsComponent implements OnInit {
   constructor(private api: ApiService, private auth: AuthService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
-    const user = this.auth.getUser();
-    const dentistName = user ? `Dr. ${user.first_name} ${user.last_name}` : '';
-    this.api.getDentistPatients(dentistName).subscribe({
+    this.api.getMyDentistPatients().subscribe({
       next: (data) => {
         this.patients = data.map(p => this.mapPatient(p));
         this.isLoading = false;

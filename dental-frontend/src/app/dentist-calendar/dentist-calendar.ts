@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { DentistSidebar } from '../dentist-sidebar/dentist-sidebar';
 import { ApiService } from '../services/api.service';
 import { AuthService } from '../services/auth.service';
+import { getDentistDisplayName } from '../dentist-portal-data';
 
 @Component({
   selector: 'app-dentist-calendar',
@@ -57,8 +58,7 @@ export class DentistCalendarComponent implements OnInit {
   constructor(private api: ApiService, private auth: AuthService, private router: Router, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
-    const user = this.auth.getUser();
-    this.dentistName = user ? `Dr. ${user.first_name} ${user.last_name}` : '';
+    this.dentistName = getDentistDisplayName(this.auth.getUser());
     this.goToToday();
     this.loadAllUpcoming();
     this.loadDayNotes();
@@ -67,7 +67,7 @@ export class DentistCalendarComponent implements OnInit {
   // ── Load all upcoming appointments for sidebar + month view ──────────────
   private loadAllUpcoming(): void {
     if (!this.dentistName) return;
-    this.api.getDentistAppointments(this.dentistName).subscribe({
+    this.api.getMyDentistAppointments().subscribe({
       next: (data) => {
         // Keep only non-cancelled, from today onwards
         const today = this.toDateStr(new Date());
@@ -157,7 +157,7 @@ export class DentistCalendarComponent implements OnInit {
     if (!this.dentistName) return;
     const start = this.toDateStr(this.currentWeekStart);
     const end   = this.toDateStr(this.currentWeekEnd);
-    this.api.getDentistAppointments(this.dentistName).subscribe({
+    this.api.getMyDentistAppointments().subscribe({
       next: (data) => {
         // Filter to the current week range and exclude cancelled/no-show
         this.allAppointments = data.filter(a =>

@@ -14,6 +14,7 @@ type StatusFilter = 'all' | 'unread' | 'read' | 'needs-action';
 
 interface StaffNotification {
   id: number;
+  updatedAt: string;
   category: NotificationCategory;
   tone: NotificationTone;
   priority: NotificationPriority;
@@ -99,8 +100,9 @@ export class StaffNotificationsComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.notifications = data.map((a: any) => ({
           id:              a.id,
+          updatedAt:       a.updated_at || a.created_at || '',
           appointmentDbId: a.id,
-          appointmentId:   `#${a.id}`,
+          appointmentId:   a.appointment_source === 'composite' ? `CBA-${a.id}` : `#${a.id}`,
           category:        'appointments' as NotificationCategory,
           tone:            this.toneForStatus(a.status),
           priority:        this.priorityForStatus(a.status),
@@ -251,8 +253,8 @@ export class StaffNotificationsComponent implements OnInit, OnDestroy {
         (n.patientName?.toLowerCase().includes(q))
       );
     }
-    if (this.sortBy === 'newest')   list = list.sort((a, b) => b.id - a.id);
-    if (this.sortBy === 'oldest')   list = list.sort((a, b) => a.id - b.id);
+    if (this.sortBy === 'newest')   list = list.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    if (this.sortBy === 'oldest')   list = list.sort((a, b) => String(a.updatedAt).localeCompare(String(b.updatedAt)));
     if (this.sortBy === 'priority') {
       const order: Record<NotificationPriority, number> = { urgent: 0, 'needs-action': 1, informational: 2 };
       list = list.sort((a, b) => order[a.priority] - order[b.priority]);

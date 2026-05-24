@@ -168,8 +168,18 @@
           </div>
         </section>
 
+        <!-- Loading -->
+        <div class="empty-state" *ngIf="isLoadingNotifications">
+          <p>Loading notifications…</p>
+        </div>
+
+        <!-- Error -->
+        <div class="empty-state" *ngIf="!isLoadingNotifications && notificationsLoadError">
+          <p>Could not load notifications. Check that you are logged in and the server is running.</p>
+        </div>
+
         <!-- Empty state -->
-        <div class="empty-state" *ngIf="filteredNotifications.length === 0">
+        <div class="empty-state" *ngIf="!isLoadingNotifications && !notificationsLoadError && filteredNotifications.length === 0">
           <svg viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 0-5 5v2.4c0 .7-.2 1.4-.6 2L5 15h14l-1.4-2.6c-.4-.6-.6-1.3-.6-2V8a5 5 0 0 0-5-5"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
           <p>No notifications to show.</p>
         </div>

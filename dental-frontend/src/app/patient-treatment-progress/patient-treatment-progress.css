@@ -528,6 +528,50 @@
   width: fit-content;
 }
 
+.cancelled-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #dc2626;
+  background: #fee2e2;
+  width: fit-content;
+}
+
+/* Cancelled treatment styling */
+.treatment-row.cancelled-row {
+  opacity: 0.6;
+  background: #fef2f2;
+}
+
+.treatment-row.cancelled-row .row-btn {
+  background: #fef2f2;
+}
+
+.treatment-row.cancelled-row .row-btn:hover {
+  background: #fde8e8;
+}
+
+.treatment-row.cancelled-row .row-name strong {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.treatment-row.cancelled-row .row-name span {
+  color: #d1d5db;
+}
+
+.treatment-row.cancelled-row .prog-bar {
+  background: #fecaca;
+}
+
+.treatment-row.cancelled-row .prog-fill {
+  background: #dc2626;
+}
+
 .completed-date {
   font-size: 0.78rem;
   color: var(--muted);
@@ -606,9 +650,11 @@
 .stage-done .step-dot    { background: var(--green-s); color: var(--green); }
 .stage-current .step-dot { background: var(--blue-l);  color: #fff; }
 .stage-next .step-dot    { background: #f1f5f9;        color: #9ca3af; }
+.stage-cancelled .step-dot { background: #fee2e2;      color: #dc2626; }
 
 .stage-current .step-dot svg { fill: currentColor; stroke: none; }
 .stage-next .step-dot svg    { fill: none; stroke: currentColor; }
+.stage-cancelled .step-dot svg { fill: none; stroke: currentColor; }
 
 .step-text strong {
   display: block;
@@ -627,6 +673,7 @@
 
 .stage-done .step-text strong { color: var(--muted); }
 .stage-next .step-text strong { color: #9ca3af; }
+.stage-cancelled .step-text strong { color: #9ca3af; text-decoration: line-through; }
 
 .step-badge {
   display: inline-flex;
@@ -643,6 +690,7 @@
 .sb-completed { color: var(--green);  background: var(--green-s); }
 .sb-pending   { color: var(--amber);  background: var(--amber-s); }
 .sb-upcoming  { color: var(--gray);   background: var(--gray-s); }
+.sb-cancelled { color: #dc2626;       background: #fee2e2; }
 
 /* ── Info strip — sits below steps, horizontal ───────────────── */
 .detail-strip {

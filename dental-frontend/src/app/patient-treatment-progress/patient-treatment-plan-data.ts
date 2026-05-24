@@ -1,4 +1,6 @@
-export type TreatmentStatus = 'active' | 'completed' | 'pending' | 'upcoming';
+export type TreatmentStatus = 'active' | 'completed' | 'pending' | 'upcoming' | 'cancelled';
+export type TreatmentStepStatus = 'completed' | 'pending' | 'upcoming' | 'cancelled';
+export type TreatmentStepStage = 'done' | 'current' | 'next' | 'cancelled';
 export type TreatmentIcon = 'orthodontics' | 'whitening' | 'filling' | 'retainer' | 'consultation';
 
 export interface LinkedRecord {
@@ -13,8 +15,8 @@ export interface TreatmentStep {
   dentist: string;
   note: string;
   status: string;
-  statusClass: 'completed' | 'pending' | 'upcoming';
-  stage: 'done' | 'current' | 'next';
+  statusClass: TreatmentStepStatus;
+  stage: TreatmentStepStage;
   appointment?: {
     date: string;
     time: string;

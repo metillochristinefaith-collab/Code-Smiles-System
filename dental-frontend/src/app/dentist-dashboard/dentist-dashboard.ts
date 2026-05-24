@@ -5,7 +5,7 @@ import { DentistSidebar } from '../dentist-sidebar/dentist-sidebar';
 import { AuthService } from '../services/auth.service';
 import { ApiService } from '../services/api.service';
 import { AvatarService } from '../services/avatar.service';
-import { getDentistInfo } from '../dentist-portal-data';
+import { getDentistInfo, getDentistDisplayName } from '../dentist-portal-data';
 
 @Component({
   selector: 'app-dentist-dashboard',
@@ -34,7 +34,7 @@ export class DentistDashboard implements OnInit {
 
   constructor(private auth: AuthService, private api: ApiService, private cdr: ChangeDetectorRef, private avatarService: AvatarService) {
     const user     = this.auth.getUser();
-    this.fullName  = user ? `Dr. ${user.first_name} ${user.last_name}` : 'Dentist';
+    this.fullName  = getDentistDisplayName(user) || 'Dentist';
     this.initial   = (user?.first_name?.charAt(0) ?? 'D').toUpperCase();
     const info     = getDentistInfo(user?.email ?? '');
     this.specialty = info?.specialty ?? 'Dentist';
@@ -56,23 +56,13 @@ export class DentistDashboard implements OnInit {
       });
     }
 
-    const user = this.auth.getUser();
-    const dentistName = user ? `Dr. ${user.first_name} ${user.last_name}` : '';
-    
-    // Debug: Log the token and user info
-    const token = localStorage.getItem('auth_token') ?? sessionStorage.getItem('auth_token');
-    console.log('Dashboard Init - User:', user);
-    console.log('Dashboard Init - Dentist Name:', dentistName);
-    console.log('Dashboard Init - Token exists:', !!token);
-    
-    if (!dentistName) {
-      console.error('No dentist name available');
+    if (!this.auth.getUser()) {
       this.isLoading = false;
       this.cdr.detectChanges();
       return;
     }
-    
-    this.api.getDentistDashboardStats(dentistName).subscribe({
+
+    this.api.getMyDentistDashboardStats().subscribe({
       next: (data) => {
         console.log('Dashboard stats received:', data);
         this.dbStats  = data;

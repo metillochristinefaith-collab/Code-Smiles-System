@@ -237,12 +237,13 @@ class UnifiedBookingManager {
 
         if (appt.rows[0]?.patient_id) {
           await client.query(
-            `INSERT INTO notifications (user_id, title, detail, level) 
-             VALUES ($1, $2, $3, 'Update')`,
+            `INSERT INTO notifications (user_id, title, detail, level, appointment_id)
+             VALUES ($1, $2, $3, 'Update', $4)`,
             [
               appt.rows[0].patient_id,
               'Appointment Booked',
-              `Your appointment has been successfully booked. Status: ${bookingData.booking_type === 'Walk-in' ? 'Approved' : 'Pending'}`
+              `Your appointment has been successfully booked. Status: ${bookingData.booking_type === 'Walk-in' ? 'Approved' : 'Pending'}`,
+              appointmentId
             ]
           );
         }

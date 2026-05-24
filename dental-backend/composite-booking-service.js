@@ -12,7 +12,15 @@
  */
 
 const pool = require('./db');
-const { findDentistForService, getServiceDuration, minutesToTime, timeToMinutes } = require('./scheduling-engine');
+const {
+  findDentistForService,
+  getServiceDuration,
+  minutesToTime,
+  timeToMinutes,
+  isWithinOperatingHours,
+  getDayOfWeek,
+  CLINIC_CONFIG,
+} = require('./scheduling-engine');
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPOSITE BOOKING ID GENERATOR
@@ -20,24 +28,43 @@ const { findDentistForService, getServiceDuration, minutesToTime, timeToMinutes 
 
 class CompositeBookingIdGenerator {
   /**
-   * Generate unique composite booking ID
-   * Format: CB-YYYY-MM-DD-XXXX (e.g., CB-2026-05-22-0001)
+   * Generate unique composite booking ID (transaction-safe).
+   * Format: CB-YYYY-MM-DD-XXXX (e.g., CB-2026-05-25-0003)
+   *
+   * Uses MAX(existing suffix)+1 — not COUNT(*), which breaks after failed retries
+   * or when DATE(created_at) timezone differs from the ID date prefix.
+   *
+   * @param {import('pg').PoolClient} [client] Pass the transaction client when inside BEGIN.
    */
-  static async generateBookingId() {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    
+  static async generateBookingId(client = null) {
+    const db = client || pool;
+    const today = new Date().toISOString().split('T')[0];
+    const prefix = `CB-${today}-`;
+
     try {
-      // Get count of bookings created today
-      const result = await pool.query(
-        `SELECT COUNT(*) as count FROM composite_bookings 
-         WHERE DATE(created_at) = $1`,
-        [today]
+      if (client) {
+        await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [prefix]);
+      }
+
+      const result = await db.query(
+        `SELECT booking_id FROM composite_bookings
+         WHERE booking_id LIKE $1
+         ORDER BY booking_id DESC
+         LIMIT 1`,
+        [`${prefix}%`]
       );
-      
-      const count = parseInt(result.rows[0].count) + 1;
-      const sequence = String(count).padStart(4, '0');
-      
-      return `CB-${today}-${sequence}`;
+
+      let nextSeq = 1;
+      if (result.rowCount > 0) {
+        const lastId = result.rows[0].booking_id;
+        const suffix = lastId.slice(prefix.length);
+        const parsed = parseInt(suffix, 10);
+        if (!Number.isNaN(parsed)) {
+          nextSeq = parsed + 1;
+        }
+      }
+
+      return `${prefix}${String(nextSeq).padStart(4, '0')}`;
     } catch (error) {
       console.error('[CompositeBookingIdGenerator] Error:', error.message);
       throw error;
@@ -122,6 +149,23 @@ class CompositeBookingValidator {
       
       if (!apt.time || !/^\d{2}:\d{2}$/.test(apt.time)) {
         errors.push(`Appointment ${index + 1}: Invalid time format (HH:MM)`);
+      }
+    });
+
+    // Validate each appointment fits within clinic hours (including buffer)
+    request.appointments.forEach((apt, index) => {
+      const duration = request.services[index]?.duration;
+      if (!apt.date || !apt.time || !duration) return;
+
+      const startMin = timeToMinutes(apt.time);
+      const endMin = startMin + duration + CLINIC_CONFIG.buffer_time;
+      if (!isWithinOperatingHours(apt.date, startMin, endMin)) {
+        const dayName = getDayOfWeek(apt.date);
+        const hours = CLINIC_CONFIG.operating_hours[dayName];
+        const closingLabel = hours ? minutesToTime(hours.end) : 'closing';
+        errors.push(
+          `Appointment ${index + 1}: ${request.services[index].name} would end after clinic hours (closes ${closingLabel}). Choose an earlier time.`
+        );
       }
     });
 
@@ -236,8 +280,8 @@ class CompositeBookingManager {
         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
 
-      // 2. Generate composite booking ID
-      const bookingId = await CompositeBookingIdGenerator.generateBookingId();
+      // 2. Generate composite booking ID (inside same transaction + advisory lock)
+      const bookingId = await CompositeBookingIdGenerator.generateBookingId(client);
 
       // 3. Calculate total duration
       const totalDuration = request.services.reduce((sum, service) => sum + service.duration, 0) + 
@@ -322,17 +366,18 @@ class CompositeBookingManager {
           throw new Error(`Scheduling conflict for ${service.name}: ${conflictCheck.message}`);
         }
 
-        // Calculate end time
-        const [hours, minutes] = appointment.time.split(':').map(Number);
-        const startMin = hours * 60 + minutes;
+        const startMin = timeToMinutes(appointment.time);
+        const endMinWithBuffer = startMin + service.duration + CLINIC_CONFIG.buffer_time;
         const endMin = startMin + service.duration;
-        const endHours = Math.floor(endMin / 60);
-        const endMinutes = endMin % 60;
-        const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+        const endTime = minutesToTime(endMin);
 
-        // Validate end time doesn't exceed 24 hours
-        if (endHours >= 24) {
-          throw new Error(`Appointment for ${service.name} extends past midnight. Please select an earlier time.`);
+        if (!isWithinOperatingHours(appointment.date, startMin, endMinWithBuffer)) {
+          const dayName = getDayOfWeek(appointment.date);
+          const hours = CLINIC_CONFIG.operating_hours[dayName];
+          const closingLabel = hours ? minutesToTime(hours.end) : 'closing';
+          throw new Error(
+            `Appointment for ${service.name} at ${appointment.time} runs past clinic closing (${closingLabel}). Please select an earlier time.`
+          );
         }
 
         // Generate appointment ID
@@ -373,7 +418,22 @@ class CompositeBookingManager {
         appointments.push(aptResult.rows[0]);
       }
 
-      // 6. Log audit trail
+      // 6. Create notifications for staff
+      const staffUsers = await client.query(`SELECT id FROM users WHERE role = 'Staff'`);
+      for (const staff of staffUsers.rows) {
+        await client.query(
+          `INSERT INTO notifications (user_id, title, detail, level)
+           VALUES ($1, $2, $3, $4)`,
+          [
+            staff.id,
+            'New Composite Booking Request',
+            `${request.patientDetails.firstName} ${request.patientDetails.lastName} submitted a composite booking with ${request.services.length} services.`,
+            'New'
+          ]
+        );
+      }
+
+      // 7. Log audit trail
       await client.query(
         `INSERT INTO composite_booking_audit_log (composite_booking_id, action, action_by, action_details)
          VALUES ($1, $2, $3, $4)`,

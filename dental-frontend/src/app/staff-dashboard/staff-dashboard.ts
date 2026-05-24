@@ -24,7 +24,9 @@ export class StaffDashboard implements OnInit {
 
   private dbStats = { total: 0, pending: 0, approved: 0, cancelled: 0, today: 0, patients: 0 };
   private dbRecent: any[] = [];
-  private todayAppts: any[] = [];   // dedicated today's schedule list
+  private scheduleAppts: any[] = [];
+  scheduleMode: 'today' | 'upcoming' = 'today';
+  private todayIso = '';
 
   readonly quickActions = [
     { title: 'New Appointment',  emoji: '📅', route: '/staff-booking',     tone: 'sky'   },
@@ -49,7 +51,8 @@ export class StaffDashboard implements OnInit {
   }
 
   ngOnInit() {
-    const todayStr = new Date().toISOString().split('T')[0];
+    this.todayIso = this.localDateStr();
+    const scheduleEnd = this.addDays(this.todayIso, 180);
 
     // Load avatar from localStorage or database
     this.avatarUrl = this.avatarService.getAvatar();
@@ -77,14 +80,28 @@ export class StaffDashboard implements OnInit {
       }
     });
 
-    // Load today's appointments directly — not limited to 5 recent records
-    this.api.getCalendarAppointments(todayStr, todayStr).subscribe({
+    // Today + upcoming window — show upcoming when nothing is scheduled today
+    this.api.getCalendarAppointments(this.todayIso, scheduleEnd).subscribe({
       next: (data) => {
-        this.todayAppts = data;
+        this.scheduleAppts = this.sortByDateTime(data);
+        const todayRows = this.scheduleAppts.filter(
+          (a) => this.normalizeDate(a.appointment_date) === this.todayIso
+        );
+        this.scheduleMode = todayRows.length > 0 ? 'today' : 'upcoming';
         this.cdr.detectChanges();
       },
       error: () => {}
     });
+  }
+
+  get scheduleTitle(): string {
+    return this.scheduleMode === 'today' ? "Today's Schedule" : 'Upcoming Schedule';
+  }
+
+  get scheduleSubtitle(): string {
+    return this.scheduleMode === 'upcoming'
+      ? 'No visits today — showing your next scheduled appointments.'
+      : '';
   }
 
   get statCards() {
@@ -96,13 +113,17 @@ export class StaffDashboard implements OnInit {
     ];
   }
 
-  // Today's schedule — from dedicated calendar API call, not limited to 5
   get todaySchedule() {
-    return this.todayAppts
-      .filter(a => a.status !== 'Cancelled by Patient' && a.status !== 'Cancelled by Staff' && a.status !== 'Cancelled by Dentist')
+    const pool = this.scheduleMode === 'today'
+      ? this.scheduleAppts.filter((a) => this.normalizeDate(a.appointment_date) === this.todayIso)
+      : this.scheduleAppts;
+
+    return pool
+      .filter((a) => !this.isCancelled(a.status))
       .slice(0, 6)
-      .map(a => ({
+      .map((a) => ({
         time:     this.formatTime(a.appointment_time),
+        date:     this.formatDate(a.appointment_date),
         initials: this.getInitials(a.patient_name),
         patient:  a.patient_name,
         service:  a.treatment,
@@ -161,6 +182,40 @@ export class StaffDashboard implements OnInit {
     if (!t) return '—';
     const [h, m] = t.split(':').map(Number);
     return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  }
+
+  private localDateStr(d = new Date()): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  private addDays(isoDate: string, days: number): string {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    return this.localDateStr(dt);
+  }
+
+  private normalizeDate(d: string): string {
+    if (!d) return '';
+    return String(d).split(/[T\s]/)[0];
+  }
+
+  private isCancelled(status: string): boolean {
+    return status === 'Cancelled'
+      || status === 'Cancelled by Patient'
+      || status === 'Cancelled by Staff'
+      || status === 'Cancelled by Dentist';
+  }
+
+  private sortByDateTime(rows: any[]): any[] {
+    return [...rows].sort((a, b) => {
+      const da = `${this.normalizeDate(a.appointment_date)}T${a.appointment_time || '00:00'}`;
+      const db = `${this.normalizeDate(b.appointment_date)}T${b.appointment_time || '00:00'}`;
+      return da.localeCompare(db);
+    });
   }
 }
 

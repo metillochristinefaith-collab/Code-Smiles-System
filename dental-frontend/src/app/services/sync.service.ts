@@ -55,8 +55,7 @@ export class SyncService {
           if (!user) {
             return of(null);
           }
-          const dentistName = `Dr. ${user.first_name} ${user.last_name}`;
-          return this.api.getDentistAppointments(dentistName).pipe(
+          return this.api.getMyDentistAppointments().pipe(
             catchError(err => {
               console.error('[Sync] Polling error:', err);
               return of(null);

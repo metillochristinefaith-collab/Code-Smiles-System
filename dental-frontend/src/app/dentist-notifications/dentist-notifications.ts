@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DentistSidebar } from '../dentist-sidebar/dentist-sidebar';
 import { ApiService } from '../services/api.service';
+import { getDentistDisplayName } from '../dentist-portal-data';
 import { AuthService } from '../services/auth.service';
 
 export type NotifType = 'Appointment' | 'Treatment' | 'Prescription' | 'Follow-up' | 'Urgent' | 'System' | 'Lab Result';
@@ -43,7 +44,7 @@ export class DentistNotificationsComponent implements OnInit {
 
   ngOnInit() {
     const user = this.auth.getUser();
-    const dentistName = user ? `Dr. ${user.first_name} ${user.last_name}` : '';
+    const dentistName = getDentistDisplayName(user);
     this.api.getDentistNotifications(dentistName).subscribe({
       next: (data) => {
         this.notifications = data.map((a: any) => ({

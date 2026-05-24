@@ -18,6 +18,7 @@ const {
   getServiceDuration,
   minutesToTime,
   timeToMinutes,
+  isWithinOperatingHours,
 } = require('./scheduling-engine');
 
 const router = express.Router();
@@ -150,9 +151,31 @@ router.get('/available-times', async (req, res) => {
     const approvedAppointments = result.rows;
     console.log(`[DYNAMIC TIMELINE] Found ${approvedAppointments.length} approved/pending appointments for ${dentistName} on ${date}`);
 
-    // Convert approved appointments to time windows (in minutes since midnight)
-    const bookedWindows = approvedAppointments.map(apt => {
-      const [hours, minutes] = apt.appointment_time.split(':').map(Number);
+    // Also block slots taken by composite booking appointments
+    let compositeAppointments = [];
+    try {
+      const compositeResult = await pool.query(
+        `SELECT cba.id, cba.appointment_time, cba.service_duration_minutes AS duration_minutes,
+                cba.service_name AS treatment
+         FROM composite_booking_appointments cba
+         WHERE cba.appointment_date::text = $1
+           AND cba.dentist_id = $2
+           AND cba.appointment_status IN ('Pending', 'Approved')
+         ORDER BY cba.appointment_time ASC`,
+        [date, dentistId]
+      );
+      compositeAppointments = compositeResult.rows;
+      console.log(`[DYNAMIC TIMELINE] Found ${compositeAppointments.length} composite appointments for ${dentistName} on ${date}`);
+    } catch (compositeErr) {
+      console.warn('[DYNAMIC TIMELINE] Composite appointment lookup skipped:', compositeErr.message);
+    }
+
+    const allBooked = [...approvedAppointments, ...compositeAppointments];
+
+    // Convert appointments to time windows (in minutes since midnight)
+    const bookedWindows = allBooked.map(apt => {
+      const timeStr = String(apt.appointment_time).trim();
+      const [hours, minutes] = timeStr.split(':').map(Number);
       const startMin = hours * 60 + minutes;
       const endMin = startMin + apt.duration_minutes;
       return {
@@ -209,6 +232,11 @@ router.get('/available-times', async (req, res) => {
       const slotTimeStr = `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
       const slotStartMin = slot.hour * 60 + slot.minute;
       const slotEndMin = slotStartMin + totalBlockedDuration;
+
+      // Don't offer slots where service + buffer would run past clinic closing
+      if (slotEndMin > closingHour || !isWithinOperatingHours(date, slotStartMin, slotEndMin)) {
+        continue;
+      }
 
       // Check for overlap with any booked window
       let hasOverlap = false;
