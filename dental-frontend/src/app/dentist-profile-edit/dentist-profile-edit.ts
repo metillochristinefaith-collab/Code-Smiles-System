@@ -105,24 +105,44 @@ export class DentistProfileEditComponent implements OnInit {
     this.isSaving = true;
     this.saveError = '';
 
+    // Prepare data for API call
+    const updateData = {
+      phone: this.form.phone?.trim() || undefined,
+      specialization: this.form.specialization,
+      department: this.form.department,
+      education: this.form.education,
+      gender: this.form.gender !== '—' ? this.form.gender : undefined,
+    };
+
     this.api.updateUserProfile(user.id, {
       first_name: this.form.firstName.trim(),
       last_name: this.form.lastName.trim(),
-      phone: this.form.phone.trim(),
+      phone: this.form.phone?.trim() || undefined,
     }).subscribe({
       next: () => {
-        const updatedUser = {
-          ...user,
-          first_name: this.form.firstName.trim(),
-          last_name: this.form.lastName.trim(),
-          email: this.form.email,
-        };
-        const storage = localStorage.getItem('auth_user') ? localStorage : sessionStorage;
-        storage.setItem('auth_user', JSON.stringify(updatedUser));
-        this.saveCachedProfile(user.id);
-        this.isSaving = false;
-        this.showSuccessModal = true;
-        this.cdr.detectChanges();
+        // Update dentist profile in database
+        this.api.updateDentistProfile(updateData).subscribe({
+          next: () => {
+            const updatedUser = {
+              ...user,
+              first_name: this.form.firstName.trim(),
+              last_name: this.form.lastName.trim(),
+              email: this.form.email,
+              phone: this.form.phone?.trim() || undefined,
+            };
+            const storage = localStorage.getItem('auth_user') ? localStorage : sessionStorage;
+            storage.setItem('auth_user', JSON.stringify(updatedUser));
+            this.saveCachedProfile(user.id);
+            this.isSaving = false;
+            this.showSuccessModal = true;
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            this.isSaving = false;
+            this.saveError = err?.error?.message || 'Failed to save profile. Please try again.';
+            this.cdr.detectChanges();
+          }
+        });
       },
       error: (err) => {
         this.isSaving = false;

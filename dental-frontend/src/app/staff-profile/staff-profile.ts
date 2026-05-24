@@ -26,6 +26,7 @@ export class StaffProfile implements OnInit {
     workSchedule:     'Mon – Fri · 8:00 AM – 5:00 PM',
     email:            '',
     phone:            '',
+    gender:           '',
     dateOfBirth:      '',
     address:          '',
     emergencyContact: '',
@@ -101,6 +102,7 @@ export class StaffProfile implements OnInit {
         if (data.bio) this.profile.bio = data.bio;
         if (data.status) this.profile.status = data.status;
         if (data.phone) this.profile.phone = data.phone;
+        if (data.gender) this.profile.gender = data.gender;
         if (data.avatar_url) this.profile.avatarUrl = data.avatar_url;
 
         this.isLoadingProfile = false;
@@ -150,9 +152,10 @@ export class StaffProfile implements OnInit {
       emergency_contact_phone: this.editData.emergencyPhone?.trim() || undefined,
       bio: this.editData.bio?.trim() || undefined,
       status: this.editData.status,
+      gender: this.editData.gender || undefined,
     };
 
-    // Update basic user info
+    // Update basic user info first
     this.api.updateUserProfile(user.id, {
       first_name: this.editData.firstName.trim(),
       last_name:  this.editData.lastName.trim(),
@@ -165,6 +168,7 @@ export class StaffProfile implements OnInit {
             this.profile.firstName = this.editData.firstName;
             this.profile.lastName = this.editData.lastName;
             this.profile.phone = this.editData.phone;
+            this.profile.gender = this.editData.gender;
             this.profile.hireDate = this.editData.hireDate ? this.formatDateDisplay(this.editData.hireDate) : this.editData.hireDate;
             this.profile.address = this.editData.address;
             this.profile.dateOfBirth = this.editDob ? this.formatDateDisplay(this.editDob) : this.editData.dateOfBirth;
@@ -185,6 +189,7 @@ export class StaffProfile implements OnInit {
           error: (err) => {
             this.isSavingEdit = false;
             this.editError = err?.error?.message ?? 'Failed to save profile. Please try again.';
+            console.error('Staff profile update error:', err);
             this.cdr.detectChanges();
           }
         });
@@ -192,6 +197,7 @@ export class StaffProfile implements OnInit {
       error: (err) => {
         this.isSavingEdit = false;
         this.editError = err?.error?.message ?? 'Failed to save. Please try again.';
+        console.error('User profile update error:', err);
         this.cdr.detectChanges();
       },
     });

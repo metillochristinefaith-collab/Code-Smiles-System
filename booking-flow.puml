@@ -1,0 +1,41 @@
+@startuml Dental_Booking_System_Flow
+
+start
+
+:SELECT USER TYPE;
+
+if (User Type?) then (PATIENT)
+  :Login to Patient Portal;
+  :Browse Services;
+  :Select Date & Time;
+  :Submit Request;
+  if (Approved?) then (YES)
+    :View Schedule;
+    :Attend Appointment;
+  else (NO)
+    :View Rejection;
+  endif
+  
+elseif (User Type?) then (STAFF)
+  :Login to Staff Portal;
+  :View Pending Requests;
+  if (Approve Request?) then (YES)
+    :Check Dentist Availability;
+    :Assign Dentist;
+    :Send Confirmation;
+  else (NO)
+    :Send Rejection;
+  endif
+  
+else (DENTIST)
+  :Login to Dentist Portal;
+  :View Appointments;
+  :Provide Treatment;
+  :Record Diagnosis;
+  :Mark Complete;
+  :Update Records;
+endif
+
+stop
+
+@enduml

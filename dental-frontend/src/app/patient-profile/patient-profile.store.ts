@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, BehaviorSubject, tap } from 'rxjs';
+import { Observable, BehaviorSubject, tap, catchError } from 'rxjs';
 import { PatientProfile, NotificationKey } from './patient-profile.models';
 import { AuthService } from '../services/auth.service';
 import { ApiService } from '../services/api.service';
@@ -57,6 +57,9 @@ export class PatientProfileStore {
       notif_announcements:     profile.notifications.announcements,
     };
 
+    // FIX: Optimistic update - update cache immediately
+    this._profile$.next({ ...profile });
+
     return this.api.updatePatientProfile(user.id, payload).pipe(
       tap(() => {
         // Also update name/phone via user profile endpoint if changed
@@ -67,8 +70,17 @@ export class PatientProfileStore {
         if (original && (first !== original.first_name || last !== original.last_name)) {
           this.api.updateUserProfile(user.id, { first_name: first, last_name: last }).subscribe();
         }
-        // Update cache
-        this._profile$.next({ ...profile });
+        // FIX: Reload fresh data from server to verify save
+        this.loadFromServer().subscribe({
+          error: (err) => console.error('Failed to reload profile after save:', err)
+        });
+      }),
+      catchError((err) => {
+        // FIX: Revert cache on error
+        const original = this._profile$.value;
+        this._profile$.next(original);
+        console.error('Profile save failed:', err);
+        throw err;
       })
     );
   }

@@ -256,8 +256,26 @@ export class ApiService {
     emergency_contact_phone?: string;
     bio?: string;
     status?: string;
+    gender?: string;
   }): Observable<any> {
     return this.http.put(`${this.base}/staff/profile`, data, { headers: this.authHeaders() });
+  }
+
+  updateDentistProfile(data: {
+    phone?: string;
+    specialization?: string;
+    department?: string;
+    license_number?: string;
+    education?: string;
+    address?: string;
+    date_of_birth?: string;
+    emergency_contact_name?: string;
+    emergency_contact_phone?: string;
+    bio?: string;
+    status?: string;
+    gender?: string;
+  }): Observable<any> {
+    return this.http.put(`${this.base}/dentist/profile`, data, { headers: this.authHeaders() });
   }
 
   getAllStaff(): Observable<any[]> {

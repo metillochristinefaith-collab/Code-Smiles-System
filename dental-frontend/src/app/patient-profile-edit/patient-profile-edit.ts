@@ -33,11 +33,12 @@ export class PatientProfileEditComponent implements OnInit {
     private readonly auth: AuthService,
     private readonly cdr: ChangeDetectorRef,
   ) {
-    this.form = this.profileStore.getProfile();
+    // FIX: Initialize with empty form, NOT cached data
+    this.form = this.getDefaultForm();
   }
 
   ngOnInit(): void {
-    // Always load fresh data from DB when opening edit page
+    // FIX: ALWAYS load fresh from server on component init
     this.profileStore.loadFromServer().subscribe({
       next: () => {
         this.form = this.profileStore.getProfile();
@@ -120,5 +121,27 @@ export class PatientProfileEditComponent implements OnInit {
   protected get initials(): string {
     const names = this.form.fullName.trim().split(' ');
     return `${names[0]?.charAt(0) ?? ''}${names[names.length - 1]?.charAt(0) ?? ''}`.toUpperCase();
+  }
+
+  // FIX: Add helper method for default form
+  private getDefaultForm(): PatientProfile {
+    const user = this.auth.getUser();
+    return {
+      fullName:               user ? `${user.first_name} ${user.last_name}` : 'Patient',
+      patientId:              user ? `CS-${String(user.id).padStart(5, '0')}` : 'CS-00000',
+      memberSince:            'Member',
+      status:                 'Active Patient',
+      dateOfBirth:            '',
+      gender:                 '',
+      bloodType:              '',
+      preferredLanguage:      'English',
+      phoneNumber:            '',
+      email:                  user?.email ?? '',
+      homeAddress:            '',
+      preferredContactMethod: 'Email',
+      primaryDentist:         '',
+      emergencyContact: { name: '', relationship: '', phoneNumber: '' },
+      notifications:    { email: true, sms: false, announcements: true },
+    };
   }
 }

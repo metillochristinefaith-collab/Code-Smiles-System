@@ -794,6 +794,27 @@ db.query(`
   )
 `).catch(err => console.error('Vault file sharing table error:', err.message));
 
+// FIX: Create audit log table for file access tracking
+db.query(`
+  CREATE TABLE IF NOT EXISTS file_access_log (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    dentist_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    file_id INTEGER NOT NULL REFERENCES patient_vault_records(id) ON DELETE CASCADE,
+    accessed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    action VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )
+`).catch(err => console.error('File access log table error:', err.message));
+
+// Create indexes for file_access_log
+db.query(`CREATE INDEX IF NOT EXISTS idx_file_access_log_patient ON file_access_log(patient_id)`).catch(err => {});
+db.query(`CREATE INDEX IF NOT EXISTS idx_file_access_log_dentist ON file_access_log(dentist_id)`).catch(err => {});
+db.query(`CREATE INDEX IF NOT EXISTS idx_file_access_log_file ON file_access_log(file_id)`).catch(err => {});
+db.query(`CREATE INDEX IF NOT EXISTS idx_file_access_log_accessed ON file_access_log(accessed_at)`).catch(err => {});
+
 app.get('/patient-vault-records/:patientId', authMiddleware, async (req, res) => {
   const isOwner = String(req.user.id) === String(req.params.patientId);
   const isPrivileged = ['Staff', 'Dentist'].includes(req.user.role);
@@ -872,7 +893,7 @@ app.post('/patient-vault-records/:recordId/share', authMiddleware, async (req, r
   }
 
   try {
-    // Verify the record belongs to this patient
+    // FIX: Verify the record belongs to this patient
     const recordCheck = await db.query(
       'SELECT id FROM patient_vault_records WHERE id = $1 AND patient_id = $2',
       [recordId, req.user.id]
@@ -882,18 +903,37 @@ app.post('/patient-vault-records/:recordId/share', authMiddleware, async (req, r
       return res.status(404).json({ message: 'Record not found or access denied.' });
     }
 
-    // Find the dentist user - handle both "Dr. Name" and "Name" formats
+    // FIX: Verify dentist exists in system
     let dentistName = dentist_name.trim();
     if (dentistName.startsWith('Dr. ')) {
       dentistName = dentistName.substring(4); // Remove "Dr. " prefix
     }
     
     const dentistCheck = await db.query(
-      'SELECT id FROM users WHERE first_name || \' \' || last_name = $1 AND role = $2',
-      [dentistName, 'Admin']
+      `SELECT id, first_name, last_name FROM users 
+       WHERE (first_name || ' ' || last_name = $1 OR first_name = $1)
+         AND role = 'Dentist'`,
+      [dentistName]
     );
 
-    const dentistUserId = dentistCheck.rows.length > 0 ? dentistCheck.rows[0].id : null;
+    if (dentistCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Dentist not found in system.' });
+    }
+
+    const dentistUserId = dentistCheck.rows[0].id;
+    const fullDentistName = `${dentistCheck.rows[0].first_name} ${dentistCheck.rows[0].last_name}`;
+
+    // FIX: Verify patient has relationship with this dentist (optional but recommended)
+    const relationshipCheck = await db.query(
+      `SELECT COUNT(*) as count FROM appointments 
+       WHERE patient_id = $1 AND dentist_name = $2 AND status IN ('Approved', 'Completed')`,
+      [req.user.id, fullDentistName]
+    );
+
+    if (relationshipCheck.rows[0].count === 0) {
+      console.warn(`Patient ${req.user.id} sharing with unrelated dentist ${fullDentistName}`);
+      // Allow but log warning
+    }
 
     // Insert or update sharing record
     const result = await db.query(
@@ -903,11 +943,18 @@ app.post('/patient-vault-records/:recordId/share', authMiddleware, async (req, r
        ON CONFLICT (vault_record_id, shared_with_dentist_name) 
        DO UPDATE SET access_revoked_at = NULL, shared_at = NOW()
        RETURNING id, vault_record_id, shared_with_dentist_name, shared_at`,
-      [recordId, req.user.id, dentist_name.trim(), dentistUserId, 'view']
+      [recordId, req.user.id, fullDentistName, dentistUserId, 'view']
     );
 
+    // FIX: Log sharing action for audit trail
+    await db.query(
+      `INSERT INTO file_access_log (patient_id, dentist_id, file_id, accessed_at, action)
+       VALUES ($1, $2, $3, NOW(), 'SHARE')`,
+      [req.user.id, dentistUserId, recordId]
+    ).catch(err => console.error('Failed to log sharing action:', err.message));
+
     res.status(201).json({
-      message: `File shared with ${dentist_name}`,
+      message: `File shared with ${fullDentistName}`,
       sharing: result.rows[0]
     });
   } catch (err) {
@@ -917,41 +964,24 @@ app.post('/patient-vault-records/:recordId/share', authMiddleware, async (req, r
 });
 
 // GET vault records shared with a specific dentist
-app.get('/dentist/vault-records', async (req, res) => {
-  console.log('\n=== GET /dentist/vault-records ===');
-  console.log('Headers:', req.headers);
+app.get('/dentist/vault-records', authMiddleware, async (req, res) => {
+  console.log('\n=== GET /dentist/vault-records (SECURED) ===');
+  console.log('User:', req.user.id, req.user.role);
   
   try {
-    // For now, get dentist ID from query param for testing
-    const dentistId = req.query.dentistId || req.user?.id;
-    
-    if (!dentistId) {
-      console.log('ERROR: No dentist ID provided');
-      return res.status(400).json({ message: 'Dentist ID required.' });
+    // FIX: Verify user is a dentist
+    if (req.user.role !== 'Dentist') {
+      console.log('ERROR: User is not a dentist');
+      return res.status(403).json({ message: 'Only dentists can access vault records.' });
     }
 
-    console.log('Dentist ID:', dentistId);
-
-    // Get the dentist's full name from the database
-    const dentistUser = await db.query(
-      'SELECT first_name, last_name FROM users WHERE id = $1',
-      [dentistId]
-    );
-
-    console.log('Dentist user query result:', dentistUser.rows);
-
-    if (dentistUser.rows.length === 0) {
-      console.log('ERROR: Dentist user not found in database');
-      return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const { first_name, last_name } = dentistUser.rows[0];
-    const dentistFullName = `${first_name} ${last_name}`;
-    const dentistFullNameWithDr = `Dr. ${first_name} ${last_name}`;
+    // FIX: Get dentist name from JWT token, not query param
+    const dentistFullName = `${req.user.first_name} ${req.user.last_name}`;
+    const dentistFullNameWithDr = `Dr. ${req.user.first_name} ${req.user.last_name}`;
     
-    console.log('Dentist full name:', dentistFullName);
-    console.log('Dentist full name with Dr:', dentistFullNameWithDr);
+    console.log('Dentist name:', dentistFullName);
     
+    // FIX: Query with permission checks
     const result = await db.query(
       `SELECT DISTINCT
          pvr.id, pvr.patient_id, pvr.title, pvr.description, pvr.record_type, 
@@ -965,11 +995,22 @@ app.get('/dentist/vault-records', async (req, res) => {
        JOIN users u ON u.id = pvr.patient_id
        WHERE (vfs.shared_with_dentist_name = $1 OR vfs.shared_with_dentist_name = $2)
          AND vfs.access_revoked_at IS NULL
+         AND vfs.permission_level = 'view'
        ORDER BY vfs.shared_at DESC`,
       [dentistFullName, dentistFullNameWithDr]
     );
 
     console.log('Query returned', result.rows.length, 'files');
+    
+    // FIX: Log access for audit trail
+    for (const file of result.rows) {
+      await db.query(
+        `INSERT INTO file_access_log (patient_id, dentist_id, file_id, accessed_at, action)
+         VALUES ($1, $2, $3, NOW(), 'VIEW')`,
+        [file.patient_id, req.user.id, file.id]
+      ).catch(err => console.error('Failed to log access:', err.message));
+    }
+
     console.log('Sending response...');
     res.json(result.rows);
   } catch (err) {
@@ -3100,21 +3141,21 @@ app.put('/patient-profile/:userId', authMiddleware, async (req, res) => {
   } = req.body;
 
   try {
-    // Use UPSERT (INSERT ... ON CONFLICT) to handle both create and update
-    // This ensures the profile is created if it doesn't exist, or updated if it does
+    // UPSERT with updated_at timestamp - FIX for profile persistence
     await db.query(
       `INSERT INTO patient_profiles (
          user_id, date_of_birth, gender, blood_type, preferred_language,
          home_address, preferred_contact, primary_dentist,
          emergency_contact_name, emergency_contact_rel, emergency_contact_phone,
-         notif_email, notif_sms, notif_announcements
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         notif_email, notif_sms, notif_announcements, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
        ON CONFLICT (user_id) DO UPDATE SET
          date_of_birth = $2, gender = $3, blood_type = $4,
          preferred_language = $5, home_address = $6, preferred_contact = $7,
          primary_dentist = $8, emergency_contact_name = $9,
          emergency_contact_rel = $10, emergency_contact_phone = $11,
-         notif_email = $12, notif_sms = $13, notif_announcements = $14`,
+         notif_email = $12, notif_sms = $13, notif_announcements = $14,
+         updated_at = NOW()`,
       [
         req.params.userId,
         date_of_birth, gender, blood_type, preferred_language,
@@ -3123,7 +3164,19 @@ app.put('/patient-profile/:userId', authMiddleware, async (req, res) => {
         notif_email, notif_sms, notif_announcements,
       ]
     );
-    res.json({ message: 'Profile updated successfully!' });
+
+    // Return updated profile with timestamp
+    const result = await db.query(
+      `SELECT *, TO_CHAR(updated_at, 'YYYY-MM-DD HH24:MI:SS') as last_updated 
+       FROM patient_profiles WHERE user_id = $1`,
+      [req.params.userId]
+    );
+
+    res.json({ 
+      message: 'Profile updated successfully!',
+      profile: result.rows[0],
+      timestamp: new Date().toISOString()
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -3939,7 +3992,7 @@ app.put('/staff/profile', authMiddleware, async (req, res) => {
   const {
     phone, position, department, hire_date, work_schedule,
     address, date_of_birth, emergency_contact_name,
-    emergency_contact_phone, bio, status
+    emergency_contact_phone, bio, status, gender
   } = req.body;
 
   const client = await db.connect();
@@ -3954,17 +4007,17 @@ app.put('/staff/profile', authMiddleware, async (req, res) => {
       );
     }
 
-    // Ensure staff_profiles record exists
+    // Ensure staff record exists
     const profileExists = await client.query(
-      'SELECT id FROM staff_profiles WHERE user_id = $1',
+      'SELECT staff_id FROM staff WHERE user_id = $1',
       [req.user.id]
     );
 
     if (profileExists.rows.length === 0) {
       // Create new staff profile
       await client.query(
-        `INSERT INTO staff_profiles (user_id, position, department, hire_date, work_schedule, address, date_of_birth, emergency_contact_name, emergency_contact_phone, bio, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        `INSERT INTO staff (user_id, position, department, hire_date, work_schedule, address, date_of_birth, emergency_contact_name, emergency_contact_phone, bio, status, gender, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())`,
         [
           req.user.id,
           position || 'Front Desk Staff',
@@ -3976,39 +4029,72 @@ app.put('/staff/profile', authMiddleware, async (req, res) => {
           emergency_contact_name || null,
           emergency_contact_phone || null,
           bio || null,
-          status || 'Active'
+          status || 'Active',
+          gender || null
         ]
       );
     } else {
-      // Update existing staff profile
-      await client.query(
-        `UPDATE staff_profiles SET
-           position = COALESCE($1, position),
-           department = COALESCE($2, department),
-           hire_date = COALESCE($3, hire_date),
-           work_schedule = COALESCE($4, work_schedule),
-           address = COALESCE($5, address),
-           date_of_birth = COALESCE($6, date_of_birth),
-           emergency_contact_name = COALESCE($7, emergency_contact_name),
-           emergency_contact_phone = COALESCE($8, emergency_contact_phone),
-           bio = COALESCE($9, bio),
-           status = COALESCE($10, status),
-           updated_at = NOW()
-         WHERE user_id = $11`,
-        [
-          position || null,
-          department || null,
-          hire_date || null,
-          work_schedule || null,
-          address || null,
-          date_of_birth || null,
-          emergency_contact_name || null,
-          emergency_contact_phone || null,
-          bio || null,
-          status || null,
-          req.user.id
-        ]
-      );
+      // Update existing staff profile - FIX: Only update fields that are provided
+      const updates = [];
+      const values = [];
+      let paramCount = 1;
+
+      if (position !== undefined) {
+        updates.push(`position = $${paramCount++}`);
+        values.push(position || null);
+      }
+      if (department !== undefined) {
+        updates.push(`department = $${paramCount++}`);
+        values.push(department || null);
+      }
+      if (hire_date !== undefined) {
+        updates.push(`hire_date = $${paramCount++}`);
+        values.push(hire_date || null);
+      }
+      if (work_schedule !== undefined) {
+        updates.push(`work_schedule = $${paramCount++}`);
+        values.push(work_schedule || null);
+      }
+      if (address !== undefined) {
+        updates.push(`address = $${paramCount++}`);
+        values.push(address || null);
+      }
+      if (date_of_birth !== undefined) {
+        updates.push(`date_of_birth = $${paramCount++}`);
+        values.push(date_of_birth || null);
+      }
+      if (emergency_contact_name !== undefined) {
+        updates.push(`emergency_contact_name = $${paramCount++}`);
+        values.push(emergency_contact_name || null);
+      }
+      if (emergency_contact_phone !== undefined) {
+        updates.push(`emergency_contact_phone = $${paramCount++}`);
+        values.push(emergency_contact_phone || null);
+      }
+      if (bio !== undefined) {
+        updates.push(`bio = $${paramCount++}`);
+        values.push(bio || null);
+      }
+      if (status !== undefined) {
+        updates.push(`status = $${paramCount++}`);
+        values.push(status || null);
+      }
+      if (gender !== undefined) {
+        updates.push(`gender = $${paramCount++}`);
+        values.push(gender || null);
+      }
+
+      // Always update updated_at
+      updates.push(`updated_at = NOW()`);
+
+      // Execute update if there are any changes
+      if (updates.length > 0) {
+        values.push(req.user.id);
+        await client.query(
+          `UPDATE staff SET ${updates.join(', ')} WHERE user_id = $${paramCount}`,
+          values
+        );
+      }
     }
 
     await client.query('COMMIT');
@@ -4017,12 +4103,12 @@ app.put('/staff/profile', authMiddleware, async (req, res) => {
     const result = await db.query(`
       SELECT 
         u.id, u.first_name, u.last_name, u.email, u.phone, u.avatar_url,
-        sp.position, sp.department, sp.hire_date, sp.work_schedule,
-        sp.address, sp.date_of_birth, sp.emergency_contact_name,
-        sp.emergency_contact_phone, sp.bio, sp.status,
-        sp.created_at, sp.updated_at
+        s.position, s.department, s.hire_date, s.work_schedule,
+        s.address, s.date_of_birth, s.emergency_contact_name,
+        s.emergency_contact_phone, s.bio, s.status, s.gender,
+        s.created_at, s.updated_at
       FROM users u
-      LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+      LEFT JOIN staff s ON s.user_id = u.id
       WHERE u.id = $1
     `, [req.user.id]);
 
@@ -4031,6 +4117,144 @@ app.put('/staff/profile', authMiddleware, async (req, res) => {
     await client.query('ROLLBACK');
     console.error('Staff profile update error:', err.message);
     res.status(500).json({ message: 'Failed to update staff profile.' });
+  } finally {
+    client.release();
+  }
+});
+
+// PUT /dentist/profile — Update dentist's profile (sync to database)
+app.put('/dentist/profile', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'Admin' && req.user.role !== 'Dentist') {
+    return res.status(403).json({ message: 'Access denied.' });
+  }
+
+  const {
+    phone, specialization, department, license_number, education,
+    address, date_of_birth, emergency_contact_name,
+    emergency_contact_phone, bio, status, gender
+  } = req.body;
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Update users table (basic info)
+    if (phone !== undefined) {
+      await client.query(
+        'UPDATE users SET phone = $1 WHERE id = $2',
+        [phone?.trim() || null, req.user.id]
+      );
+    }
+
+    // Ensure dentist record exists
+    const profileExists = await client.query(
+      'SELECT id FROM dentist WHERE user_id = $1',
+      [req.user.id]
+    );
+
+    if (profileExists.rows.length === 0) {
+      // Create new dentist profile
+      await client.query(
+        `INSERT INTO dentist (user_id, specialization, department, license_number, education, address, date_of_birth, emergency_contact_name, emergency_contact_phone, bio, status, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
+        [
+          req.user.id,
+          specialization || 'General Dentistry',
+          department || 'General Dentistry',
+          license_number || null,
+          education || null,
+          address || null,
+          date_of_birth || null,
+          emergency_contact_name || null,
+          emergency_contact_phone || null,
+          bio || null,
+          status || 'Active'
+        ]
+      );
+    } else {
+      // Update existing dentist profile - FIX: Only update fields that are provided
+      const updates = [];
+      const values = [];
+      let paramCount = 1;
+
+      if (specialization !== undefined) {
+        updates.push(`specialization = $${paramCount++}`);
+        values.push(specialization || null);
+      }
+      if (department !== undefined) {
+        updates.push(`department = $${paramCount++}`);
+        values.push(department || null);
+      }
+      if (license_number !== undefined) {
+        updates.push(`license_number = $${paramCount++}`);
+        values.push(license_number || null);
+      }
+      if (education !== undefined) {
+        updates.push(`education = $${paramCount++}`);
+        values.push(education || null);
+      }
+      if (address !== undefined) {
+        updates.push(`address = $${paramCount++}`);
+        values.push(address || null);
+      }
+      if (date_of_birth !== undefined) {
+        updates.push(`date_of_birth = $${paramCount++}`);
+        values.push(date_of_birth || null);
+      }
+      if (emergency_contact_name !== undefined) {
+        updates.push(`emergency_contact_name = $${paramCount++}`);
+        values.push(emergency_contact_name || null);
+      }
+      if (emergency_contact_phone !== undefined) {
+        updates.push(`emergency_contact_phone = $${paramCount++}`);
+        values.push(emergency_contact_phone || null);
+      }
+      if (bio !== undefined) {
+        updates.push(`bio = $${paramCount++}`);
+        values.push(bio || null);
+      }
+      if (status !== undefined) {
+        updates.push(`status = $${paramCount++}`);
+        values.push(status || null);
+      }
+      if (gender !== undefined) {
+        updates.push(`gender = $${paramCount++}`);
+        values.push(gender || null);
+      }
+
+      // Always update updated_at
+      updates.push(`updated_at = NOW()`);
+
+      // Execute update if there are any changes
+      if (updates.length > 0) {
+        values.push(req.user.id);
+        await client.query(
+          `UPDATE dentist SET ${updates.join(', ')} WHERE user_id = $${paramCount}`,
+          values
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    // Return updated profile
+    const result = await db.query(`
+      SELECT 
+        u.id, u.first_name, u.last_name, u.email, u.phone, u.avatar_url,
+        d.specialization, d.department, d.license_number, d.education,
+        d.address, d.date_of_birth, d.emergency_contact_name,
+        d.emergency_contact_phone, d.bio, d.status, d.gender,
+        d.created_at, d.updated_at
+      FROM users u
+      LEFT JOIN dentist d ON d.user_id = u.id
+      WHERE u.id = $1
+    `, [req.user.id]);
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Dentist profile update error:', err.message);
+    res.status(500).json({ message: 'Failed to update dentist profile.' });
   } finally {
     client.release();
   }
