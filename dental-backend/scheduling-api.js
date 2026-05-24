@@ -148,7 +148,7 @@ router.get('/available-times', async (req, res) => {
     );
 
     const approvedAppointments = result.rows;
-    console.log(`[DYNAMIC TIMELINE] Found ${approvedAppointments.length} approved/pending appointments for ${dentist.name} on ${date}`);
+    console.log(`[DYNAMIC TIMELINE] Found ${approvedAppointments.length} approved/pending appointments for ${dentistName} on ${date}`);
 
     // Convert approved appointments to time windows (in minutes since midnight)
     const bookedWindows = approvedAppointments.map(apt => {
@@ -164,7 +164,7 @@ router.get('/available-times', async (req, res) => {
       };
     });
 
-    console.log(`[DYNAMIC TIMELINE] Booked windows for ${dentist.name}:`);
+    console.log(`[DYNAMIC TIMELINE] Booked windows for ${dentistName}:`);
     bookedWindows.forEach(w => {
       const startTime = minutesToTime(w.startMin);
       const endTime = minutesToTime(w.endMin);
@@ -244,8 +244,8 @@ router.get('/available-times', async (req, res) => {
         slotsLeft,
         slotsBooked: hasOverlap ? 1 : 0,
         slotsTotal: 1,
-        dentist: dentist.name,
-        dentist_id: dentist.dbId,
+        dentist: dentistName,
+        dentist_id: dentistId,
         service,
         duration_minutes: totalBlockedDuration,
       });
@@ -256,8 +256,8 @@ router.get('/available-times', async (req, res) => {
     res.json({
       date,
       service,
-      dentist: dentist.name,
-      dentist_id: dentist.dbId,
+      dentist: dentistName,
+      dentist_id: dentistId,
       service_duration: serviceDuration,
       total_blocked_duration: totalBlockedDuration,
       availableTimes: slotsWithCounts,

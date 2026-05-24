@@ -399,18 +399,33 @@ export class StaffBookingComponent implements OnInit {
     this.api.getAvailableTimes(date, serviceName).subscribe({
       next: (response) => {
         console.log(`[STAFF-BOOKING] Slots response:`, response);
+        
+        // Handle both response structures: availableTimes array or direct array
+        let slots = response.availableTimes || response;
+        if (!Array.isArray(slots)) {
+          console.warn('[STAFF-BOOKING] Response is not an array, attempting to extract slots');
+          slots = [];
+        }
+        
         // Map all slots, don't filter them out - just mark as full if slotsLeft === 0
-        this.availableSlots = (response.availableTimes || [])
+        this.availableSlots = slots
+          .filter((slot: any) => slot && slot.time) // Filter out invalid slots
           .map((slot: any) => ({
-            time: slot.time,
-            slotsLeft: slot.slotsLeft, // Keep original count, don't cap at 4
-          }));
+            time: slot.time || slot.time24 || '', // Handle both time and time24 formats
+            slotsLeft: slot.slotsLeft !== undefined ? slot.slotsLeft : 1, // Default to 1 if not specified
+          }))
+          .filter((slot: any) => slot.time); // Remove slots with empty time
+        
         console.log(`[STAFF-BOOKING] Loaded ${this.availableSlots.length} slots`);
+        if (this.availableSlots.length === 0) {
+          console.warn('[STAFF-BOOKING] WARNING: No valid slots found in response');
+        }
         this.isLoadingSlots = false;
         this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('[STAFF-BOOKING] Error fetching available slots:', err);
+        this.submitError = `Failed to load time slots: ${err?.error?.error || err?.message || 'Unknown error'}`;
         this.availableSlots = [];
         this.isLoadingSlots = false;
         this.cdr.detectChanges();
@@ -539,10 +554,20 @@ export class StaffBookingComponent implements OnInit {
       const slotsResponse = await this.api.getAvailableTimes(schedule.selectedDate, schedule.service.name).toPromise();
       console.log(`[STAFF-BOOKING] Slots API response:`, slotsResponse);
 
-      schedule.availableSlots = (slotsResponse?.availableTimes || []).map((slot: any) => ({
-        time: slot.time,
-        slotsLeft: slot.slotsLeft
-      }));
+      // Handle both response structures: availableTimes array or direct array
+      let slots = slotsResponse?.availableTimes || slotsResponse;
+      if (!Array.isArray(slots)) {
+        console.warn('[STAFF-BOOKING] Response is not an array, attempting to extract slots');
+        slots = [];
+      }
+
+      schedule.availableSlots = slots
+        .filter((slot: any) => slot && slot.time) // Filter out invalid slots
+        .map((slot: any) => ({
+          time: slot.time || slot.time24 || '', // Handle both time and time24 formats
+          slotsLeft: slot.slotsLeft !== undefined ? slot.slotsLeft : 1, // Default to 1 if not specified
+        }))
+        .filter((slot: any) => slot.time); // Remove slots with empty time
 
       console.log(`[STAFF-BOOKING] Processed slots: ${schedule.availableSlots.length} slots available`);
       console.log('[STAFF-BOOKING] Slot details:', schedule.availableSlots);
@@ -550,9 +575,11 @@ export class StaffBookingComponent implements OnInit {
       if (schedule.availableSlots.length === 0) {
         console.warn('[STAFF-BOOKING] No available slots for this date and service');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[STAFF-BOOKING] Error loading slots:', error);
-      alert('Error loading available time slots');
+      const errorMsg = error?.error?.error || error?.message || 'Unknown error';
+      console.error('[STAFF-BOOKING] Error details:', errorMsg);
+      alert(`Error loading available time slots: ${errorMsg}`);
       schedule.availableSlots = [];
     } finally {
       schedule.isLoadingSlots = false;
@@ -815,12 +842,13 @@ export class StaffBookingComponent implements OnInit {
         },
         bookingType: this.bookingType,
         intakePriority: this.intakePriority,
-        intakeSource: this.intakeSource
+        intakeSource: this.intakeSource,
+        userId: null // Staff booking doesn't have a user ID
       };
 
       console.log('[STAFF-BOOKING] Submitting MULTI-SERVICE booking:', payload);
       
-      this.api.createCompositeBooking(payload).subscribe({
+      this.api.createCompositeBooking(payload, null).subscribe({
         next: (response: any) => {
           console.log('[STAFF-BOOKING] Multi-service booking successful:', response);
           this.confirmedBooking = {

@@ -49,11 +49,14 @@ const router = express.Router();
 router.post('/create', async (req, res) => {
   try {
     const { services, appointments, patientDetails, bookingType, intakePriority, intakeSource } = req.body;
-    const userId = req.user?.id || req.body.userId; // From auth middleware or request
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User ID required' });
-    }
+    
+    // Get userId from auth middleware, request body, or default to null for staff bookings
+    let userId = req.user?.id || req.body.userId || null;
+    
+    console.log('[CompositeBookingAPI] Create request received');
+    console.log('[CompositeBookingAPI] userId:', userId);
+    console.log('[CompositeBookingAPI] bookingType:', bookingType);
+    console.log('[CompositeBookingAPI] services count:', services?.length);
 
     const result = await CompositeBookingManager.createCompositeBooking(
       {

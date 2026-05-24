@@ -238,7 +238,7 @@
           <div class="timeslot-panel">
             <div class="timeslot-label">AVAILABLE SLOTS</div>
             <div *ngIf="getCurrentServiceSchedule().selectedDate; else noDateSelected" class="timeslot-list">
-              <ng-container *ngIf="!getCurrentServiceSchedule().isLoadingSlots && (getCurrentServiceSchedule().availableSlots?.length || 0) > 0; else loadingOrEmpty">
+              <ng-container *ngIf="!getCurrentServiceSchedule().isLoadingSlots && (getCurrentServiceSchedule().availableSlots.length || 0) > 0; else loadingOrEmpty">
                 <button type="button" *ngFor="let slot of getCurrentServiceSchedule().availableSlots" class="timeslot-btn" [class.active]="getCurrentServiceSchedule().selectedTime === slot.time" [class.full]="slot.slotsLeft === 0" [disabled]="false" (click)="selectTimeForMultiService(slot.time)">
                   <span class="slot-time">{{ slot.time }}</span>
                   <span class="slot-count" [class.full-text]="slot.slotsLeft === 0">{{ slot.slotsLeft === 0 ? 'Fully Booked' : slot.slotsLeft + ' slot' + (slot.slotsLeft > 1 ? 's' : '') + ' left' }}</span>

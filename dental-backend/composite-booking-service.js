@@ -298,6 +298,7 @@ class CompositeBookingManager {
         }
 
         const dentist = dentistResult.rows[0];
+        console.log(`[CompositeBooking] Service "${service.name}" → Dentist: ${dentist.first_name} ${dentist.last_name} (ID: ${dentist.dentist_id})`);
 
         // Validate date format (YYYY-MM-DD)
         if (!/^\d{4}-\d{2}-\d{2}$/.test(appointment.date)) {
@@ -340,16 +341,17 @@ class CompositeBookingManager {
         // Create appointment record - EACH SERVICE GETS ITS OWN APPOINTMENT
         const aptResult = await client.query(
           `INSERT INTO composite_booking_appointments (
-            appointment_id, composite_booking_id,
+            appointment_id, composite_booking_id, booking_id,
             service_name, service_category, service_duration_minutes,
             dentist_id, dentist_name, dentist_specialty,
             appointment_date, appointment_time, appointment_end_time,
             appointment_status, appointment_sequence
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
           RETURNING id, appointment_id, appointment_date, appointment_time, appointment_end_time, service_name, dentist_name`,
           [
             appointmentId,
             compositeBookingId,
+            bookingId,
             service.name,
             service.category,
             service.duration,

@@ -3508,8 +3508,10 @@ setTimeout(() => {
       service_duration_minutes  INTEGER NOT NULL,
       appointment_date          DATE NOT NULL,
       appointment_time          VARCHAR(5) NOT NULL,
-      dentist_id                INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      appointment_end_time      VARCHAR(5),
+      dentist_id                INTEGER REFERENCES dentist(dentist_id) ON DELETE SET NULL,
       dentist_name              VARCHAR(255),
+      dentist_specialty         VARCHAR(255),
       patient_age               VARCHAR(10),
       appointment_status        VARCHAR(50) NOT NULL DEFAULT 'Pending',
       cancellation_reason       TEXT,
@@ -3517,6 +3519,31 @@ setTimeout(() => {
       updated_at                TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `).catch(err => console.error('Composite booking appointments table error:', err.message));
+
+  // Add missing columns if they don't exist
+  setTimeout(() => {
+    db.query(`
+      ALTER TABLE composite_booking_appointments
+      ADD COLUMN IF NOT EXISTS appointment_end_time VARCHAR(5)
+    `).catch(err => console.error('Error adding appointment_end_time column:', err.message));
+
+    db.query(`
+      ALTER TABLE composite_booking_appointments
+      ADD COLUMN IF NOT EXISTS dentist_specialty VARCHAR(255)
+    `).catch(err => console.error('Error adding dentist_specialty column:', err.message));
+
+    // Fix foreign key constraint if needed
+    db.query(`
+      ALTER TABLE composite_booking_appointments
+      DROP CONSTRAINT IF EXISTS composite_booking_appointments_dentist_id_fkey
+    `).catch(err => console.error('Error dropping old FK:', err.message));
+
+    db.query(`
+      ALTER TABLE composite_booking_appointments
+      ADD CONSTRAINT composite_booking_appointments_dentist_id_fkey
+      FOREIGN KEY (dentist_id) REFERENCES dentist(dentist_id) ON DELETE SET NULL
+    `).catch(err => console.error('Error adding FK:', err.message));
+  }, 1000);
 }, 500);
 
 // Service to Dentist Mapping table
@@ -3533,6 +3560,18 @@ db.query(`
     UNIQUE(service_name, dentist_id)
   )
 `).catch(err => console.error('Service dentist mapping table error:', err.message));
+
+// Composite Booking Audit Log table
+db.query(`
+  CREATE TABLE IF NOT EXISTS composite_booking_audit_log (
+    id                    SERIAL PRIMARY KEY,
+    composite_booking_id  INTEGER NOT NULL REFERENCES composite_bookings(id) ON DELETE CASCADE,
+    action                VARCHAR(50) NOT NULL,
+    action_by             INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    action_details        TEXT,
+    created_at            TIMESTAMP NOT NULL DEFAULT NOW()
+  )
+`).catch(err => console.error('Composite booking audit log table error:', err.message));
 
 // Populate service_dentist_mapping with initial data
 setTimeout(() => {
@@ -3608,6 +3647,69 @@ setTimeout(() => {
           VALUES ($1, $2, $3, TRUE, TRUE)
           ON CONFLICT (service_name, dentist_id) DO NOTHING
         `, [service.toLowerCase(), 'Orthodontics', dentistId])
+          .catch(err => {});
+      });
+    }
+  }).catch(err => {});
+
+  // Populate oral surgery services
+  const oralSurgeryServices = [
+    'surgical tooth extraction', 'wisdom tooth removal', 'cyst removal', 'minor oral surgery', 'frenectomy'
+  ];
+
+  db.query(`
+    SELECT dentist_id FROM dentist WHERE dentist_id > 3 LIMIT 1
+  `).then(result => {
+    if (result.rows.length > 0) {
+      const dentistId = result.rows[0].dentist_id;
+      oralSurgeryServices.forEach(service => {
+        db.query(`
+          INSERT INTO service_dentist_mapping (service_name, service_category, dentist_id, is_primary, is_active)
+          VALUES ($1, $2, $3, TRUE, TRUE)
+          ON CONFLICT (service_name, dentist_id) DO NOTHING
+        `, [service.toLowerCase(), 'Oral Surgery', dentistId])
+          .catch(err => {});
+      });
+    }
+  }).catch(err => {});
+
+  // Populate dental implants services
+  const dentalImplantsServices = [
+    'implant consultation', 'single tooth implant', 'multiple tooth implant', 'implant crown placement', 'implant maintenance'
+  ];
+
+  db.query(`
+    SELECT dentist_id FROM dentist WHERE dentist_id > 1 LIMIT 1
+  `).then(result => {
+    if (result.rows.length > 0) {
+      const dentistId = result.rows[0].dentist_id;
+      dentalImplantsServices.forEach(service => {
+        db.query(`
+          INSERT INTO service_dentist_mapping (service_name, service_category, dentist_id, is_primary, is_active)
+          VALUES ($1, $2, $3, TRUE, TRUE)
+          ON CONFLICT (service_name, dentist_id) DO NOTHING
+        `, [service.toLowerCase(), 'Dental Implants', dentistId])
+          .catch(err => {});
+      });
+    }
+  }).catch(err => {});
+
+  // Populate pediatric care services
+  const pediatricServices = [
+    'pediatric check-up', 'pediatric cleaning', 'fluoride for kids', 'dental sealants', 'baby tooth extraction', 'space maintainers'
+  ];
+
+  db.query(`
+    SELECT dentist_id FROM dentist WHERE dentist_id > 2 LIMIT 1
+  `).then(result => {
+    if (result.rows.length > 0) {
+      const dentistId = result.rows[0].dentist_id;
+      pediatricServices.forEach(service => {
+        db.query(`
+          INSERT INTO service_dentist_mapping (service_name, service_category, dentist_id, is_primary, is_active)
+          VALUES ($1, $2, $3, TRUE, TRUE)
+          ON CONFLICT (service_name, dentist_id) DO NOTHING
+        `, [service.toLowerCase(), 'Pediatric Care', dentistId])
           .catch(err => {});
       });
     }
@@ -3973,6 +4075,37 @@ async function startServer() {
     `);
 
     console.log('[Startup] ✓ Database migrations complete');
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // UNIFIED BOOKING ENDPOINT
+    // Handles both single and multiple appointments with atomic transactions
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    const { UnifiedBookingManager } = require('./unified-booking-service');
+
+    app.post('/api/bookings/create', bookingLimiter, async (req, res) => {
+      console.log('=== UNIFIED BOOKING REQUEST ===');
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+      try {
+        const result = await UnifiedBookingManager.createBooking(req.body);
+
+        if (result.success) {
+          console.log('[UnifiedBooking] Success:', result.message);
+          return res.status(201).json(result);
+        } else {
+          console.log('[UnifiedBooking] Validation failed:', result.errors);
+          return res.status(400).json(result);
+        }
+      } catch (error) {
+        console.error('[UnifiedBooking] Unexpected error:', error.message);
+        return res.status(500).json({
+          success: false,
+          message: 'An unexpected error occurred',
+          errors: [error.message]
+        });
+      }
+    });
 
     app.listen(3000, () => {
       console.log('Server running at http://localhost:3000');

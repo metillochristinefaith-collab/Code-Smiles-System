@@ -1,167 +1,208 @@
-# Quick Test Guide - Walk-in Auto-Confirmation
+# Quick Test Guide - Booking System (For Defense)
 
-## How to Test the Fix
+## Pre-Defense Checklist (5 minutes)
 
-### Option 1: Test via Frontend (Recommended)
+- [ ] Backend server running on port 5000
+- [ ] Frontend running on port 4200
+- [ ] Database connected and populated
+- [ ] Browser console open (F12) to see logs
 
-1. **Open Staff Booking Page**
-   - Go to: http://localhost:4200/staff-booking
+---
 
-2. **Book a Walk-in Appointment**
-   - Booking type: Select "Walk-in"
-   - Service: Select "General Dentistry" → "Dental Cleaning"
-   - Date: Select May 26, 2026
-   - Time: Select 09:00 AM
-   - Patient name: "John Doe"
-   - Phone: "09171234567"
-   - Email: (optional)
-   - Click "Submit Appointment"
+## Test Scenario 1: Single Service Booking (Patient) - 2 minutes
 
-3. **Expected Result**
-   - ✅ See message: "✓ Walk-in Appointment Confirmed"
-   - ✅ Status shows: "✓ Checked In" (in green)
-   - ✅ Appointment is immediately confirmed
+### Steps:
+1. Navigate to **Patient Booking** page
+2. Select category: **"General Dentistry"**
+3. Select service: **"Dental Cleaning"** (45 mins)
+4. Click **"Proceed to Scheduling"**
+5. **✅ VERIFY**: Calendar appears
+6. Select a date (e.g., May 28, 2026)
+7. **✅ VERIFY**: Time slots load (should see multiple times like "09:00 AM", "09:30 AM", etc.)
+8. Select a time slot (e.g., "09:00 AM")
+9. Click **"Proceed to Patient Details"**
+10. Fill in:
+    - First Name: John
+    - Last Name: Doe
+    - Email: john@example.com
+    - Phone: 09123456789
+    - Age: 30
+11. Click **"Complete Booking"**
+12. **✅ VERIFY**: Success modal appears with booking confirmation
 
-4. **Book a Registered Patient Appointment**
-   - Booking type: Select "Registered patient"
-   - Service: Select "General Dentistry" → "Dental Cleaning"
-   - Date: Select May 26, 2026
-   - Time: Select 10:00 AM
-   - Patient name: "Jane Smith"
-   - Phone: "09171234567"
-   - Email: (optional)
-   - Click "Submit Appointment"
+**Expected Result**: ✅ Booking successful, confirmation shown
 
-5. **Expected Result**
-   - ✅ See message: "Appointment Request Submitted"
-   - ✅ Status shows: "Pending" (in amber)
-   - ✅ Appointment is pending approval
+---
 
-### Option 2: Test via API (For Developers)
+## Test Scenario 2: Multi-Service Booking (Patient) - 3 minutes
 
-#### Test Walk-in Booking
-```bash
-curl -X POST http://localhost:3000/add-appointment \
-  -H "Content-Type: application/json" \
-  -d '{
-    "full_name": "Walk-in Test Patient",
-    "phone": "09171234567",
-    "email": "walkin@test.com",
-    "treatment": "Dental Cleaning",
-    "appointment_date": "2026-05-26",
-    "appointment_time": "14:00",
-    "duration_minutes": 45,
-    "services": ["Dental Cleaning"],
-    "booking_type": "Walk-in"
-  }'
+### Steps:
+1. Navigate to **Patient Booking** page
+2. Select category: **"General Dentistry"**
+3. Select services:
+   - **"Dental Cleaning"** (45 mins) ✅
+   - **"Digital X-Rays"** (20 mins) ✅
+   - Total: 65 mins (within 120 min limit)
+4. Click **"Proceed to Scheduling"**
+5. **✅ VERIFY**: Multi-service scheduling appears (Step 2.5)
+6. For Service 1 (Dental Cleaning):
+   - Select date: May 28, 2026
+   - **✅ VERIFY**: Time slots load
+   - Select time: 09:00 AM
+   - Click **"Proceed to Next Service"**
+7. For Service 2 (Digital X-Rays):
+   - Select date: May 28, 2026
+   - **✅ VERIFY**: Time slots load
+   - Select time: 10:30 AM (after Dental Cleaning ends)
+   - Click **"Proceed to Patient Details"**
+8. Fill in patient details (same as Scenario 1)
+9. Click **"Complete Booking"**
+10. **✅ VERIFY**: Success modal appears
+
+**Expected Result**: ✅ Multi-service booking successful
+
+---
+
+## Test Scenario 3: Staff Booking (Walk-in) - 2 minutes
+
+### Steps:
+1. Navigate to **Staff Booking** page
+2. Select booking type: **"Walk-in"**
+3. Select intake priority: **"Standard"**
+4. Select intake source: **"Front desk"**
+5. Fill in patient details:
+   - Name: Jane Smith
+   - Phone: 09987654321
+   - Email: (leave empty - auto-generated)
+   - Age: 25
+6. Select category: **"Cosmetic Arts"**
+7. Select service: **"Teeth Whitening"** (60 mins)
+8. Click **"Proceed to Scheduling"**
+9. Select date: May 29, 2026
+10. **✅ VERIFY**: Time slots load
+11. Select time: 02:00 PM
+12. Click **"Proceed to Patient Details"**
+13. Click **"Submit"**
+14. **✅ VERIFY**: Success message appears
+
+**Expected Result**: ✅ Staff booking successful
+
+---
+
+## Test Scenario 4: Multi-Service Staff Booking - 3 minutes
+
+### Steps:
+1. Navigate to **Staff Booking** page
+2. Select booking type: **"Walk-in"**
+3. Fill in patient details (same as Scenario 3)
+4. Select category: **"Oral Surgery"**
+5. Select services:
+   - **"Surgical Tooth Extraction"** (60 mins) ✅
+   - **"Minor Oral Surgery"** (45 mins) ✅
+   - Total: 105 mins (within 120 min limit)
+6. Click **"Proceed to Scheduling"**
+7. For Service 1:
+   - Select date: May 29, 2026
+   - **✅ VERIFY**: Time slots load
+   - Select time: 10:00 AM
+   - Click **"Proceed to Next Service"**
+8. For Service 2:
+   - Select date: May 29, 2026
+   - **✅ VERIFY**: Time slots load
+   - Select time: 11:30 AM
+   - Click **"Proceed to Patient Details"**
+9. Click **"Submit"**
+10. **✅ VERIFY**: Success message appears
+
+**Expected Result**: ✅ Multi-service staff booking successful
+
+---
+
+## Test Scenario 5: Double-Booking Prevention - 2 minutes
+
+### Steps:
+1. Complete a booking (use Scenario 1)
+2. Try to book the same dentist at the same time
+3. Select same date and time as previous booking
+4. **✅ VERIFY**: Time slot shows as unavailable (slotsLeft = 0)
+5. Try to select a different time
+6. **✅ VERIFY**: Can book at different time successfully
+
+**Expected Result**: ✅ Double-booking prevented, alternative times available
+
+---
+
+## Test Scenario 6: Max Services Constraint - 1 minute
+
+### Steps:
+1. Navigate to **Patient Booking** page
+2. Select category: **"General Dentistry"**
+3. Try to select 4 services
+4. **✅ VERIFY**: Alert appears: "Maximum 3 services allowed"
+5. Select 3 services with total > 120 mins
+6. **✅ VERIFY**: Alert appears: "Total duration cannot exceed 120 minutes"
+
+**Expected Result**: ✅ Constraints enforced
+
+---
+
+## Browser Console Logs to Look For
+
+### Successful Booking Flow:
+```
+[STAFF-BOOKING] Fetching slots for date: 2026-05-28, service: Dental Cleaning
+[STAFF-BOOKING] Slots response: {...}
+[STAFF-BOOKING] Loaded 24 slots
+[STAFF-BOOKING] Submitting SINGLE service booking: {...}
+[STAFF-BOOKING] Single booking successful: {...}
 ```
 
-**Expected Response**:
-```json
-{
-  "message": "Walk-in appointment confirmed!",
-  "id": 102,
-  "status": "Approved",
-  "booking_type": "Walk-in"
-}
+### Multi-Service Booking:
+```
+[STAFF-BOOKING] loadAvailableSlotsForMultiService called for service: Dental Cleaning
+[STAFF-BOOKING] Slots API response: {...}
+[STAFF-BOOKING] Processed slots: 24 slots available
+[STAFF-BOOKING] Submitting MULTI-SERVICE booking: {...}
+[STAFF-BOOKING] Multi-service booking successful: {...}
 ```
 
-#### Test Registered Patient Booking
-```bash
-curl -X POST http://localhost:3000/add-appointment \
-  -H "Content-Type: application/json" \
-  -d '{
-    "full_name": "Registered Test Patient",
-    "phone": "09171234567",
-    "email": "registered@test.com",
-    "treatment": "Dental Cleaning",
-    "appointment_date": "2026-05-26",
-    "appointment_time": "15:00",
-    "duration_minutes": 45,
-    "services": ["Dental Cleaning"],
-    "booking_type": "Registered patient"
-  }'
+### Error Scenarios:
+```
+[STAFF-BOOKING] Error fetching available slots: {...}
+[STAFF-BOOKING] Multi-service booking failed: {...}
 ```
 
-**Expected Response**:
-```json
-{
-  "message": "Appointment request submitted!",
-  "id": 103,
-  "status": "Pending",
-  "booking_type": "Registered patient"
-}
-```
-
-### Option 3: Check Database
-
-#### View Recent Appointments
-```bash
-node -e "const pool = require('./db'); pool.query('SELECT id, patient_name, status, confirmation_status, appointment_date, appointment_time FROM appointments WHERE appointment_date = \\'2026-05-26\\' ORDER BY id DESC LIMIT 5').then(r => console.log(JSON.stringify(r.rows, null, 2))).catch(e => console.error(e.message))"
-```
-
-**Expected Output**:
-```json
-[
-  {
-    "id": 103,
-    "patient_name": "Registered Test Patient",
-    "status": "Pending",
-    "confirmation_status": "Not Confirmed",
-    "appointment_date": "2026-05-26",
-    "appointment_time": "15:00"
-  },
-  {
-    "id": 102,
-    "patient_name": "Walk-in Test Patient",
-    "status": "Approved",
-    "confirmation_status": "Confirmed",
-    "appointment_date": "2026-05-26",
-    "appointment_time": "14:00"
-  }
-]
-```
-
-## What to Look For
-
-### Walk-in Appointments ✅
-- Status: `Approved`
-- Confirmation: `Confirmed`
-- Frontend message: "✓ Walk-in Appointment Confirmed"
-- Status badge: Green "✓ Checked In"
-
-### Registered Patient Appointments ⏳
-- Status: `Pending`
-- Confirmation: `Not Confirmed`
-- Frontend message: "Appointment Request Submitted"
-- Status badge: Amber "Pending"
+---
 
 ## Troubleshooting
 
-### Issue: Frontend shows error "booking_type is not a known property"
-**Solution**: Clear browser cache and refresh
-- Press Ctrl+Shift+Delete
-- Clear cache
-- Refresh page
+| Issue | Solution |
+|-------|----------|
+| Time slots not loading | Check browser console for API errors. Verify backend is running. |
+| Submit button disabled | Verify all required fields are filled. Check validation errors. |
+| "Booking failed" error | Check backend logs. Verify database connection. |
+| Double-booking allowed | Check if existing appointments are in "Approved" or "Pending" status. |
+| Services exceed 120 mins | Verify constraint logic in `toggleService()` method. |
 
-### Issue: Backend returns 500 error
-**Solution**: Check backend logs
-- Look for error messages in terminal
-- Verify database connection
-- Check if `confirmation_status` column exists in appointments table
+---
 
-### Issue: Appointment created but status is wrong
-**Solution**: Verify booking_type is being sent
-- Check browser network tab (F12 → Network)
-- Look for POST request to `/add-appointment`
-- Verify `booking_type` field is in request body
+## Key Files to Monitor
 
-## Success Criteria
+- **Frontend Logs**: Browser console (F12)
+- **Backend Logs**: Terminal running `npm start` in dental-backend
+- **Database**: Check `appointments` and `composite_bookings` tables
 
-✅ Walk-in appointments show "Approved" status in database
-✅ Registered appointments show "Pending" status in database
-✅ Frontend shows different confirmation messages
-✅ Walk-in status badge is green
-✅ Registered status badge is amber
-✅ Staff notifications differentiate between types
+---
 
+## Success Criteria for Defense
+
+✅ All 6 test scenarios pass  
+✅ No console errors  
+✅ Time slots load within 2 seconds  
+✅ Bookings submit successfully  
+✅ Double-booking prevention works  
+✅ Multi-service constraints enforced  
+
+---
+
+**Good luck! You've got this! 🚀**

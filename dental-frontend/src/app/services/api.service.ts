@@ -165,6 +165,24 @@ export class ApiService {
     return this.http.post(`${this.base}/add-appointment`, data);
   }
 
+  // ── UNIFIED BOOKING (single or multiple services) ────────────────────────────
+  createUnifiedBooking(data: {
+    full_name: string;
+    email: string;
+    phone: string;
+    treatment?: string;
+    services?: Array<{ name: string; duration?: number }>;
+    appointments?: Array<{ date: string; time: string }>;
+    appointment_date?: string;
+    appointment_time?: string;
+    duration_minutes?: number;
+    booking_type?: string;
+    notes?: string;
+    patient_id?: number | null;
+  }): Observable<any> {
+    return this.http.post(`${this.base}/api/bookings/create`, data);
+  }
+
   // ── COMPOSITE BOOKING (multi-service) ────────────────────────────────────────
   createCompositeBooking(data: {
     services: Array<{ name: string; category: string; duration: number }>;

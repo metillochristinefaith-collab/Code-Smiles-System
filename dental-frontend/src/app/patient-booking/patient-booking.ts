@@ -424,15 +424,26 @@ export class PatientBookingComponent implements OnInit {
     this.api.getAvailableTimes(date, service).subscribe({
       next: (response: any) => {
         console.log(`[BOOKING] API Response:`, response);
-        if (response && response.availableTimes && Array.isArray(response.availableTimes)) {
-          this.availableSlots = response.availableTimes;
-          console.log(`[BOOKING] Loaded ${this.availableSlots.length} available slots`);
-          if (this.availableSlots.length === 0) {
-            console.warn(`[BOOKING] WARNING: No available slots returned for ${date} and ${service}`);
-          }
-        } else {
+        
+        // Handle both response structures: availableTimes array or direct array
+        let slots = response.availableTimes || response;
+        if (!Array.isArray(slots)) {
           console.warn(`[BOOKING] Invalid response structure:`, response);
-          this.availableSlots = [];
+          slots = [];
+        }
+        
+        // Filter and map slots
+        this.availableSlots = slots
+          .filter((slot: any) => slot && slot.time) // Filter out invalid slots
+          .map((slot: any) => ({
+            time: slot.time || slot.time24 || '', // Handle both time and time24 formats
+            slotsLeft: slot.slotsLeft !== undefined ? slot.slotsLeft : 1, // Default to 1 if not specified
+          }))
+          .filter((slot: any) => slot.time); // Remove slots with empty time
+        
+        console.log(`[BOOKING] Loaded ${this.availableSlots.length} available slots`);
+        if (this.availableSlots.length === 0) {
+          console.warn(`[BOOKING] WARNING: No available slots returned for ${date} and ${service}`);
         }
         this.isLoadingSlots = false;
         this.cdr.detectChanges();
@@ -535,17 +546,29 @@ export class PatientBookingComponent implements OnInit {
         schedule.service.name
       ).toPromise();
 
-      schedule.availableSlots = (slotsResponse?.availableTimes || []).map((slot: any) => ({
-        time: slot.time,
-        slotsLeft: slot.slotsLeft
-      }));
+      // Handle both response structures: availableTimes array or direct array
+      let slots = slotsResponse?.availableTimes || slotsResponse;
+      if (!Array.isArray(slots)) {
+        console.warn('[BOOKING] Response is not an array, attempting to extract slots');
+        slots = [];
+      }
+
+      schedule.availableSlots = slots
+        .filter((slot: any) => slot && slot.time) // Filter out invalid slots
+        .map((slot: any) => ({
+          time: slot.time || slot.time24 || '', // Handle both time and time24 formats
+          slotsLeft: slot.slotsLeft !== undefined ? slot.slotsLeft : 1, // Default to 1 if not specified
+        }))
+        .filter((slot: any) => slot.time); // Remove slots with empty time
 
       if (schedule.availableSlots.length === 0) {
         console.warn('No available slots for this date and service');
       }
-    } catch (error) {
-      console.error('Error loading slots:', error);
-      alert('Error loading available time slots');
+    } catch (error: any) {
+      console.error('[BOOKING] Error loading slots:', error);
+      const errorMsg = error?.error?.error || error?.message || 'Unknown error';
+      console.error('[BOOKING] Error details:', errorMsg);
+      alert(`Error loading available time slots: ${errorMsg}`);
       schedule.availableSlots = [];
     } finally {
       schedule.isLoadingSlots = false;
